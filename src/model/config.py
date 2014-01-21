@@ -19,7 +19,7 @@ from datetime import datetime
 
 Base = declarative_base(cls=MyBase)
 
-DEFAULTS = dict(nr_files_history=10, font_name='MS Shell Dlg 2',
+DEFAULTS = dict(nr_files_history=10, font_name='Arial',
                 font_size=12)
 CONFIG_TABLE = None  # Becomes as dictionary of key : Config item
 CONFIG_URL = 'sqlite:///%s'%(expanduser('~/.archtool.conf').replace('\\', '/'))
