@@ -2,6 +2,9 @@
 Created on Oct 6, 2013
 
 @author: EHWAAL
+
+Copyright (C) 2014 Evert van de Waal
+This program is released under the conditions of the GNU General Public License.
 '''
 from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, event
