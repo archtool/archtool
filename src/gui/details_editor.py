@@ -189,8 +189,10 @@ class DetailsViewer(QtGui.QWidget):
       b.clicked.connect(lambda : StateChangeEditor.add(self, details, session))
       self.vertical_layout.addWidget(b)
       
-    # Add database hooks to properly update when status updates are added.
-    event.listen(model.PlaneableStatus, 'after_insert', self.onStateChangeInsert)
+      # Add database hooks to properly update when status updates are added.
+      event.listen(model.PlaneableStatus, 'after_insert', self.onStateChangeInsert)
+    
+    self.edits = edits
     
   def __inputFactory(self, column, value):
     ''' returns a specific QWidget depending on the constant '''
@@ -255,7 +257,16 @@ class DetailsViewer(QtGui.QWidget):
     w = StateChangeView(self, target)
     self.vertical_layout.insertWidget(2, w)
 
-
+  def setFocusOnName(self):
+    ''' Set the focus on the editor for the 'Name' field. '''
+    try:
+      index = self.names.index('Name')
+    except ValueError:
+      # This editor has no field 'Name'...
+      return
+    editor = self.edits[index]
+    editor.setFocus()
+    editor.selectAll()
 
 
 class EffortOverview(QtGui.QTableWidget):

@@ -40,6 +40,10 @@ def makeModelItemTree(tree, model_class, parent):
                           Parent=parent_item)
     with model.sessionScope(parent.getSession()) as session:
       session.add(details)
+    # As the session is closed, the new item is added to this tree.
+    # Cause the item to be selected.
+    parent.onTreeItemAdded(details)
+    
       
   def deleteHandler(checked=False):
     session = parent.getSession()
@@ -233,6 +237,14 @@ class ViewerBase(ArchitectureViewForm[1]):
     '''
     pass
       
+  def onTreeItemAdded(self, details):
+    ''' Called when a new item was created in a tree.
+        Cause the focus to shift to the details editor for this item.
+    '''
+    # First cause the details editor to be shown.
+    self.onItemSelectionChanged(details)
+    # Set the focus to the 'Name' field for the editor
+    self.details_viewer.setFocusOnName()
 
   
 ###############################################################################

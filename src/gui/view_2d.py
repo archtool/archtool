@@ -669,8 +669,8 @@ class TwoDView(QtGui.QGraphicsView):
     location.
     '''
     item = self.itemAt(self.last_rmouse_click)
-    to_remove = [item]
     details, item = getDetails(item)
+    to_remove = [item]
     # Use a scoped session to ensure the consistency of the database.
     with model.sessionScope(self.session) as session:
       # When deleting a block, remove the connections as well.

@@ -29,6 +29,10 @@ import os.path
 # TODO: Een Use Case exporteren als SVG plaatje.
 
 
+SQLITE_URL_PREFIX = 'sqlite:///'
+
+
+
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
@@ -74,7 +78,7 @@ class ArchitectureTool(MainWindowForm[1]):
       return
     
     self.centralwidget.clean()
-    self.open(url='sqlite:///%s'%fname)
+    self.open(url=SQLITE_URL_PREFIX+fname, new=True)
     # Write the version number to the database
     self.session.add(model.DbaseVersion())
     self.session.commit()
@@ -89,12 +93,18 @@ class ArchitectureTool(MainWindowForm[1]):
     if fname == '':
       return
     
-    self.open(url='sqlite:///%s'%fname)
+    self.open(url=SQLITE_URL_PREFIX+fname)
     
-  def open(self, triggered=False, url=None):
+  def open(self, triggered=False, url=None, new=False):
     ''' Actually open a specific database.
         Called after the user has selected a database.
     '''
+    if not new and url.startswith(SQLITE_URL_PREFIX):
+      # Check if the file already exists.
+      fname = url.split(SQLITE_URL_PREFIX)[-1]
+      if not os.path.exists(fname):
+        QtGui.QMessageBox.critical(self, 'File does not exist', 'The file %s does not appear to exist anymore'%fname)
+        return
     model.changeEngine(model.create_engine(url))
     self.session = model.SessionFactory()
     self.centralwidget.open(self.session)
