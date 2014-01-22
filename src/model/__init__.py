@@ -205,12 +205,13 @@ class PlaneableItem(Base):   #pylint:disable=W0232
       function points and projects.
   '''
   short_type = ''
-  Name = Column(String)
+  Name        = Column(String)
   # All plannable items can be broken down into other planeable items
-  Parent = Column(Integer, ForeignKey('planeableitem.Id'))
+  Parent      = Column(Integer, ForeignKey('planeableitem.Id'))
   Description = Column(Text)
   StateChanges = relationship('PlaneableStatus', order_by='PlaneableStatus.TimeStamp.desc()')
-  Children    = relationship('PlaneableItem', order_by='PlaneableItem.Name')
+  Children    = relationship('PlaneableItem', order_by='PlaneableItem.Name') 
+  ParentItem  = relationship('PlaneableItem', remote_side='PlaneableItem.Id')
   Priority    = Column(Enum(*PRIORITIES), default=PRIORITIES[0])
   ItemType    = Column(String(50))
   AItems      = relationship('PlaneableItem', primaryjoin='planeablexref.c.A==PlaneableItem.Id',
@@ -257,7 +258,7 @@ class PlaneableItem(Base):   #pylint:disable=W0232
     detail = self
     parents = [detail]
     while detail.Parent:
-      detail = detail.Parent
+      detail = detail.ParentItem
       parents.append(detail)
     parents.reverse()
     return parents
