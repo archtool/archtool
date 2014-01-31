@@ -57,7 +57,10 @@ class ArchitectureTool(MainWindowForm[1]):
     for action, func in [(self.ui.actionNew, self.onNew),
                          (self.ui.actionOpen, self.onOpen),
                          (self.ui.actionArchitecture, self.onArchitectureView),
-                         (self.ui.actionPlanning, self.onPlanningView)]:
+                         (self.ui.actionPlanning, self.onPlanningView),
+                         (self.ui.actionExport_as_CSV, self.exportCsv),
+                         (self.ui.actionNew_from_CSV, self.newFromCsv),
+                         (self.ui.actionRequirements_Document)]:
       action.triggered.connect(func)
 
     # Add the recent files to the menu
@@ -130,6 +133,13 @@ class ArchitectureTool(MainWindowForm[1]):
     '''
     # Use the onArchitectureView to open the PlanningView widget
     self.onArchitectureView(cls=PlanningView)
+    
+  def exportCsv(self):
+    ''' Export the current model as a CSV file.
+    '''
+    # First ask the user for the file to save to.
+    fname = QtGui.QFileDialog.getSaveFileName(self, caption='export as CSV', '.', '*.csv')
+    # Then export the database
 
     
 def run():

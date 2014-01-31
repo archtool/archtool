@@ -78,7 +78,8 @@ def getRecentFiles():
   max_files = getConfig('nr_files_history')
   with transactionScope() as session:
     # Delete files that are too many
-    for f in session.query(FileHistory.Url).order_by(FileHistory.TimeStamp.desc())[max_files:]:
+    recent_files = list(session.query(FileHistory.Url).order_by(FileHistory.TimeStamp.desc()))
+    for f in recent_files[max_files:]:
       session.delete(f)
 
   with transactionScope() as session:

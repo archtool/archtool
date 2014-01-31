@@ -42,6 +42,9 @@
     <addaction name="actionSave"/>
     <addaction name="separator"/>
     <addaction name="menuRecent_Files"/>
+    <addaction name="separator"/>
+    <addaction name="actionExport_as_CSV"/>
+    <addaction name="actionNew_from_CSV"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -50,8 +53,15 @@
     <addaction name="actionArchitecture"/>
     <addaction name="actionPlanning"/>
    </widget>
+   <widget class="QMenu" name="menuGeneration">
+    <property name="title">
+     <string>Generation</string>
+    </property>
+    <addaction name="actionRequirements_Document"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
+   <addaction name="menuGeneration"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpen">
@@ -82,6 +92,21 @@
   <action name="actionPlanning">
    <property name="text">
     <string>Planning</string>
+   </property>
+  </action>
+  <action name="actionExport_as_CSV">
+   <property name="text">
+    <string>Export as CSV</string>
+   </property>
+  </action>
+  <action name="actionNew_from_CSV">
+   <property name="text">
+    <string>New from CSV</string>
+   </property>
+  </action>
+  <action name="actionRequirements_Document">
+   <property name="text">
+    <string>Requirements Document</string>
    </property>
   </action>
  </widget>
