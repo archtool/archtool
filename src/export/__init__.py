@@ -13,8 +13,7 @@ import csv
 from sqlalchemy.ext.declarative import declarative_base
 
 
-def export(fname='dump.csv', db='sqlite:///archmodel.db'):
-  engine = model.create_engine(db)
+def export(fname='dump.csv', engine=model.the_engine):
   meta = MetaData()
   meta.reflect(bind=engine)
   f = file(fname, 'w')
@@ -111,6 +110,7 @@ if __name__ == '__main__':
     fbase, ext = os.path.splitext(fname)
     fold = '%s.old'%fbase
     shutil.move(fname, fold)
-    export('%s.csv'%fbase, 'sqlite:///%s'%fold)
+    engine = model.create_engine('sqlite:///archmodel.db')
+    export('%s.csv'%fbase, engine)
     importCsv('%s.csv'%fbase, 'sqlite:///%s'%fname)
   

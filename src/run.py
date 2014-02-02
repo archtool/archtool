@@ -12,6 +12,7 @@ from gui.design import MainWindowForm
 from gui.viewers import ArchitectureView, PlanningView
 from gui.util import bindLambda
 from req_export import exportRequirementQuestions, exportRequirementsOverview
+from export import export
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sys
@@ -44,6 +45,9 @@ class ArchitectureTool(MainWindowForm[1]):
   def __init__(self):     
     # Setup UI first.
     QtGui.QMainWindow.__init__(self, None)
+    
+    self.current_url = None
+    
     self.setStyleSheet('font: %spt "%s";'%(config.getConfig('font_size'), 
                                          config.getConfig('font_name')))
     #self.setStyleSheet('font: 12 "MS Shell Dlg 2";')
@@ -60,7 +64,8 @@ class ArchitectureTool(MainWindowForm[1]):
                          (self.ui.actionPlanning, self.onPlanningView),
                          (self.ui.actionExport_as_CSV, self.exportCsv),
                          (self.ui.actionNew_from_CSV, self.newFromCsv),
-                         (self.ui.actionRequirements_Document)]:
+                         #(self.ui.actionRequirements_Document)
+                         ]:
       action.triggered.connect(func)
 
     # Add the recent files to the menu
@@ -75,7 +80,7 @@ class ArchitectureTool(MainWindowForm[1]):
       self.open(url=recent[0])
       
   def onNew(self):
-    fname = str(QtGui.QFileDialog.getSaveFileName(self, "Open a calculation scheme", 
+    fname = str(QtGui.QFileDialog.getSaveFileName(self, "Open an architecture model", 
                                                   '.', "*.db"))
     if fname == '':
       return
@@ -91,7 +96,7 @@ class ArchitectureTool(MainWindowForm[1]):
     No check for outstanding changes necessary: all changes are
     stored immediatly.
     '''
-    fname = str(QtGui.QFileDialog.getOpenFileName(self, "Open a calculation scheme", 
+    fname = str(QtGui.QFileDialog.getOpenFileName(self, "Open an architecture model", 
                                                   '.', "*.db"))
     if fname == '':
       return
@@ -114,6 +119,7 @@ class ArchitectureTool(MainWindowForm[1]):
 
     self.setWindowTitle("Architecture Tool: %s"%url.split('/')[-1])
     config.addRecentFile(url)
+    self.current_url = url
     
   def onArchitectureView(self, triggered=False, cls=ArchitectureView):
     ''' Open the Architecture View in the central window.
@@ -137,11 +143,34 @@ class ArchitectureTool(MainWindowForm[1]):
   def exportCsv(self):
     ''' Export the current model as a CSV file.
     '''
+    # Check a database is opened.
+    if model.the_engine is None:
+      return
+    name = self.current_url.split('/')[-1].split('.')[0]
     # First ask the user for the file to save to.
-    fname = QtGui.QFileDialog.getSaveFileName(self, caption='export as CSV', '.', '*.csv')
+    fname = str(QtGui.QFileDialog.getSaveFileName(self, 'export as CSV', '%s.csv'%name , '*.csv'))
+    if fname == '':
+      return
     # Then export the database
+    export(fname, model.the_engine)
+  
+  def newFromCsv(self):
+    ''' Create a new database from a CSV file exported earlier.
+    '''
+    csvname = str(QtGui.QFileDialog.getOpenFileName(self, "Open an architecture model", 
+                                                  '.', "*.db"))
+    if csvname == '':
+      return
+    fname = str(QtGui.QFileDialog.getSaveFileName(self, "Naar welke database wordt geschreven?", 
+                                                  '.', "*.db"))
+    if fname == '':
+      return
+    # Import and create the database
+    importCsv(csvname, fname)
+    # Open the database
+    self.open(url=SQLITE_URL_PREFIX+fname)
 
-    
+
 def run():
   ''' Start the GUI.
   '''
