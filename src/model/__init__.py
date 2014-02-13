@@ -13,6 +13,7 @@ from sqlalchemy import Column, Integer, String, Float, Text, Boolean, DateTime, 
 from sqlalchemy import ForeignKey, create_engine, Table
 from sqlalchemy.orm import relationship, backref, sessionmaker
 from sqlalchemy.types import TypeDecorator
+from sqlalchemy.sql import func
 from datetime import datetime
 from collections import OrderedDict
 
@@ -252,6 +253,19 @@ class PlaneableItem(Base):   #pylint:disable=W0232
       PlaneableItem.getAllOffspring(child, offspring)
     return offspring
   
+  @staticmethod
+  def getItemTypeNames():
+    ''' Returns the names for all different item types.
+        These names are taken from the 'polymorphic identity' string.
+    '''
+    result = []
+    for cls in PlaneableItem.__subclasses__():
+      if hasattr(cls, '__mapper_args__'):
+        name = cls.__mapper_args__.get('polymorphic_identity', None)
+        if not name is None:
+          result.append(name)
+    return result
+  
   def getParents(self):
     ''' Get all the parents, recursively. Returns a list where the first item is the root.
     '''
@@ -384,6 +398,13 @@ class PlaneableStatus(Base):
     ''' Determine if the planeable is 'open' or 'closed'.
     '''
     return self.Status in OPEN_STATES
+  
+  @staticmethod
+  def getLatestQuery(session):
+    ''' Return the set of latest states.
+        Returns tuples of (Id, TimeStamp). '''
+    return session.query(PlaneableStatus, func.max(PlaneableStatus.TimeStamp)).\
+                   group_by(PlaneableStatus.Planeable)
     
       
 

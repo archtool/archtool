@@ -10,6 +10,7 @@ This program is released under the conditions of the GNU General Public License.
 from PyQt4 import QtCore, QtGui
 from gui.design import MainWindowForm
 from gui.viewers import ArchitectureView, PlanningView
+from gui.workitem_view import WorkitemView
 from gui.util import bindLambda
 from req_export import exportRequirementQuestions, exportRequirementsOverview
 from export import export
@@ -64,6 +65,7 @@ class ArchitectureTool(MainWindowForm[1]):
                          (self.ui.actionPlanning, self.onPlanningView),
                          (self.ui.actionExport_as_CSV, self.exportCsv),
                          (self.ui.actionNew_from_CSV, self.newFromCsv),
+                         (self.ui.actionWork_Items, self.onWorkItemView),
                          #(self.ui.actionRequirements_Document)
                          ]:
       action.triggered.connect(func)
@@ -139,6 +141,11 @@ class ArchitectureTool(MainWindowForm[1]):
     '''
     # Use the onArchitectureView to open the PlanningView widget
     self.onArchitectureView(cls=PlanningView)
+    
+  def onWorkItemView(self):
+    ''' Open the Work Item view in the central window.
+    '''
+    self.onArchitectureView(cls=WorkitemView)
     
   def exportCsv(self):
     ''' Export the current model as a CSV file.

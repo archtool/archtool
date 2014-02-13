@@ -14,7 +14,7 @@ from gui.design import StatusViewForm
 
 
 class StateChangeView(StatusViewForm[1]):
-  def __init__(self, parent, details):
+  def __init__(self, parent, details, read_only=False):
     QtGui.QWidget.__init__(self, parent)
     self.ui = StatusViewForm[0]()
     self.ui.setupUi(self)
@@ -27,6 +27,8 @@ class StateChangeView(StatusViewForm[1]):
     t = details.TimeRemaining if details.TimeRemaining else '-'
     self.ui.lblTime.setText('Schatting: %s'%t)
     self.ui.btnEdit.clicked.connect(self.edit)
+    if read_only:
+      self.ui.btnEdit.hide()
   def updateValues(self):
     self.ui.lblText.setText(self.details.Description)
     self.ui.lblTime.setText('Schatting: %s'%self.details.TimeRemaining)

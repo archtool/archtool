@@ -52,6 +52,7 @@
     </property>
     <addaction name="actionArchitecture"/>
     <addaction name="actionPlanning"/>
+    <addaction name="actionWork_Items"/>
    </widget>
    <widget class="QMenu" name="menuGeneration">
     <property name="title">
@@ -107,6 +108,11 @@
   <action name="actionRequirements_Document">
    <property name="text">
     <string>Requirements Document</string>
+   </property>
+  </action>
+  <action name="actionWork_Items">
+   <property name="text">
+    <string>Work Items</string>
    </property>
   </action>
  </widget>

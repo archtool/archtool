@@ -139,7 +139,7 @@ class PlannedItemSelector(PlannedItemForm[1]):
 class DetailsViewer(QtGui.QWidget):
   open_view = QtCore.pyqtSignal(model.View)
 
-  def __init__(self, parent, details, session):
+  def __init__(self, parent, details, session, read_only):
     QtGui.QWidget.__init__(self, parent)
     self.vertical_layout = QtGui.QVBoxLayout(self)
     self.vertical_layout.setObjectName('vertical_layout')
@@ -168,7 +168,7 @@ class DetailsViewer(QtGui.QWidget):
       l = QtGui.QLabel(self)
       l.setText(n)
       formLayout.setWidget(i, QtGui.QFormLayout.LabelRole, l)
-      e = self.__inputFactory(t, getattr(details, n))
+      e = self.__inputFactory(t, getattr(details, n), read_only)
       formLayout.setWidget(i, QtGui.QFormLayout.FieldRole, e)
       edits.append(e)
       
@@ -176,28 +176,37 @@ class DetailsViewer(QtGui.QWidget):
     
     # If the details is a 'PlanneableItem', add some special items
     if isinstance(details, model.PlaneableItem):
-      # Add a list of cross-references
-      # Show only references where this Item is in the A role.
-      self.xref_list = XRefEditor(details, session, self, self.open_view)
-      self.vertical_layout.addWidget(self.xref_list)
+      if not read_only:
+        # Add a list of cross-references
+        # Show only references where this Item is in the A role.
+        self.xref_list = XRefEditor(details, session, self, self.open_view)
+        self.vertical_layout.addWidget(self.xref_list)
       
       # Add a list of 'State Changes', and allow state changes to be added.
       for state in details.StateChanges:
-        w = StateChangeView(self, state)
+        w = StateChangeView(self, state, read_only)
         self.vertical_layout.addWidget(w)
-      b = QtGui.QPushButton('Add State Change', self)
-      b.clicked.connect(lambda : StateChangeEditor.add(self, details, session))
-      self.vertical_layout.addWidget(b)
+      if not read_only:
+        b = QtGui.QPushButton('Add State Change', self)
+        b.clicked.connect(lambda : StateChangeEditor.add(self, details, session))
+        self.vertical_layout.addWidget(b)
       
       # Add database hooks to properly update when status updates are added.
       event.listen(model.PlaneableStatus, 'after_insert', self.onStateChangeInsert)
     
     self.edits = edits
     
-  def __inputFactory(self, column, value):
+  def __inputFactory(self, column, value, read_only):
     ''' returns a specific QWidget depending on the constant '''
     type_ = column.type
-    if hasattr(type_, 'enums'):
+    if read_only:
+      widget = QtGui.QLabel(self)
+      if value:
+        widget.setText(value)
+      widget.setWordWrap(True)
+      widget.getValue = lambda : value
+    
+    elif hasattr(type_, 'enums'):
       widget = QtGui.QComboBox(self)
       widget.addItems(type_.enums)
       widget.getValue = lambda : str(widget.currentText())
