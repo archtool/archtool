@@ -10,13 +10,83 @@ from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, event
 from datetime import datetime, timedelta
 from statechange import StateChangeEditor, StateChangeView
-from gui.design import PlannedItemForm, XRefEditorForm
+from gui.design import PlannedItemForm, XRefEditorForm, StateEditForm
 import model
+from styles import Style
+
+
+class StateEditor(StateEditForm[1]):
+  def __init__(self):
+    self.allow_role_updates = False
+    StateEditForm[1].__init__(self)
+    self.ui = StateEditForm[0]()
+    self.ui.setupUi(self)
+    self.ui.edtStyles.textChanged.connect(self.onTextChanged)
+    self.ui.edtStyles.focusOutEvent = self.onEditFocusLost
+    self.ui.cmbStyle.currentIndexChanged.connect(self.onRoleChanged)
+    self.stylesheet_changed = False
+    Style.current_style.subscribe(self.onStylesheetChanged)
+    Style.current_object.subscribe(self.onStylableChanged)
+    self.allow_role_updates = True
+  def onStylesheetChanged(self, styles):
+    self.allow_role_updates = False
+    try:
+      self.ui.edtStyles.setPlainText(styles.details.Details)
+      self.ui.cmbStyle.clear()
+    finally:
+      self.allow_role_updates = True
+  def onStylableChanged(self, stylable):
+    self.allow_role_updates = False
+    try:
+      self.ui.cmbStyle.clear()
+      if not stylable:
+        return
+      item = stylable[0]
+      # Search for a role, either in this item or its parents.
+      while True:
+        if hasattr(item, 'ROLE'):
+          stereotype = item.ROLE
+          break
+        if item.parent():
+          item = item.parent()
+          continue
+        return  # No ROLE defined, no more parents.
+      roles = Style.current_style.get().findApplicableStyles(stereotype)
+      roles.insert(0, '<default>')
+      self.ui.cmbStyle.addItems(sorted(roles))
+      current_role = item.role
+      if current_role and current_role in roles:
+        self.ui.cmbStyle.setCurrentIndex(roles.index(current_role))
+      else:
+        self.ui.cmbStyle.setCurrentIndex(0)
+    finally:
+      self.allow_role_updates = True
+      
+  def onTextChanged(self):
+    self.stylesheet_changed = True
+  def onEditFocusLost(self, event):
+    ''' Called when the user has stopped editing the stylesheet.
+        Overloads edtStyles.focusOutEvent. 
+    '''
+    if self.stylesheet_changed:
+      stylesheet = Style.current_style.get()
+      if stylesheet:
+        stylesheet.details.Details = str(self.ui.edtStyles.toPlainText())
+        stylesheet.reloadDetails()
+    self.stylesheet_changed = False
+  def onRoleChanged(self, _):
+    if not self.allow_role_updates:
+      return
+    objs = Style.current_object.get()
+    if objs:
+      txt = str(self.ui.cmbStyle.currentText())
+      for obj in objs:
+        obj.setRole(txt)
 
 
 class XRefEditor(XRefEditorForm[1]):
   def __init__(self, details, session, parent, open_view):
-    QtGui.QWidget.__init__(self, parent)
+    XRefEditorForm[1].__init__(self, parent)
     
     self.details = details
     self.session = session

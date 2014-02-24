@@ -1,0 +1,1082 @@
+planeableitem
+Id,Name,Parent,Description,Priority,ItemType
+1,Overview,,,Must,view
+2,Interfaces,,,Must,view
+3,Day-Ahead market,,,Must,view
+4,E-Program forwarding,,,Must,view
+5,Inbalance Market,,,Must,view
+6,Schaalbaarheid,,,Must,view
+7,Testing,,,Must,view
+8,Webinterface,,,Must,view
+9,HTTP + HTML,,,Must,functionpoint
+10,MQTT,,,Must,functionpoint
+11,SFTP,,,Must,functionpoint
+12,CPS + CSV,,,Must,functionpoint
+13,HTTP + XML,,,Must,functionpoint
+14,SMTP,,,Must,functionpoint
+15,Concentrated Bid Curves,,,Must,functionpoint
+16,Proposed Bid Curve,,,Must,functionpoint
+17,Optimized Bid Curve,,,Must,functionpoint
+18,Automatic Authorization,,The manager can decide to allow automatic authorization of the spot limit orders.,Must,functionpoint
+19,Export of spot limit order,,,Must,functionpoint
+20,Bid Curve upload,,,Must,functionpoint
+21,Manual Authorization,,,Must,functionpoint
+22,Spot Order Review,,,Must,functionpoint
+23,Aggregated Bid Curve,,,Must,functionpoint
+24,E-program upload,,,Must,functionpoint
+25,Import of Settlement,,,Must,functionpoint
+26,Accorded Settlement,,,Must,functionpoint
+27,Generated E-Program,,,Must,functionpoint
+28,Validation of Settlement,,,Must,functionpoint
+29,Review of Settlement,,,Must,functionpoint
+30,Adjustment of Settlement,,,Must,functionpoint
+31,Review of Settlement,,,Must,functionpoint
+32,Adjustment of Settlement,,,Must,functionpoint
+33,Validation of Settlement,,,Must,functionpoint
+34,Review E-program,,,Must,functionpoint
+35,Modify E-program,,,Must,functionpoint
+36,Archive E-program,,,Must,functionpoint
+37,Archive Settlement,,,Must,functionpoint
+38,Archive spot limit order,,,Must,functionpoint
+39,Feedback of Bid Curve,,,Must,functionpoint
+40,Archive Bid Curves,,,Must,functionpoint
+41,Inbalance prices,,,Must,functionpoint
+42,Inbalance Update,,,Must,functionpoint
+43,Target Bid Curve update,,,Must,functionpoint
+44,Target Bid Curve,,,Must,functionpoint
+45,Generate Events,,,Must,functionpoint
+46,HTTPS + JSON,,,Must,functionpoint
+47,HTTPS + HTML,,,Must,functionpoint
+48,HTTPS + JSON,,,Must,functionpoint
+49,demo,,,Must,functionpoint
+50,3.3.1 TUS Continuous,,,Must,requirement
+51,3.3.1.1 Retrieve PowerMatcher historic bid curves (green area),50,,Must,requirement
+52,3311A,51,"The historic bid curves are extracted from PowerMatcher, unclouded by the trading objective agent.",Must,requirement
+53,3311B,51,The internal PowerMatcher price is extracted and stored,Must,requirement
+54,3311C,51,TUS is capable of communicating with PowerMatcher on physically separated servers or directly,Must,requirement
+55,3311D,51,Show connection status PowerMatcher on Status Dashboard,Should,requirement
+56,3311E,51,Visual feedback of last received bid curve on Status Dashboard,Must,requirement
+57,3311F,51,The time interval for significance checks in the Auctioneer is tunable (referred to as price update parameter in Figure 4),Must,requirement
+58,3311G,51,The operator can manually (batch) import and store historic bid curves,Must,requirement
+59,3311H,51,"Logging of received bid curves arrival time, corruption, and errors",Must,requirement
+60,3311I,51,The archive rate of historic bid curves from the PM is tunable,Must,requirement
+61,3311J,51,Variable resolution data historic bid curves are archived,Must,requirement
+62,3311K,51,The historic bid curves are available through an API,Must,requirement
+63,3.3.1.2 Construct APX spot limit orders,50,,Must,requirement
+64,3312A,63,The algorithm creates a weighted average bid curve that represents the average bid curve of the cluster over an hour (and is not affected by bid curves supplied by the objective agent),Must,requirement
+65,3312B,63,The algorithm should be able to create an average weighted bid curve over multiple variable days for each hour,Must,requirement
+66,3312C,63,The algorithm should be able to add varying weights to different days as set by the operator,Must,requirement
+67,3312D,63,"All bid curves are presented in units kWh and Euro/kWh but with 2 decimal significance (the orders are send in MWh or Euro/MWh, see Send APX Limit Orders)",Must,requirement
+68,3312E,63,The algorithm creates 24 weighted average bid curves for every hour of the next day,Must,requirement
+69,3312F,63,These 24 bid curves are archived,Must,requirement
+70,3312G,63,The bid curves can be manipulated by a configurable ‘offset’ parameter,Should,requirement
+71,3312H,63,The bid curves can be manipulated by a configurable ‘cutoff’ parameter,Should,requirement
+72,3312I,63,The operator can manually change (with the mouse) the set points that define the bid curve,Should,requirement
+73,3312J,63,The algorithm has interpolation capability to calculate missing values,Must,requirement
+74,3312K,63,The algorithm can easily be updated to a new version,Must,requirement
+75,3312L,63,"The algorithm calculates limit orders from 24 weighted average bid curves for 24 hours
+
+*If the bid curve has no intersection with the x axis, TUS should create a limit order with ‘infinite’ price (infinite means the maximum allowed price as dictated by APX)*",Must,requirement
+76,3312M,63,"The algorithm translates a bid curve to a configurable amount of limit orders (max = 100 points, step size = 0.1 MWh)",Must,requirement
+77,3312N,63,"In the future TUS is easily extensible with different, more intelligent algorithms, the admin or operator can choose between different algorithms to construct the APX bid curves.",Should,requirement
+78,3312O,63,The API can send historic bid curves and can receive optimized bid curves,Should,requirement
+79,3312P,63,External (optimized) APX bid curves can be manually imported and loaded into TUS,Should,requirement
+80,3312Q,63,TUS provides an API for authorized applications to retrieve (selective) data from the database.,Should,requirement
+81,3312R,63,API calls are logged,Should,requirement
+82,3312Q,63,TUS marks hourly time blocks that were affected by loss of PowerMatcher connection as unrepresentative when PowerMatcher is lost during a configurable amount of time,Should,requirement
+83,3312R,63,"TUS automatically sets a weighted average bid curve of the day before for the corresponding hour
+
+*Rationale: TUS is not allowed to send a flat-line bid curve to the APX*",Should,requirement
+84,3312S,63,The operator has the ability to choose a weighted average bid curve from the database that corresponds with the same hour,Should,requirement
+85,3312T,63,The operator has to ability to manually change the weighted average bid curve similar to the functionality to change bid curves for other hours,Must,requirement
+86,3.3.1.3 Send APX limit order,50,,Must,requirement
+87,3313A,86,All orders are placed in units MWh and Euro/MWh. MWh is incremented by steps of 0.1. Euro/MWh is incremented by steps of 0.01.,Must,requirement
+88,3313B,86,All hourly orders cannot exceed a maximum hourly volume that is configured by the administrator or that is present in the cluster (intersection of positive y axis and asymptote of the bid curve),Must,requirement
+89,3313C,86,The orders have to be authorized by the manager. (can be an automatic authorization),Must,requirement
+90,3313D,86,"The operator must be able to withdraw orders, see APX, EL6.1, for the XML format.",Must,requirement
+91,3313E,86,"TUS automatically sends out the APX orders at a configurable time (default 11:30 GMT + 1).
+
+Keep trying until received (see Interfacing for confirmation)",Must,requirement
+92,3313F,86,"TUS keeps track of winter, summer time, leap years, and schedules at the right time and has to ability to place an order for a 25th hour if this is required from the APX specification",Should,requirement
+93,3313G,86,Give warning message and send warning message if drop-off failed before a configurable time (default 11:45 GMT + 1) (CET is optional) by parsing the response XML file,Should,requirement
+94,3313H,86,"The operator can manually initiate the send at any time before the automated time by pressing a ‘send button’ (see Operator)
+
+TUS asks for a confirmation, TUS places the bids in the Eurolight Trading platform folder
+
+Rationale: This functionality is important because the time of placing the order is important; bidding to early might result in a higher settlement price, too late might result in no settlement.",Should,requirement
+95,3313I,86,"The operator can manually export the APX orders in the specified Eurolight XML format (See APX, EL6.1) so that it can manually put XML file in the client folder",Must,requirement
+96,3313J,86,The APX interface is set up as an replaceable module.,Should,requirement
+97,3313K,86,TUS periodically checks the client folders that no old XML files have remained after response of APX that orders have been successfully received. It removes them otherwise. TUS also checks if XML files were successfully pushed to the designated folders.,Should,requirement
+98,3313L,86,It should be possible to configure multiple APX client folders for sending XML files to redundant windows servers with running APX clients. TUS should check if the Windows machine is active and otherwise sends the push file to the redundant server. TUS gives warning message.,Should,requirement
+99,3313M,86,"Show connection APX on status dashboard.
+*TUS receives response xml files from the Eurolight Trading Platform which give an error when dropoff failed.*",Should,requirement
+100,3313N,86,"Logging of connection status, sends, corruption, errors",Must,requirement
+101,3313O,86,The .ini and configuration file for the APX client can be configured and generated by a TUS menu (administrator function),Should,requirement
+102,3313P,86,The orders are archived,Must,requirement
+103,3313Q,86,In future versions it should be possible to send block orders,Should,requirement
+104,3313R,86,In future versions it should be possible to act on market re-opening,Should,requirement
+105,3.3.1.4 Retrieve APX settlement,50,,Must,requirement
+106,3314A,105,"TUS automatically retrieves the APX index for every hour of the next day between 12:40 – 13:05
+
+Keep trying until received",Must,requirement
+107,3314B,105,"TUS automatically retrieves the official APX settlement for every hour of the next day at 16:00.
+
+Keep trying until received",Must,requirement
+108,3314C,105,"TUS validates the settlements calculated from the 12.40 retrieved APX index with the official settlement at 16.00.
+
+*If validation is inconsistent then send warning message and E-Program and target bid curves are changed to match the official settlement*",Should,requirement
+109,3314D,105,Visual feedback of the Settlement,Should,requirement
+110,3314E,105,Visual feedback of APX connection status in dashboard,Should,requirement
+111,3314F,105,The operator can manually enter the settlement volume and price for each hour,Must,requirement
+112,3314G,105,Give warning message and send warning email if index retrieval failed after 100 retries,Should,requirement
+113,3314H,105,"Logging of connection status, sends, corruption, errors",Must,requirement
+114,3314I,105,Archive settlement,Must,requirement
+115,3314J,105,"When placing orders on APX has failed, all settlements are set to zero volume, give warning message",Should,requirement
+116,3314K,105,"When retrieving APX Index has failed, all settlements are constructed using APX Index of the day before, give warning message",Should,requirement
+117,3314L,105,The operator has the ability to manually set the target bid curves for each timeframe (see construct PowerMatcher bid curves),Should,requirement
+118,3314M,105,"When no orders could be placed, E-program is set to zero volume for each timeframe",Should,requirement
+119,3314N,105,"When no APX Index could be retrieved, E-program is constructed using the APX Index of the day before.",Should,requirement
+120,3.3.1.5 Generate E-Program,50,"The BRP requires an ‘E-Program’. The E-Program has to be received by the BRP before a configurable time (the BRP has to deliver his E-Program to TenneT before 14:00, so the retailer has to supply at least some time before 14:00 o’clock).The algorithm that derives the E-Program from the APX settlement is as follows:
+Earlier, during Construct APX spot limit orders set of 24 bid curves were archived for every 24 hours. The retrieved set of 24 index prices from the Eurolight Trading Platform are mapped to the 24 bid curves. By applying the hourly index the corresponding set of 24 volumes can be read. The volumes should correspond to the E-program that APX delivers to TenneT. The E-Program is received as a set of 96 PTE’s. Therefore the received volume per hour is divided in four to fill each PTE in the E-Program.
+An example format is available that is used to send .csv files to the BRP ‘PVNed’ (see Appendix E). This format is market conform however it should be possible to allow choosing different formats. All volumes are in kWh.",Must,requirement
+121,3315A,120,TUS automatically creates the E-Program when the APX settlement is retrieved,Must,requirement
+122,3315B,120,Automatic Visual feedback of E-Program,Should,requirement
+123,3315C,120,Operator can manually change the E-Program to be able to correct for mistakes,Must,requirement
+124,3315D,120,"The E-program is exported (and send) at a configurable time
+
+*Impossible to configure later than 14:00 o’clock*",Must,requirement
+125,3315E,120,The E-Program generation is set up as a replaceable module,Should,requirement
+126,3315F,120,TUS automatically exports the E-Program,Must,requirement
+127,3315G,120,The manager can manually export the E-program (see manager),Must,requirement
+128,3315H,120,The E-program is exported in the ‘PVned’ (see Appendix E) .csv format,Must,requirement
+129,3315I,120,It should be possible to choose between different .csv templates,Should,requirement
+130,3315J,120,The E-program is archived,Must,requirement
+131,3.3.1.6 Retrieve imbalance prices,50,"TenneT is the Dutch TSO that publishes the prices on the imbalance market.
+The interface: http://www.tennet.org/xml/balancedeltaprices/balans-delta.xml
+In the case that TenneT does not publish a price; price field remains empty, it did so because it did not want to (de)activate any power. In this case TUS should record the price as a NaN value. Usually this means that TenneT only publishes a price for either upward regulation or downward regulation. It is possible, however, that both upward and downward regulation appear in the same minute, then TenneT publishes two prices as indicated by (<min_price> or <max_price>) .
+In the case that TenneT produces empty values over an entire row (except for the sequence number) it means that there are internal processing errors at TenneT. Empty values are updated at a later time when the information becomes available. TUS should not act on imbalance when no balancing prices are known.",Must,requirement
+132,3316A,131,"TUS automatically collects the imbalance prices
+
+Warning message if retrieval fails",Must,requirement
+133,3316B,131,The operator can manually import imbalance XML files,Should,requirement
+134,3316C,131,Show connection TenneT on status dashboard,Should,requirement
+135,3316D,131,The TenneT interface is built as a replaceable module,Should,requirement
+136,3316E,131,"Logging of connection status, sends, corruption, errors",Must,requirement
+137,3316F,131,"In case of failure to retrieve imbalance prices, TUS sends no imbalance bid curves to the PowerMatcher.",Must,requirement
+138,3318A,150,The PM objective agent is set up as an replaceable module,Should,requirement
+139,3318B,150,"TUS continuously sends bid curves to the PowerMatcher with every price update or when a new bid curve becomes active for a hour or due to a changing imbalance price
+
+*Warning message if sending failed*",Must,requirement
+140,3318C,150,TUS sends the correct bid curve belonging to the corresponding PTE/hour,Must,requirement
+141,3318D,150,Visual feedback of connection status with PowerMatcher in Status dashboard,Should,requirement
+142,3318E,150,"Logging of connection status, sends, corruption, errors",Must,requirement
+143,3317F,149,API to receive parameter settings from an external source (bid curve construction is done inside TUS),Should,requirement
+144,3317E,149,API to automatically receive target and imbalance bid curves from an external source (bid curve construction is done outside TUS),Should,requirement
+145,3317D,149,Archive target & imbalance bid curves separately,Must,requirement
+146,3317C,149,Visual feedback of construction of bid curves,Should,requirement
+147,3317B,149,"TUS constructs a bid curve to be offered to the PM based on the operators imbalance settings
+*Imbalance price(s) (dynamic x coordinate(s)), OR
+Imbalance price(s) (static, where the price(s) are set by the operator)
+Volume bandwidth parameter (vertical arrow in Figure 8)
+Risk bandwidth parameter (horizontal arrow in Figure 8)
+Delay parameter [min]*",Must,requirement
+148,3317A,149,"TUS constructs a target bid curve to be offered to the PM based on the APX settlement (volume and price for every 15 minutes) and the operator’s parameter settings (see algorithm)
+
+*Volume*, 
+*Price*, 
+*Bandwidth*",Must,requirement
+149,3.3.1.7 Construct PM bid curves,50,,Must,requirement
+150,3.3.1.8 Send PowerMatcher bid curves (blue area),50,,Must,requirement
+151,3318F,150,"TUS is capable of communicating with PowerMatcher on physically separated servers or directly
+
+*Rationale: PowerMatcher must be able to run on a different server as TUS*",Must,requirement
+152,3318G,150,TUS is capabale of placing bids via broadband or narrowband protocol (see FAN_-_PowerMatcher_Communication_Protocol_Specification_r0.7v7),Must,requirement
+153,3318H,150,TUS follows bid encoding as specified in FAN_-_PowerMatcher_Communication_Protocol_Specification_r0.7v7,Must,requirement
+154,3318I,150,"TUS is capable of receiving ‘Market Basis’ updates as defined in FAN_-_PowerMatcher_Communication_Protocol_Specification_r0.7v7 and constructs its based its bid curve based on these configurations (e.g. min & max price, price steps, units etc.)",Must,requirement
+155,3318J,150,TUS delivers a warning in case of a failing connection,Must,requirement
+156,3318K,150,TUS picks up with the original program after reconnecting with the PowerMatcher,Must,requirement
+157,3318L,150,should be extendible with a compensation algorithm,Should,requirement
+158,3.3.2.1 General,159,,Must,requirement
+159,3.3.2 Operator,,,Must,requirement
+160,3321A,158,Logon/off using a secure authentication mechanism,Must,requirement
+161,3321B,158,The GUI is an isolated module which communicates with the backend via an API.,Should,requirement
+162,3321C,158,GUI must be implemented as a web application,Must,requirement
+163,3321D,158,"It must be possible to switch between tabs (for instance day ahead/ real time, or various graphs)",Must,requirement
+164,3321E,158,"The GUI is interactive in the sense that the operator can change the date, timespan, zoom etc.",Must,requirement
+165,3321F,158,The operator can print graphs,Must,requirement
+166,3321G,158,The graphs must have a high detail look / feel.,Must,requirement
+167,3321H,158,All graphs must have the same time scale,Must,requirement
+168,3321I,158,The operator can save graphs as images,Should,requirement
+169,3321J,158,The operator can import / export all relevant data (see following section),Must,requirement
+170,3321K,158,"The operator can export the data of choice in a format of choice (excel, .csv, etc.)",Should,requirement
+171,3321L,158,Operator actions and changed settings are logged.,Must,requirement
+172,3321M,158,All produced data is archived,Must,requirement
+173,3.3.2.2 Analyze PowerMatcher historic behavior,159,,Must,requirement
+174,3322A,173,The GUI provides insight in cluster historic flexibility over time,Should,requirement
+175,3322B,173,The GUI shows historic aggregated bid profiles retrieved from the PowerMatcher,Should,requirement
+176,3322C,173,"The GUI provides insight in historic PowerMatcher prices, historic APX prices and historic balancing market prices",Should,requirement
+177,3322D,173,"Query aggregated bid and price
+By period
+Per day-type
+Compute average bid / price",Should,requirement
+178,3322E,173,Export historic PowerMatcher market data query results,Should,requirement
+179,3.3.2.3 Configure day ahead parameters,159,"The purpose of the ‘day ahead’ use case is to retrieve historic PowerMatcher aggregate bid curves. The operator has some visualization and data manipulation tools to study the behavior and flexibility of its cluster (this functionality will be extended in the future, for the first version this will be basic).
+
+In addition the operator can view the APX orders that were created by the TUS algorithm. The operator can manually alter the shape of the orders before sending them to the APX.",Must,requirement
+180,3323A,179,The GUI can show APX orders per hour that were created by TUS,Must,requirement
+181,3322B,179,The GUI can show APX orders per hour that were created by an external application,Should,requirement
+182,3322C,179,The operator can manually alter the APX limit/block order bid curves in a graph (move set points with the mouse),Should,requirement
+183,3322D,179,The operator can set the ‘Offset’ parameter,Must,requirement
+184,3322E,179,The operator can set the ‘Cutoff’ parameter,Must,requirement
+185,3322F,179,The operator can choose APX limit/block order templates from the past,Should,requirement
+186,3322G,179,The operator can assign bid curves as future templates,Should,requirement
+187,3322H,179,The operator can save the altered bid curves (and overwrite the standard TUS created bid curves),Must,requirement
+188,3322I,179,The operator can instantiate ‘Send APX limit/block order’,Should,requirement
+189,3322J,179,The operator has visual feedback of all settlement prices and volumes as received by the APX per hour,Must,requirement
+190,3322K,179,The operator has visual feedback of the E-Program per 15 minutes as constructed by TUS on the APX settlement received on the current day,Must,requirement
+191,3322L,179,The operator can manually change the E-program per 15 minutes,Must,requirement
+192,3322M,179,The operator can save the E-Program; this program is then exported and is the running program for TUS the following day,Should,requirement
+193,3322N,179,In the future it should be possible to add functionality to trade on other markets like OTC or Endex,Should,requirement
+194,3.3.2.4 Configure real time parameters,159,The ‘real time’ use case configures parameters that affect the s for acting on imbalance prices.,Must,requirement
+195,3324A,194,The operator has visual feedback of the E-Program per 15 minutes as constructed by TUS/operator on the previous day,Should,requirement
+196,3324B,194,The operator can set the parameters (see 3.3.1.7) of the PM target bid curves,Must,requirement
+197,3324C,194,The operator has instant visual feedback of the PM target bid curves that he can modify using the parameters,Should,requirement
+198,3324D,194,The interface shows (near) real time balancing market prices as published by TenneT,Should,requirement
+199,3324E,194,The operator can set the parameters (see 3.3.1.7) for the imbalance bid curves that are to be send to the PowerMatcher to influence the cluster.,Must,requirement
+200,3324F,194,The operator has instant visual feedback of the imbalance bid curves that he can modify using the parameters,Should,requirement
+201,3324G,194,The operator has to save the settings for the target and imbalance bid curves. The settings are saved and are in effect until changed (first version). Second version will include the ability to schedule future settings.,Should,requirement
+202,3324H,194,In the future it should be possible to add functionality to trade on other markets like APX intraday trading,Should,requirement
+203,3.3.2.5 Import / Export data,159,All data streams that are automatically collected or send by TUS can be manually imported by the operator in case of failures in the automatic process. These requirements have been mentioned before in the previous paragraphs.,Must,requirement
+204,3325A,203,Must be able to import historic PM bid curves,Must,requirement
+205,3325B,203,Must be able to import APX market prices,Must,requirement
+206,3325C,203,Must be able to import external (optimized) APX orders,Must,requirement
+207,3325D,203,Must be able to enter APX settlement by hand,Must,requirement
+208,3325E,203,Must be able to import PM target bid curves,Must,requirement
+209,3325F,203,Must be able to import balancing market prices (xml),Must,requirement
+210,3325G,203,Must be able to export APX orders,Must,requirement
+211,3325H,203,Must be able to export E-Program,Must,requirement
+212,3325AI,203,Must be able to export PowerMatcher Objective bid curves,Must,requirement
+213,3.3.2.6 Show Status Dashboard,159,The status dashboard is available to all human actor types.,Must,requirement
+214,3326A,213,Show connection status PowerMatcher on Status Dashboard,Should,requirement
+215,3326B,213,Visual feedback of last received bid curve on Status Dashboard,Should,requirement
+216,3326C,213,Show connection APX on Status Dashboard,Should,requirement
+217,3326D,213,Visual feedback of last received settlement,Should,requirement
+218,3326E,213,Show connection TenneT on Status Dashboard,Should,requirement
+219,3326F,213,Show logging details,Must,requirement
+220,3.3.3 Manager,,,Must,requirement
+221,3.3.4 Administrator,,"The manager connects to the application via the internet and has to logon/off according to an authentication mechanism. These processes are logged.
+
+An important task of the administrator is to add or remove new device agents to the cluster. This does not mean any CRM type of functionality. Since the PowerMatcher has no user interface it is required that there is some basic functionality for energy retailers to add device agents to its cluster. The admin can administer the device agent. The reader is referred to the FAN documentation for adding/removal of agents to the cluster.",Must,requirement
+222,3.3.5 Technical Administrator,,,Must,requirement
+223,3.3.6 Functional Administrator,,,Must,requirement
+224,333A,255,Logon/off using a secure authentication mechanism,Must,requirement
+225,333B,255,The manager has all the abilities of the operator and more,Should,requirement
+226,333C,255,The manager can start/stop the TUS application,Must,requirement
+227,333D,255,The manager can set TUS to manual/autonomous mode,Must,requirement
+228,333E,255,The manager can authorize APX nomination bid curves,Must,requirement
+229,333F,255,The manager can automate authorization of the APX nominations (default),Must,requirement
+230,334A,256,Logon/off using a secure authentication mechanism,Must,requirement
+231,334B,256,"The administrator can configure all the scheduled times in the application and no later than:
+
+* 12.00h for sending APX orders
+* 12.40-13.05 retrieving APX index
+* 14.00 sending E-Program
+* 16.00 retrieving official APX settlement",Should,requirement
+232,334C,256,"The administrator can add / remove device agents
+
+* Agent ID, username/password",Must,requirement
+233,334D,256,"The administrator can directly access the database (still under discussion, check with Alliander)",Should,requirement
+234,334E,256,"The administrator can change PowerMatcher configuration settings
+
+* PowerMatcher connection (IP address…see FAN documentation)
+* PM price update rate
+* Data resolution (nr. of data points #) used for archiving",Should,requirement
+235,334F,256,"The administrator can change external source configuration
+
+* APX connection setting (see APX documentation for .ini and configuration file)
+* BRP connection settings
+* TenneT connection setting (see TenneT documentation)",Should,requirement
+236,334G,256,The administrator can manage authentication and authorization credentials of the operator(s) and manager(s),Should,requirement
+237,334H,256,Manage API configurations,Should,requirement
+238,335A,257,The technical administrator can maintain/patch TUS without interrupting operations (no downtime),Should,requirement
+239,335A,258,"The functional administrator can add new/update algorithms to TUS (this is not the same as the API for an external optimizer)
+
+- for constructing APX bid curves
+- for translating APX bid curves to a set of limit orders
+- for generating an E-Program
+- for constructing PowerMatcher target and imbalance bid curves",Should,requirement
+240,335B,258,"The newly added algorithms become available as new options in TUS, a new default can be set",Should,requirement
+241,335C,258,"The functional administrator can manage the authentication and authorization credentials of the trade operator, manager and administrator",Should,requirement
+242,4 Non-functional requirements,,,Must,requirement
+243,4.3.2 Resource utilization (F),242,"TUS must be capable of achieving aforementioned capacity requirement on a single ‘commodity specification’ server (e.g. running a Linux or Windows operating system and equipped with no more than 16 GB of memory). TUS must be capable of scaling linearly in computation requirements (CPU, memory, etc.) with the addition of new TUS customers as well as with the addition of PowerMatcher device agents.
+
+Device agent bid curve packets are typically 4 kbytes. With a price update rate of once per minute and 1.000.000 device agents the application and bandwidth resource should be able to handle 4Gbyte / min and 100 Mbyte / s.",Must,requirement
+244,Structuur,,,Must,requirement
+245,OSGi framework,254,,Must,requirement
+246,Power Manager netwerk,254,,Must,requirement
+247,Backend structuur,254,,Must,requirement
+248,Database model,254,,Must,requirement
+249,Interne API's,254,,Must,requirement
+250,Grafieken plugin,254,,Must,requirement
+251,Basis voor JQuery etc.,254,,Must,requirement
+252,Authorisatie framework,254,,Must,requirement
+253,Alarmering mechanisme,254,Zowel email als SMS,Must,requirement
+254,Frameworks etc,244,,Must,requirement
+255,Requirements,220,,Must,requirement
+256,Requirements,221,,Must,requirement
+257,Requirements,222,,Must,requirement
+258,Requirements,223,,Must,requirement
+259,demo,,,Must,functionpoint
+
+fptoview
+Id,View,FunctionPoint,Order,Xoffset,Yoffset
+1,2,9,0,-133.0,-25.0
+2,2,10,1,0.0,0.0
+3,2,11,2,-34.0,18.0
+4,2,12,3,-31.0,12.0
+5,2,13,4,-39.0,-17.0
+6,2,14,5,36.0,-16.0
+7,3,15,1,-78.0,-46.0
+8,3,16,3,3.0,-24.0
+9,3,17,4,-76.0,-42.0
+10,3,18,7,-43.0,66.0
+11,3,19,8,-38.0,-47.0
+12,3,20,0,-63.0,-43.0
+13,3,21,6,17.0,-24.0
+14,3,22,5,16.0,6.0
+15,3,23,2,0.0,0.0
+16,4,24,9,-24.0,21.0
+17,4,25,0,-60.0,22.0
+18,4,26,4,-40.0,18.0
+19,4,27,6,-73.0,-45.0
+23,4,31,2,-21.0,27.0
+24,4,32,3,-4.0,23.0
+25,4,33,1,0.0,0.0
+26,4,34,7,42.0,1.0
+27,4,35,8,-9.0,-11.0
+28,4,36,10,14.0,1.0
+29,4,37,5,50.0,-11.0
+30,3,38,9,-8.0,-29.0
+31,3,39,10,-132.0,-41.0
+32,3,40,11,-1.0,-40.0
+33,5,41,0,-83.0,-44.0
+34,5,42,1,-101.0,-45.0
+35,5,43,2,18.0,-11.0
+36,5,44,3,21.0,-11.0
+37,7,45,0,0.0,0.0
+38,8,46,2,19.25,-5.0
+39,8,47,1,42.0,20.0
+40,8,48,0,2.0,-14.0
+
+colorpalette
+Id,Color
+1,#ffffff
+2,Cornflower Blue
+3,#00529c
+4,#f2f2f2
+5,#838383
+
+functionpoint
+Id,Connection,Block,isResponse
+9,16,,1
+10,18,,
+11,19,,1
+12,17,,1
+13,17,,0
+14,20,,1
+15,6,,
+16,10,,1
+17,8,,1
+18,,13,
+19,13,,1
+20,4,,1
+21,21,,1
+22,21,,
+23,11,,
+24,14,,1
+25,13,,0
+26,9,,
+27,22,,
+28,,19,
+29,,,
+30,,,
+31,21,,
+32,21,,1
+33,,13,
+34,23,,
+35,23,,1
+36,24,,
+37,25,,
+38,25,,
+39,26,,
+40,27,,
+41,14,,
+42,28,,1
+43,29,,
+44,4,,
+45,,40,
+46,3,,1
+47,41,,
+48,42,,1
+49,25,,
+259,44,,1
+
+worker
+Id,Name
+
+blockrepresentation
+Id,Block,View,x,y,height,width,Order,Color,Font,IsMultiple
+2,2,1,-992.0,-112.0,244.0,919.0,1,3,,
+3,1,1,-817.0,173.0,102.0,257.0,2,2,,
+4,3,1,-780.0,208.0,44.0,194.0,3,2,,
+5,4,1,-619.0,-280.0,110.0,276.0,0,3,,
+6,5,1,-603.0,-250.0,33.0,110.0,4,1,,
+7,6,1,-838.0,78.0,29.0,136.0,5,2,,
+8,7,1,-250.0,-26.0,30.0,100.0,8,2,,
+9,8,1,-458.0,42.0,56.0,100.0,9,2,,
+10,9,1,-531.0,-100.0,30.0,100.0,11,2,,
+11,10,1,-937.0,41.0,31.0,178.0,12,2,,
+12,11,1,-952.0,-69.0,31.0,193.0,13,2,,
+13,12,1,-960.0,-33.0,32.0,206.0,14,2,,
+14,13,1,-1092.0,-31.0,32.0,125.0,15,2,,
+15,14,1,-1338.0,-72.0,86.0,154.0,16,2,,
+16,15,1,-1300.0,-39.0,86.0,152.0,17,2,,
+17,16,1,-508.0,-44.0,35.0,166.0,18,2,,
+18,17,1,-458.0,8.0,30.0,100.0,19,2,,
+19,18,1,-228.0,5.0,28.0,64.0,20,2,,
+20,19,1,-951.0,2.0,31.0,196.0,21,2,,
+21,20,1,38.0,-140.0,113.0,136.0,22,2,,
+22,21,1,-162.0,-99.0,33.0,148.0,23,2,,
+23,22,1,-676.0,39.0,34.0,174.0,24,2,,
+24,23,1,-298.0,-54.0,174.0,206.0,6,4,,
+25,24,1,-473.0,-249.0,30.0,100.0,25,1,,
+26,25,1,-678.0,79.0,30.0,173.0,26,2,,
+27,26,1,-247.0,34.0,30.0,100.0,7,2,,
+28,27,1,-281.0,70.0,34.0,175.0,10,2,,
+29,28,2,-258.0,-7.0,70.0,101.0,0,2,,
+30,1,2,-273.0,123.0,27.0,132.0,1,2,,
+31,20,2,-29.0,17.0,30.0,100.0,2,2,,
+32,14,2,-465.0,13.0,30.0,100.0,3,1,,
+33,29,2,-258.0,-96.0,30.0,100.0,4,2,,
+34,30,2,-119.0,-108.0,30.0,150.0,5,2,,
+35,1,3,-482.0,-141.0,33.0,132.0,0,2,,
+36,6,3,-293.0,-141.0,31.0,138.0,1,2,,
+37,10,3,-98.0,-138.0,25.0,189.0,2,2,,
+38,11,3,-115.0,-62.0,30.0,192.0,3,2,,
+39,12,3,-125.0,39.0,26.0,212.0,4,2,,
+40,13,3,236.0,38.0,28.0,122.0,5,2,,
+41,14,3,427.0,39.0,30.0,100.0,6,2,,
+42,4,3,325.0,-311.0,58.0,129.0,7,2,,
+43,14,4,-417.0,-98.0,30.0,100.0,0,2,,
+44,13,4,-278.0,-101.0,29.0,129.0,1,2,,
+45,19,4,-59.0,-102.0,33.0,174.0,2,2,,
+46,21,4,155.0,-98.0,28.0,148.0,3,2,,
+47,20,4,368.0,-97.0,30.0,100.0,4,2,,
+48,4,4,-63.0,-301.0,29.0,133.0,5,2,,
+49,8,4,-35.0,16.0,30.0,100.0,6,2,,
+50,8,3,183.0,-119.0,30.0,100.0,8,2,,
+51,20,5,-406.0,-158.0,30.0,100.0,0,,,
+52,21,5,-247.0,-158.0,30.0,144.0,1,,,
+53,22,5,-50.0,-155.0,27.0,176.0,2,,,
+54,6,5,-30.0,-71.0,30.0,137.0,3,,,
+55,1,5,-30.0,-2.0,27.0,136.0,4,,,
+56,28,6,-180.0,-242.0,30.0,100.0,0,2,,
+57,3,6,-228.0,-189.0,34.0,199.0,1,2,,
+58,31,6,-363.0,-97.0,29.0,169.0,2,2,,
+59,31,6,-141.0,-93.0,30.0,169.0,3,2,,
+60,31,6,67.0,-94.0,28.0,168.0,3,2,,
+61,32,6,-471.0,-20.0,30.0,100.0,3,2,,
+62,32,6,-350.0,-18.0,30.0,100.0,4,2,,
+63,32,6,-233.0,-17.0,30.0,100.0,4,2,,
+64,32,6,-119.0,-13.0,30.0,100.0,4,2,,
+65,32,6,-6.0,-18.0,30.0,100.0,4,2,,
+66,32,6,119.0,-19.0,30.0,100.0,4,2,,
+67,32,6,243.0,-20.0,30.0,100.0,4,2,,
+68,33,7,-889.0,313.0,97.0,166.0,0,2,,
+69,34,7,-879.0,353.0,30.0,138.0,1,2,,
+70,31,7,-890.0,198.0,31.0,168.0,2,2,,
+71,3,7,-908.0,143.0,31.0,204.0,3,2,,
+72,28,7,-928.0,35.0,56.0,243.0,4,2,,
+73,35,7,-1258.0,15.0,92.0,169.0,5,2,,
+74,36,7,-1243.0,53.0,29.0,136.0,6,2,,
+75,37,7,-531.0,22.0,82.0,182.0,7,2,,
+76,38,7,-518.0,53.0,32.0,154.0,8,2,,
+77,39,7,-912.0,-70.0,30.0,205.0,9,2,,
+78,40,7,-1241.0,-80.0,31.0,204.0,10,2,,
+79,9,7,-840.0,38.0,29.0,60.0,11,2,,
+80,2,8,-537.0,-57.0,58.0,101.0,0,2,,
+82,4,8,-584.0,-487.0,121.0,265.0,3,2,,
+83,42,8,-357.0,-217.0,30.0,115.0,4,2,,
+84,41,8,-567.0,-452.0,30.0,100.0,5,2,,
+85,43,8,-566.0,-415.0,30.0,100.0,6,2,,
+86,44,8,-571.0,-259.0,96.0,358.0,1,2,,
+87,45,8,-534.0,-215.0,31.0,135.0,7,2,,
+88,46,8,-532.0,-125.0,30.0,100.0,8,2,,
+
+hiddenconnection
+Id,View,Connection
+
+architectureblock
+Id,Name,Description,Parent
+1,Power Matcher,,
+2,Backend,,28
+3,Trading Objective Agent,,1
+4,User Interface,Implemented in HTML + JQuery + Plugins,28
+5,Dashboard,,4
+6,PM Framework,,2
+7,IPC Bus,"Uses e.g. the IMBus (0MQ), MQTT, or OSGi.
+
+MQTT is to be used in communicating with Power Matcher. However, this is encapsulated in the Power Matcher reference implementation.
+
+Strong point of OSGi is that Alliander wants to be able to maintain the system *while it is running*. OSGi has support for this, out of the box.",23
+8,Database,"Stores:
+
+ - Configuration
+ - Current Status
+ - Historic bid curves archive
+ - Orders to the APX, including their state.",2
+9,API,"De API bestaat uit services die vanuit een Java module aangesproken kunnen worden.
+
+Includes:
+
+ - Secure authentication",2
+10,Bid Curve Processing,,2
+11,Limit Order Generation,,2
+12,APX Bid Curve Optimizer,,2
+13,APX Interface,"Includes:
+
+ - sanity checks to prevent serious errors.
+ - Authorization workflow
+ - Upload of XML files to APX (windows) servers.",2
+14,APX,,
+15,Acceptance APX,,14
+16,Alarm Notification,Through e.g. SMS and email,2
+17,Cleanup,"Periodically remove:
+
+ - old orders to the APX (XML files)",23
+18,Log,Maybe integrated into database?,23
+19,E-program generator,Handles incoming APX settlements,2
+20,TenneT,,
+21,Tennet Interface,,2
+22,Bid Curve Generator,,2
+23,Framework,,28
+24,Plotting,"If Vaadin is used, plotting can be done by the Graph module.
+
+Includes editting setpoints & other parameters in graphs.",
+25,PM Objective Agent,,
+26,Config,,
+27,Component lifecycle,,
+28,TUS,,
+29,Operator,,
+30,Mail / SMS server,,
+31,Concentrator Agent,,1
+32,Prosumer,,1
+33,Agent Simulator,,1
+34,Agent Algoritm,,33
+35,APX Simulator,,14
+36,APX Algorithm,,35
+37,TenneT Simulator,,20
+38,TenneT Algorithm,,37
+39,User Interface Simulator,,4
+40,Test Script,,
+41,JQuery,,4
+42,HTML pages,,2
+43,Plugins,,4
+44,Application Server,,28
+45,REST Interface,,44
+46,Firewall,,44
+
+dbaseversion
+Id,Version
+1,2
+
+project
+Id,FirstWeek,LastWeek
+
+connection
+Id,Start,End,Description
+3,4,9,
+4,6,1,
+5,25,6,
+6,6,10,
+7,6,19,
+8,13,12,
+9,13,19,
+10,12,11,
+11,10,11,
+12,15,13,
+13,14,13,
+14,20,21,
+15,1,25,
+16,29,28,
+17,20,28,
+18,1,28,
+19,14,28,
+20,30,28,
+21,13,4,
+22,19,21,
+23,21,4,
+24,21,8,
+25,13,8,
+26,10,4,
+27,10,8,
+28,22,21,
+29,22,6,
+30,28,3,
+31,3,31,
+32,32,31,
+33,31,33,
+34,28,35,
+35,37,28,
+36,35,40,
+37,39,40,
+38,37,40,
+39,33,40,
+40,39,9,
+41,42,4,
+42,4,45,
+43,2,45,
+44,14,40,
+
+style
+Id,Name,Details
+
+connectionrepresentation
+Id,Connection,style_role
+
+planeablexref
+A,B
+
+planeablestatus
+Id,Planeable,Description,TimeStamp,Status,TimeRemaining,TimeSpent,AssignedTo
+1,58,What does import mean? Retrieve from server and store on local work station or vice-versa?,2013-11-19 13:32:47.715000,Question,0.0,,
+2,56,What is 'visual feedback'? A different color depending on how old the bid curve is? Or the bidcurve itself?,2013-11-19 13:34:05.601000,Question,0.0,,
+3,64,What is the role of the 'objective agent'?,2013-11-19 13:37:42.548000,Question,0.0,,
+4,73,It is assumed that linear interpolation is intended here.,2013-11-19 13:45:38.062000,Question,0.0,,
+5,76,"Are 100 and 0.1 example values for the configurable parameters or the limits allowed for these parameters? If limits, are these upper or lower limits?",2013-11-19 13:48:06.577000,Question,0.0,,
+6,91,"Will the configurable time always be relative to GMT+1, or must the timezone be part of the configuration so that e.g. Europe/Amsterdam can be used?",2013-11-19 13:59:48.137000,Question,0.0,,
+7,98,"What protocol is to be used? File transfer such as (s)ftp, rsync, or smb?",2013-11-19 14:05:05.207000,Question,0.0,,
+8,103,How is this a functional requirement for the Final version?,2013-11-19 14:07:28.668000,Question,0.0,,
+9,104,How is this a functional requirement for the Final version?,2013-11-19 14:08:14.868000,Question,0.0,,
+10,109,What type of visual feedback are you thinking of?,2013-11-19 14:11:06.076000,Question,0.0,,
+11,110,What type of visual feedback are you thinking of?,2013-11-19 14:11:59.969000,Question,0.0,,
+12,122,What type of visual feedback are you thinking of?,2013-11-19 14:16:58.691000,Question,0.0,,
+13,146,We assume this visual feedback shows the actual curves being generated.,2013-11-19 14:26:42.673000,Question,0.0,,
+14,144,"Should TUS be configured to activate the external source, or should the external source take initiative?",2013-11-19 14:28:02.600000,Question,0.0,,
+15,169,How can the developer determine what is 'relevant'?,2013-11-19 14:52:28.707000,Question,0.0,,
+16,183,,2013-11-19 15:09:36.796000,Duplicate,0.0,,
+17,184,,2013-11-19 15:09:59.858000,Duplicate,0.0,,
+18,185,What is meant with an 'APX limit/block template'? How is the template to be used?,2013-11-19 15:10:50.721000,Question,0.0,,
+19,186,How are these templates to be used?,2013-11-19 15:11:32.513000,Question,0.0,,
+20,189,It is assumed that this feedback can consist of a plot.,2013-11-19 15:13:06.132000,Question,0.0,,
+21,190,It is assumed this feedback can consist of a plot.,2013-11-19 15:14:18.912000,Question,0.0,,
+22,193,Not a functional requirement.,2013-11-19 15:15:33.669000,Rejected,0.0,,
+23,196,,2013-11-19 15:17:47.192000,Duplicate,0.0,,
+24,202,Not a functional requirement.,2013-11-19 15:21:04.343000,Rejected,0.0,,
+25,243,"Does not PowerManager aggregate bidcurves (bijlage 8 section 2.5.6)? This would mean the load for the TUS will be much lower than stated here.
+
+Or does Alliander not intend to use the Concentrators?",2013-11-20 09:37:47.217000,Question,0.0,,
+26,89,"Q: How does automatic authorization work?
+
+A: The manager can place authorization in manual or automatic mode. See 333D - F.",2013-11-22 13:18:12.459000,Open,2.0,,
+27,124,Sent to Whom?,2013-11-25 12:07:55.232000,Question,0.0,,
+28,41,Welke idioot heeft dit bedacht?,2013-11-27 13:05:21.038000,Question,0.0,,
+29,245,,2013-11-27 16:48:04.203000,Open,5.0,,
+30,246,,2013-11-27 16:48:14.514000,Open,15.0,,
+31,247,,2013-11-27 16:48:31.732000,Open,5.0,,
+32,52,,2013-11-27 16:48:47.996000,Open,1.0,,
+33,53,,2013-11-27 16:48:53.066000,Open,1.0,,
+34,54,Configuratie functiepunt,2013-11-27 16:49:20.434000,Open,1.0,,
+35,55,,2013-11-27 16:49:27.977000,Open,2.0,,
+36,56,Aanname: een grafiekje,2013-11-27 16:50:01.826000,Open,1.0,,
+37,248,,2013-11-27 16:50:24.908000,Open,3.0,,
+38,249,,2013-11-27 16:50:45.485000,Open,5.0,,
+39,57,,2013-11-27 16:51:08.626000,Open,1.0,,
+40,58,Het gaat om opslag naar TUS,2013-11-27 16:51:36.009000,Open,2.0,,
+41,59,,2013-11-27 16:51:46.825000,Open,1.0,,
+42,60,,2013-11-27 16:51:53.673000,Open,1.0,,
+43,61,Weet niet precies wat dit inhoudt...,2013-11-27 16:52:16.313000,Open,1.0,,
+44,62,,2013-11-27 16:52:30.692000,Open,1.0,,
+45,64,De Objective Agent geeft informatie van de markten door naar de andere Power Matcher agents.,2013-11-27 16:53:30.090000,Open,5.0,,
+46,65,Het nieuwe hier is het mechanisme dat dit ieder uur doet.,2013-11-27 16:54:22.746000,Open,1.0,,
+47,66,,2013-11-27 16:54:35.305000,Open,2.0,,
+48,67,Geen functionele eis,2013-11-27 16:54:54.907000,Rejected,0.0,,
+49,68,Nieuw: dat het voor de hele dag is.,2013-11-27 16:55:18.986000,Open,1.0,,
+50,69,,2013-11-27 16:55:23.714000,Open,1.0,,
+51,70,,2013-11-27 16:55:32.594000,Open,1.0,,
+52,71,,2013-11-27 16:55:37.849000,Open,1.0,,
+53,72,,2013-11-27 16:55:48.618000,Open,3.0,,
+54,250,,2013-11-27 16:56:15.004000,Open,5.0,,
+55,251,,2013-11-27 16:56:40.069000,Open,5.0,,
+56,73,"Klopt, lineaire interpolatie wordt gevraagd.",2013-11-27 16:57:15.778000,Open,2.0,,
+57,74,Geen functionele eis,2013-11-27 16:57:32.914000,Rejected,0.0,,
+58,75,,2013-11-27 16:57:52.618000,Open,3.0,,
+59,76,Dit zijn inderdaad de boven grens (100) en de ondergrens (0.1).,2013-11-27 16:58:26.289000,Open,2.0,,
+60,77,Geen functionele eis,2013-11-27 16:58:57.616000,Rejected,0.0,,
+61,78,,2013-11-27 16:59:11.552000,Open,1.0,,
+62,79,,2013-11-27 16:59:20.657000,Open,2.0,,
+63,80,,2013-11-27 16:59:39.219000,Open,2.0,,
+64,252,,2013-11-27 16:59:58.875000,Open,5.0,,
+65,81,,2013-11-27 17:00:08.545000,Open,1.0,,
+66,82,,2013-11-27 17:00:32.457000,Open,2.0,,
+67,83,,2013-11-27 17:00:53.858000,Open,1.0,,
+68,84,,2013-11-27 17:01:09.008000,Open,2.0,,
+69,85,,2013-11-27 17:01:42.233000,Open,1.0,,
+70,87,Afrondingen goed implementeren.,2013-11-27 17:02:02.265000,Open,1.0,,
+71,88,,2013-11-27 17:02:12.177000,Open,1.0,,
+72,90,,2013-11-27 17:02:36.889000,Open,2.0,,
+73,91,Liefst configureerbaar afhankelijk van het betreffende land.,2013-11-27 17:03:01.016000,Open,1.0,,
+74,92,Lastig testwerk,2013-11-27 17:32:25.128000,Open,2.0,,
+75,93,,2013-11-27 17:32:34.641000,Open,1.0,,
+76,94,,2013-11-27 17:32:50.300000,Open,1.0,,
+77,95,,2013-11-27 17:33:06.193000,Open,1.0,,
+78,96,Geen functionele eis,2013-11-27 17:33:21.392000,Rejected,0.0,,
+79,97,,2013-11-27 17:33:33.786000,Open,1.0,,
+80,98,"SFTP
+
+De hoge schatting komt uit het moeten testen & simuleren van deze interface: behoorlijk wat werk voor nodig.",2013-11-27 17:33:44.177000,Open,3.0,,
+81,99,,2013-11-27 17:34:52.969000,Open,2.0,,
+82,100,,2013-11-27 17:34:58.825000,Open,1.0,,
+83,101,,2013-11-27 17:35:17.504000,Open,1.0,,
+84,102,,2013-11-27 17:35:22.064000,Open,1.0,,
+85,103,Geen functionele eis,2013-11-27 17:35:36.424000,Rejected,0.0,,
+86,104,Geen functionele eis,2013-11-27 17:35:49.169000,Rejected,0.0,,
+87,106,,2013-11-27 17:35:55.568000,Open,1.0,,
+88,107,,2013-11-27 17:36:05.017000,Open,1.0,,
+89,108,Vooral veel testwerk.,2013-11-27 17:36:28.024000,Open,2.0,,
+90,109,Een grafiekje,2013-11-27 17:36:39.809000,Open,1.0,,
+91,110,Nader te bepalen,2013-11-27 17:39:55.033000,Open,2.0,,
+92,111,,2013-11-27 17:40:07.473000,Open,2.0,,
+93,112,,2013-11-27 17:40:13.009000,Open,1.0,,
+94,253,,2013-11-27 17:41:40.085000,Open,5.0,,
+95,113,,2013-11-27 17:41:48.304000,Open,1.0,,
+96,114,,2013-11-27 17:41:52.401000,Open,1.0,,
+97,115,,2013-11-27 17:41:58.345000,Open,1.0,,
+98,116,,2013-11-27 17:42:59.298000,Open,1.0,,
+99,117,,2013-11-27 17:43:22.705000,Open,5.0,,
+100,118,,2013-11-27 17:43:28.843000,Open,1.0,,
+101,119,,2013-11-27 17:43:39.705000,Open,1.0,,
+102,121,,2013-11-27 17:43:48.728000,Open,3.0,,
+103,122,Nader te bepalen.,2013-11-27 17:45:23.905000,Open,2.0,,
+104,123,,2013-11-27 17:45:29.409000,Open,2.0,,
+105,124,"Naar TenneT.
+
+Protocol is onbekend, lijkt op een custom mail-achtig protocol.",2013-11-27 17:46:05.217000,Open,5.0,,
+106,125,Overhead in het maken van een losse OSGi service,2013-11-27 17:46:32.929000,Open,1.0,,
+107,126,,2013-11-27 17:46:38.089000,Open,1.0,,
+108,127,,2013-11-27 17:46:43.705000,Open,1.0,,
+109,128,Overhead van het serialiseren van Java object.,2013-11-27 17:47:39.025000,Open,1.0,,
+110,129,,2013-11-27 17:47:54.376000,Open,2.0,,
+111,130,,2013-11-27 17:48:01.857000,Open,1.0,,
+112,132,,2013-11-27 17:48:06.569000,Open,1.0,,
+113,133,,2013-11-27 17:48:11.138000,Open,1.0,,
+114,134,,2013-11-27 17:48:15.402000,Open,1.0,,
+115,135,,2013-11-27 17:48:20.089000,Open,1.0,,
+116,136,,2013-11-27 17:48:26.168000,Open,1.0,,
+117,137,,2013-11-27 17:48:36.209000,Open,1.0,,
+118,143,,2013-11-27 17:48:51.929000,Open,2.0,,
+119,144,De externe applicatie neemt initiatief.,2013-11-27 17:49:16.289000,Open,1.0,,
+120,145,,2013-11-27 17:49:32.193000,Open,1.0,,
+121,146,Klopt.,2013-11-27 17:49:42.009000,Open,1.0,,
+122,147,,2013-11-27 17:49:59.833000,Open,3.0,,
+123,148,,2013-11-27 17:50:33.837000,Open,3.0,,
+124,138,,2013-11-27 17:50:49.808000,Open,1.0,,
+125,139,,2013-11-27 17:51:06.376000,Open,1.0,,
+126,140,,2013-11-27 17:51:12.529000,Open,1.0,,
+127,141,,2013-11-27 17:53:55.617000,Open,1.0,,
+128,142,,2013-11-27 17:53:59.904000,Open,1.0,,
+129,151,Het werk is het configureren hiervan.,2013-11-27 17:54:14.992000,Open,1.0,,
+130,152,,2013-11-27 17:54:27.905000,Open,3.0,,
+131,153,,2013-11-27 17:54:35.666000,Open,3.0,,
+132,154,,2013-11-27 17:54:45.480000,Open,3.0,,
+133,155,,2013-11-27 17:54:51.305000,Open,1.0,,
+134,156,,2013-11-27 17:54:57.824000,Open,1.0,,
+135,157,In de structuur rekening mee houden,2013-11-27 17:55:16.896000,Open,1.0,,
+136,160,,2013-11-27 17:55:23.064000,Open,1.0,,
+137,161,,2013-11-27 17:55:52.520000,Open,5.0,,
+138,162,Geen functionele eis.,2013-11-27 17:56:04.919000,Rejected,0.0,,
+139,163,Er is een framewerkje nodig.,2013-11-27 17:56:40.424000,Open,5.0,,
+140,164,Wordt per scherm / component afgehandeld.,2013-11-27 17:57:18.576000,Rejected,0.0,,
+141,165,,2013-11-27 17:57:27.471000,Open,2.0,,
+142,166,Geen functionele eis,2013-11-27 17:57:37.696000,Rejected,0.0,,
+143,167,Geen functionele eis.,2013-11-27 17:57:57.336000,Rejected,0.0,,
+144,168,Standaard functionaliteit in een web framework,2013-11-27 17:58:19.567000,Done,0.0,,
+145,169,Het gaat om het kunnen exporteren / importeren.,2013-11-27 17:58:42.960000,Open,1.0,,
+146,170,Voor excel export is werk noodzakelijk.,2013-11-27 17:59:08.840000,Open,5.0,,
+147,171,Integraal oplossen in de API.,2013-11-27 17:59:15.095000,Open,1.0,,
+148,172,Open einde requirement.,2013-11-27 17:59:46.415000,Open,5.0,,
+149,174,Nader in te vullen.,2013-11-27 18:00:11.995000,Open,0.0,,
+150,175,,2013-11-27 18:00:25.631000,Open,1.0,,
+151,176,,2013-11-27 18:00:47.000000,Open,5.0,,
+152,177,Meegenomen in de vorige eis.,2013-11-27 18:01:01.231000,Open,0.0,,
+153,178,,2013-11-27 18:01:09.616000,Open,1.0,,
+154,180,,2013-11-27 18:01:22.496000,Open,3.0,,
+155,181,,2013-11-27 18:01:32.327000,Open,1.0,,
+156,182,,2013-11-27 18:01:43.512000,Open,5.0,,
+157,185,Aanname: een oude order wordt ingevuld in de gene die nu geedit wordt.,2013-11-27 18:02:20.768000,Open,1.0,,
+158,186,Ze moeten worden ingevuld (zie vorige eis),2013-11-27 20:19:06.428000,Open,3.0,,
+159,187,,2013-11-27 20:19:27.864000,Open,2.0,,
+160,188,,2013-11-27 20:20:25.100000,Open,1.0,,
+161,189,"Het wordt inderdaad een plotje. 
+
+Door het overzicht over de uren is het meer werk dan alleen de laatste.",2013-11-27 20:20:53.079000,Open,3.0,,
+162,190,Inderdaad een plotje.,2013-11-27 20:22:21.006000,Open,1.0,,
+163,191,,2013-11-27 20:22:46.977000,Open,2.0,,
+164,192,,2013-11-27 20:23:04.349000,Open,2.0,,
+165,195,Dit plotje is al ergens anders getoond voor de volgende dag; moet terug komen in dit scherm voor de huidige dag.,2013-11-27 20:24:05.696000,Open,1.0,,
+166,197,,2013-11-27 20:25:21.132000,Open,1.0,,
+167,198,,2013-11-27 20:25:34.137000,Open,2.0,,
+168,199,,2013-11-27 20:26:22.184000,Open,3.0,,
+169,200,,2013-11-27 20:26:48.138000,Open,1.0,,
+170,201,,2013-11-27 20:27:10.790000,Open,2.0,,
+171,214,,2013-11-27 20:27:32.481000,Open,1.0,,
+172,215,,2013-11-27 20:27:40.372000,Duplicate,0.0,,
+173,216,,2013-11-27 20:27:54.647000,Duplicate,0.0,,
+174,217,,2013-11-27 20:28:17.301000,Duplicate,0.0,,
+175,218,,2013-11-27 20:28:28.197000,Open,1.0,,
+176,219,,2013-11-27 20:28:45.369000,Open,3.0,,
+177,224,,2013-11-27 20:28:56.143000,Duplicate,0.0,,
+178,225,Not a functional requirement,2013-11-27 20:29:14.714000,Rejected,0.0,,
+179,226,,2013-11-27 20:29:22.542000,Open,2.0,,
+180,227,,2013-11-27 20:29:29.483000,Open,1.0,,
+181,228,,2013-11-27 20:29:37.889000,Open,1.0,,
+182,229,Samen geschat met de vorige eis.,2013-11-27 20:30:15.374000,Done,0.0,,
+183,230,,2013-11-27 20:30:26.832000,Duplicate,0.0,,
+184,231,,2013-11-27 20:30:47.803000,Open,4.0,,
+185,232,"Hier zit een boel functionaliteit achter: hoe weet het systeem uberhaupt welke agents er potentieel zijn, etc.",2013-11-27 20:32:05.112000,Open,5.0,,
+186,233,Aanname: directe toegang = direct SQL schrijven.,2013-11-27 20:32:14.709000,Open,1.0,,
+187,234,,2013-11-27 20:32:56.744000,Open,3.0,,
+188,235,,2013-11-27 20:33:08.425000,Open,3.0,,
+189,236,,2013-11-27 20:33:27.508000,Open,1.0,,
+190,237,Onduidelijk hoe dit gerealiseerd gaat worden; nauwe interactie met OSGi.,2013-11-27 20:34:00.464000,Open,5.0,,
+191,238,,2013-11-27 20:34:23.098000,Open,1.0,,
+192,239,,2013-11-27 20:34:48.285000,Open,5.0,,
+193,240,,2013-11-27 20:35:03.484000,Open,2.0,,
+194,241,"Lijkt een duplicaat van 334G, alleen is mag deze rol van meer mensen de credentials aanpassen. Dus extra werk.",2013-11-27 21:01:42.644000,Open,1.0,,
+
+requirement
+Id,Type
+50,Comment
+51,Functional
+52,Functional
+53,Functional
+54,Functional
+55,Functional
+56,Functional
+57,Functional
+58,Functional
+59,Functional
+60,Functional
+61,Functional
+62,Functional
+63,Functional
+64,Functional
+65,Functional
+66,Functional
+67,Functional
+68,Functional
+69,Functional
+70,Functional
+71,Functional
+72,Functional
+73,Functional
+74,Functional
+75,Functional
+76,Functional
+77,Functional
+78,Functional
+79,Functional
+80,Functional
+81,Functional
+82,Functional
+83,Functional
+84,Functional
+85,Functional
+86,Functional
+87,Functional
+88,Functional
+89,Functional
+90,Functional
+91,Functional
+92,Functional
+93,Functional
+94,Functional
+95,Functional
+96,Functional
+97,Functional
+98,Functional
+99,Functional
+100,Functional
+101,Functional
+102,Functional
+103,Functional
+104,Functional
+105,Functional
+106,Functional
+107,Functional
+108,Functional
+109,Functional
+110,Functional
+111,Functional
+112,Functional
+113,Functional
+114,Functional
+115,Functional
+116,Functional
+117,Functional
+118,Functional
+119,Functional
+120,Functional
+121,Functional
+122,Functional
+123,Functional
+124,Functional
+125,Functional
+126,Functional
+127,Functional
+128,Functional
+129,Functional
+130,Functional
+131,Functional
+132,Functional
+133,Functional
+134,Functional
+135,Functional
+136,Functional
+137,Functional
+138,Functional
+139,Functional
+140,Functional
+141,Functional
+142,Functional
+143,Functional
+144,Functional
+145,Functional
+146,Functional
+147,Functional
+148,Functional
+149,Functional
+150,Functional
+151,Functional
+152,Functional
+153,Functional
+154,Functional
+155,Functional
+156,Functional
+157,Functional
+158,Functional
+159,Functional
+160,Functional
+161,Functional
+162,Functional
+163,Functional
+164,Functional
+165,Functional
+166,Functional
+167,Functional
+168,Functional
+169,Functional
+170,Functional
+171,Functional
+172,Functional
+173,Functional
+174,Functional
+175,Functional
+176,Functional
+177,Functional
+178,Functional
+179,Functional
+180,Functional
+181,Functional
+182,Functional
+183,Functional
+184,Functional
+185,Functional
+186,Functional
+187,Functional
+188,Functional
+189,Functional
+190,Functional
+191,Functional
+192,Functional
+193,Functional
+194,Functional
+195,Functional
+196,Functional
+197,Functional
+198,Functional
+199,Functional
+200,Functional
+201,Functional
+202,Functional
+203,Functional
+204,Functional
+205,Functional
+206,Functional
+207,Functional
+208,Functional
+209,Functional
+210,Functional
+211,Functional
+212,Functional
+213,Functional
+214,Functional
+215,Functional
+216,Functional
+217,Functional
+218,Functional
+219,Functional
+220,Functional
+221,Functional
+222,Functional
+223,Functional
+224,Functional
+225,Functional
+226,Functional
+227,Functional
+228,Functional
+229,Functional
+230,Functional
+231,Functional
+232,Functional
+233,Functional
+234,Functional
+235,Functional
+236,Functional
+237,Functional
+238,Functional
+239,Functional
+240,Functional
+241,Functional
+242,Functional
+243,Functional
+244,Functional
+245,Functional
+246,Functional
+247,Functional
+248,Functional
+249,Functional
+250,Functional
+251,Functional
+252,Functional
+253,Functional
+254,Functional
+255,Functional
+256,Functional
+257,Functional
+258,Functional
+
+view
+Id,Refinement
+1,
+2,
+3,
+4,
+5,
+6,
+7,
+8,
+
+plannedeffort
+Id,Worker,Project,Week,Hours
+

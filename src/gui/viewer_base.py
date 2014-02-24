@@ -7,7 +7,7 @@ Created on Feb 7, 2014
 from PyQt4 import QtGui, QtCore
 from details_editor import DetailsViewer
 import model
-from util import bindLambda, mkMenu
+from util import mkMenu
 
 class ViewerBase(QtGui.QWidget):
   def __init__(self, parent, decorator):

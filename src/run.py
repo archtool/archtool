@@ -7,15 +7,14 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 
+from functools import partial
 from PyQt4 import QtCore, QtGui
 from gui.design import MainWindowForm
 from gui.viewers import ArchitectureView, PlanningView
 from gui.workitem_view import WorkitemView
-from gui.util import bindLambda
+from gui.styles import Styles
 from req_export import exportRequirementQuestions, exportRequirementsOverview
-from export import export
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
+from export import export, upgradeDatabase
 import sys
 import model
 from model import config
@@ -34,20 +33,13 @@ import os.path
 SQLITE_URL_PREFIX = 'sqlite:///'
 
 
-
-@event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
-
 class ArchitectureTool(MainWindowForm[1]):
   def __init__(self):     
     # Setup UI first.
     QtGui.QMainWindow.__init__(self, None)
     
     self.current_url = None
+    self.centralwidget = None
     
     self.setStyleSheet('font: %spt "%s";'%(config.getConfig('font_size'), 
                                          config.getConfig('font_name')))
@@ -55,8 +47,6 @@ class ArchitectureTool(MainWindowForm[1]):
     #self.setStyleSheet('font: 12pt "MS Shell Dlg 2";')
     self.ui = MainWindowForm[0]()
     self.ui.setupUi(self)
-    self.centralwidget = ArchitectureView(self)
-    self.setCentralWidget(self.centralwidget)
 
 
     for action, func in [(self.ui.actionNew, self.onNew),
@@ -74,7 +64,7 @@ class ArchitectureTool(MainWindowForm[1]):
     recent = config.getRecentFiles()
     for f in recent:
       a = QtGui.QAction(os.path.basename(f), self)
-      a.triggered.connect(bindLambda(self.open, {'url':f}))
+      a.triggered.connect(partial(self.open, url=f))
       self.ui.menuRecent_Files.addAction(a)
 
     # Open the most recent file
@@ -115,8 +105,31 @@ class ArchitectureTool(MainWindowForm[1]):
       if not os.path.exists(fname):
         QtGui.QMessageBox.critical(self, 'File does not exist', 'The file %s does not appear to exist anymore'%fname)
         return
+    if self.centralwidget:
+      self.centralwidget.close()
+
     model.changeEngine(model.create_engine(url))
     self.session = model.SessionFactory()
+    # Check the version, if it exists
+    versions = self.session.query(model.DbaseVersion).all()
+    if len(versions) > 0:
+      if versions[0].Version < model.VERSION:
+        # Try to convert the model.
+        q = QtGui.QMessageBox.question(self, 'Old database model', 'This file uses an old ' +\
+                 'version of the database. Conversion is necessary  in order to continue.',
+                buttons=QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel,
+                defaultButton=QtGui.QMessageBox.Ok)
+        self.session = None
+        if q != QtGui.QMessageBox.Ok:
+          self.centralwidget.clean()
+          return
+        # User wants to convert the model.
+        upgradeDatabase(url)
+        self.open(url=url)
+    
+    Styles.load(self.session)
+    self.centralwidget = ArchitectureView(self)
+    self.setCentralWidget(self.centralwidget)
     self.centralwidget.open(self.session)
 
     self.setWindowTitle("Architecture Tool: %s"%url.split('/')[-1])

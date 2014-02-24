@@ -7,20 +7,18 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 
+from functools import partial
 from PyQt4 import QtCore, QtGui
 from design import ArchitectureViewForm, ProjectViewForm
 import model
-from util import bindLambda, mkMenu
+from util import mkMenu
 from view_2d import TwoDView, MIME_TYPE
-from details_editor import EffortOverview, WorkerOverview
+from details_editor import EffortOverview, WorkerOverview, StateEditor
 from req_export import exportRequirementQuestions, exportRequirementsOverview
 from viewer_base import ViewerWithTreeBase, makeModelItemTree
 from sqlalchemy import event
 import logging
 
-
-DEFAULT_COLORS = ['#ffffff', 'Cornflower Blue', '#00529c', 
-                  '#f2f2f2', '#838383']
 
 # TODO: move the makeModelItemTree to a MyTree, and promote the relevant widgets.
 
@@ -122,8 +120,6 @@ class ArchitectureView(ViewerWithTreeBase):
   def __init__(self, parent):
     ViewerWithTreeBase.__init__(self, parent, ArchitectureViewForm[0])
     
-    self.color_buttons = []
-    
     # Make the context menus for the tree widgets.
     tree_models = {self.ui.treeBlocks:model.ArchitectureBlock,
                      self.ui.treeUseCases:model.View,
@@ -140,12 +136,27 @@ class ArchitectureView(ViewerWithTreeBase):
     self.fillFilterBoxes()
     
     self.ui.tblRequirements.cellClicked.connect(self.onCellClicked)
+    self.ui.btnShowStyles.stateChanged.connect(self.onShowStyles)
+    self.stateWindow = StateEditor()
+    self.stateWindow.hide()
+    
         
     # Add database hooks to properly update when items are added.
     for cls in [model.ArchitectureBlock, model.View, model.Requirement]:
       event.listen(cls, 'after_update', self.onDetailUpdate)
       event.listen(cls, 'after_insert', self.onDetailInsert)
       #FIXME: also handle deletes.
+      
+      
+  def close(self):
+    ''' Overrides the QWidget.close. '''
+    # Unsubscribe to database events.
+    for cls in [model.ArchitectureBlock, model.View, model.Requirement]:
+      event.remove(cls, 'after_update', self.onDetailUpdate)
+      event.remove(cls, 'after_insert', self.onDetailInsert)
+      
+    ViewerWithTreeBase.close(self)
+    
 
   def clean(self):
     ''' Create a new database and connect to it.
@@ -180,16 +191,13 @@ class ArchitectureView(ViewerWithTreeBase):
       all = self.session.query(model.Requirement).all()
       for req in all:
         self.addTableElement(req)
+        
+  def onShowStyles(self, state):      
+    if not state:
+      self.stateWindow.hide()
+    else:
+      self.stateWindow.show()
 
-    # Load the pallette
-    colors = self.session.query(model.ColorPalette).all()
-    if not colors:
-      colors = [model.ColorPalette(Color=color) for color in DEFAULT_COLORS]
-      self.session.add_all(colors)
-      self.session.commit()
-    self.block_colors = {c.Id:QtGui.QColor(c.Color) for c in colors}
-    self.showPaletteButtons()
-    
   def onItemChanged(self, item, column):
     new_name = str(item.text(0))
     if new_name != item.details.Name:
@@ -222,7 +230,7 @@ class ArchitectureView(ViewerWithTreeBase):
         self.ui.tabGraphicViews.setCurrentIndex(i)
         return
     # Add a new tab
-    viewer = TwoDView(details, self.drop2Details, self.session, self.block_colors)
+    viewer = TwoDView(details, self.drop2Details, self.session)
     self.ui.tabGraphicViews.addTab(viewer, details.Name)
     self.ui.tabGraphicViews.setCurrentWidget(viewer)
     viewer.selectedItemChanged.connect(self.onItemSelectionChanged)
@@ -233,18 +241,6 @@ class ArchitectureView(ViewerWithTreeBase):
     self.ui.tabGraphicViews.removeTab(index)
     widget.close()
     
-  def onSetColor(self, triggered, color_id):
-    ''' Called when the user clicks on one of the color buttons.
-    calls the current view (if any) to set the color.
-    '''
-    # Get the current view
-    view = self.ui.tabGraphicViews.currentWidget()
-    if not view:
-      return
-    
-    view.setColor(color_id)
-    
-
   def fillFilterBoxes(self):
     ''' Fill the boxes that are used to determine a filter with the items
     that can be filtered on: the different states and the different priorities.
@@ -271,44 +267,6 @@ class ArchitectureView(ViewerWithTreeBase):
     lbls.remove('Id')
     self.ui.tblRequirements.setHorizontalHeaderLabels(self.REGTBL_COLUMNS)
     
-  def showPaletteButtons(self):
-    ''' Read the palette colors, and show them as buttons in the viewer.
-    '''
-    for btn in self.color_buttons:
-      btn.close()
-
-    colors = self.session.query(model.ColorPalette).all()
-
-    buttons = []
-    for c in colors:
-      btn = QtGui.QToolButton(self.ui.layoutWidget)
-      name = self.block_colors[c.Id].name()
-      btn.setStyleSheet("background-color:\"%s\";"%name)
-      btn.setText('')
-      self.ui.horizontalLayout_2.addWidget(btn)
-      btn.clicked.connect(bindLambda(self.onSetColor, {'color_id':c.Id}))
-      menu = QtGui.QMenu(self)
-      a = QtGui.QAction('Change Color', self)
-      a.triggered.connect(bindLambda(self.onChangePalette, {'color_id':c.Id,
-                                                            'btn':btn}))
-      btn.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
-      btn.addAction(a)
-      buttons.append(btn)
-    self.color_buttons = buttons
-
-        
-  def onChangePalette(self, triggered, color_id, btn):
-    ''' Called when the user changes one of the colors in the palette.
-    '''
-    color = QtGui.QColorDialog.getColor(self.block_colors[color_id], self)
-    self.block_colors[color_id] = color
-    name =color.name()
-    btn.setStyleSheet("background-color:\"%s\";"%name)
-    c = self.session.query(model.ColorPalette).filter(model.ColorPalette.Id == color_id).one()
-    c.Color = str(name)
-    self.session.commit()
-    
-
   def onFilterRequirements(self, value):
     prios  = [s for s, w in zip(model.PRIORITIES, self.req_prio_filters) if w.isChecked()]
     states = [s for s, w in zip(model.REQUIREMENTS_STATES, self.req_stat_filters) if w.isChecked()]

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>766</width>
+    <width>762</width>
     <height>771</height>
    </rect>
   </property>
@@ -27,7 +27,7 @@
      </property>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -261,7 +261,24 @@
       <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2"/>
+         <widget class="QCheckBox" name="btnShowStyles">
+          <property name="text">
+           <string>Show styles</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
         </item>
         <item>
          <widget class="QTabWidget" name="tabGraphicViews">
@@ -305,7 +322,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>439</width>
+          <width>435</width>
           <height>488</height>
          </rect>
         </property>

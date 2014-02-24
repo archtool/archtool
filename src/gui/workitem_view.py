@@ -9,7 +9,6 @@ from PyQt4 import QtCore, QtGui
 from design import WorkitemViewForm
 from details_editor import DetailsViewer
 from viewer_base import ViewerWithDetailsBase
-from gui.util import bindLambda
 import model
 
 

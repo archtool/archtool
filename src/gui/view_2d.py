@@ -13,6 +13,8 @@ from model.config import getConfig
 import inspect
 from PyQt4 import QtGui, QtCore
 import sqlalchemy as sql
+from primitives_2d import Block, Text, Line
+from styles import Styles, Style
 
 
 # TODO: Allow addition of a child within view
@@ -21,23 +23,14 @@ import sqlalchemy as sql
 # TODO: Allow copy - paste of blocks between views.
 # TODO: Maak robuust voor meerdere instanties van het zelfde blok.
 # TODO: Verwijderen van geselecteerde elementen met Delete knop.
+# TODO: Add annotations (squares regions with a comment attached).
+# TODO: Use the style system
 
 # FIXME: delete block in view leaves block outline on screen
 # FIXME: rename architecture block is not shown in open viewer.
-
-
-# TODO: Add annotations (squares regions with a comment attached).
 # FIXME: Zorg dat bij het aanmaken van iets nieuws, dit meteen geselecteerd is.
 
 MIME_TYPE = 'application/x-qabstractitemmodeldatalist'
-
-ItemColor = QtGui.QColor('darkslateblue')
-ItemSelectedColor = QtGui.QColor('deepskyblue')
-ConnectorColor = QtGui.QColor('slateblue')
-
-ConnectionPen = QtGui.QPen(ConnectorColor, 3,
-              QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
-
 
 BLOCK_WIDTH  = 100
 BLOCK_HEIGHT = 30
@@ -48,139 +41,54 @@ class NoDetailsFound(Exception):
   '''
   pass
 
-class ResizeHandle(QtGui.QGraphicsPolygonItem):
-  ''' Class that handles resizing for blocks.
-      Include this widget as a child in a corner of the block.
-  '''
-  points = [QtCore.QPointF(*p) for p in [[-20, 0], [0, -20], [0, 0]]]
-  def __init__(self, parent):
-    QtGui.QGraphicsPolygonItem.__init__(self, QtGui.QPolygonF(self.points), parent=parent)
-    self.dragging = False
-    self.start = None
-    self.size = None
-    self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
-  def mousePressEvent(self, event):
-    ''' Called when the user clicks on the resize handle. '''
-    self.dragging = True
-    self.start = event.scenePos()
-    self.size = self.parentItem().rect().bottomRight()
-    event.accept()
-  def mouseReleaseEvent(self, event):
-    ''' Called when the user releases a mouse button on the resize handle. '''
-    event.accept()
-    self.dragging = False
-    self.parentItem().commitRect()
-    
-  def mouseMoveEvent(self, event):
-    ''' Called when the user drags the mouse while over a resize handle. '''
-    if self.dragging:
-      event.accept()
-      rect = self.parentItem().rect()
-      rect.setBottomRight(event.scenePos() - self.start + self.size)
-      self.parentItem().setRect(rect)
-      self.setPos(rect.bottomRight())
-
-
-class BlockItem(QtGui.QGraphicsRectItem):
+class BlockItem(Block):
   ''' Representation of an architecture block.
   '''
-  Pen = QtGui.QPen(ItemColor, 1,
-                QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
-  SelectedPen = QtGui.QPen(ItemSelectedColor, 3,
-                QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
-
-  def __init__(self, rep_details, block_details):
-    QtGui.QGraphicsRectItem.__init__(self, 0, 0, rep_details.width, rep_details.height)
-    self.setPen(self.Pen)
+  ROLE = 'archblock'
+  def __init__(self, style, rep_details, block_details):
     self.details = rep_details
-    self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
-    self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
-    self.text = QtGui.QGraphicsTextItem(block_details.Name, parent=self)
-    self.text.setPos(QtCore.QPointF(10, 1))
-    self.text.setFont(QtGui.QFont(getConfig('font_name'),
-                                  getConfig('font_size')))
-    
-    
-    self.corner = ResizeHandle(self)
-    self.corner.setPos(QtCore.QPointF(rep_details.width, rep_details.height))
     self.block_details = block_details
-    
-  def exportSvg(self):
-    tmplt = '''<g  transform="translate($x, $y)">
-                 <rect width="$width" height="$height" fill="white" stroke="black" />
-                 <text x=10 y=1 dy=1em style="font-family:$font; font-size:$font_size;">$Name</text>
-               </g>'''
-    d = self.details.toDict()
-    d.update(self.block_details.toDict())
-    return string.Template(tmplt).substitute(d, font=getConfig('font_name'),
-                                                font_size=17.0/12*getConfig('font_size'))
-  
-  def mouseReleaseEvent(self, event):
-    QtGui.QGraphicsRectItem.mouseReleaseEvent(self, event)
-    commit = False
-    if self.x() != self.details.x:
-      self.details.x = self.x()
-      commit = True
-    if self.y() != self.details.y:
-      self.details.y = self.y()
-      commit = True
-    if commit:
-      self.scene().session.commit()
-      
-  def fpPos(self):
-    return self.x(), self.y() - self.rect().height()
-  
-  def commitRect(self):
-    rect = self.rect()
-    self.details.width = rect.width()
-    self.details.height = rect.height()
+    Block.__init__(self, rep_details, style, self.details.style_role, block_details.Name)
+  def setRole(self, role):
+    ''' Called by the style editing mechanism when the user changes the role. 
+        The role is here only the user-determined part, and does not include the
+        hard-coded part from ROLE.'''
+    self.details.style_role = role
+    Block.setRole(self, role)
 
-    self.scene().session.commit()
-
-  def setColor(self):
-    if not self.details.Color:
-      self.details.Color = 2
-    color = self.scene().block_colors[self.details.Color]
-    Gradient = QtGui.QLinearGradient(0, 0, 100, 100)
-    Gradient.setColorAt(0, QtGui.QColor('white'))
-    Gradient.setColorAt(1, color)
-    brush = QtGui.QBrush(Gradient)
-    self.setBrush(brush)
-
-
-class FunctionPoint(QtGui.QGraphicsTextItem):
-  class Arrow(QtGui.QGraphicsPolygonItem):
-    points = [QtCore.QPointF(*p) for p in [[-10, 0], [10, 0], [5, 5], [10, 0], [5, -5], [10,0]]]
-    Pen = QtGui.QPen(ItemColor, 1,
-                  QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
-    def __init__(self, parent):
-      QtGui.QGraphicsPolygonItem.__init__(self, QtGui.QPolygonF(self.points), parent=parent)
-      self.setPen(self.Pen)
-      self.setPos(-10, 10)
-    def exportSvg(self):
-      tmpl = string.Template('<g transform="translate($x,$y) rotate($angle)"><polyline points="$points" stroke="black"/></g>')
-      points = ' '.join(['%i,%i'%(c.x(), c.y()) for c in self.points])
-      x = self.x()
-      y = self.y()
-      angle = self.rotation()
-      return tmpl.substitute(points=points, x=x, y=y, angle=angle)
-  def __init__(self, details, fp, connection):
+class FunctionPoint(Text):
+  ROLE = 'functionpoint'
+  def __init__(self, details, fp, connection, style):
     text = '%s: %s'%(details.Order, fp.Name)
-    QtGui.QGraphicsTextItem.__init__(self, text)
+    role = details.style_role
+    Text.__init__(self, text, style, role)
+    
     self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
+    self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
     self.connection = connection
     self.details = details
     self.fp = fp
-    self.setFont(QtGui.QFont(getConfig('font_name'),
-                             getConfig('font_size')))
-    self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
     
     if isinstance(self.connection, BlockItem):
       self.arrow = None
     else:
       # Add the arrow.
-      self.arrow = self.Arrow(self)
+      length = style.getFloat('%s-arrow-%s-length'%(role, self.ROLE), 1.0)
+      self.arrow = Line(-10*length, 0, 0, 0, self, style, self.ROLE)
+      self.arrow.setPos(style.getOffset('%s-arrow-%s'%(role, self.ROLE), 
+                                        default=[-10,10]))
     self.move()
+  def applyStyle(self):
+    Text.applyStyle(self)
+    if self.arrow:
+      self.arrow.applyStyle()
+  def setRole(self, role):
+    ''' Called by the style editing mechanism when the user changes the role. 
+        The role is here only the user-determined part, and does not include the
+        hard-coded part from ROLE.'''
+    self.details.style_role = role
+    FunctionPoint.setRole(self, role)
+
   def exportSvg(self):
     tmplt = '''
                <g transform="translate($x,$y)">
@@ -232,13 +140,30 @@ class FunctionPoint(QtGui.QGraphicsTextItem):
     if commit:
       self.scene().session.commit()
 
-class Connection(QtGui.QGraphicsLineItem):
-  def __init__(self, details, start, end, *args, **kwds):
-    QtGui.QGraphicsLineItem.__init__(self, *args, **kwds)
+class Connection(Line):
+  ROLE = 'connection'
+  def __init__(self, details, start, end, style, *args, **kwds):
     self.details = details
     # Start and end are the BlockRepresentation details for this line.
     self.start = start
     self.end = end
+    line = QtCore.QLineF(start.x + start.width/2, 
+                         start.y + start.height/2,
+                         end.x + end.width/2,
+                         end.y + end.height/2)
+
+    # TODO: make use of the ConnectionRepresentation object!
+    role = self.ROLE
+    Line.__init__(self, line.x1(), line.y1(), line.x2(), line.y2(), None, style, role)
+  def applyStyle(self):
+    self.setPen(self.style.getPen(self.ROLE))
+  def setRole(self, role):
+    ''' Called by the style editing mechanism when the user changes the role. 
+        The role is here only the user-determined part, and does not include the
+        hard-coded part from ROLE.'''
+    # TODO: Use the ConnectionRepresentation!
+    #self.details.style_role = role
+    Connection.setRole(self, '')
   def fpPos(self):
     ''' Return the position where actions are placed.
     '''
@@ -266,7 +191,7 @@ def getDetails(item, dont_raise=False):
       
 
 class MyScene(QtGui.QGraphicsScene):
-  def __init__(self, details, drop2Details, session, block_colors):
+  def __init__(self, details, drop2Details, session):
     '''
     drop2Details: a callback function that finds the details
     belonging to the item that was dropped.
@@ -279,9 +204,11 @@ class MyScene(QtGui.QGraphicsScene):
     self.connection_items = {} # Connection.Id : connection item.
     self.all_details = []   # An ordered list of (fptoview, functionpoint) tuples
     self.known_fps = set()
-    self.block_colors = block_colors
     
     self.connectLine = None
+    
+    self.styles = Styles.style_sheet.getStyle(details.style)
+    self.styles.subscribe(lambda _: self.applyStyle())
     
     # Add the existing blocks and connections
     self.block_repr = {}    # BlockRepr.Id : BlockRepr
@@ -324,6 +251,17 @@ class MyScene(QtGui.QGraphicsScene):
     sql.event.listen(model.FpToView, 'after_update', self.onFp2UseCaseUpdate)
     
     self.sortBlocks(blocks)
+    
+  def close(self):
+    ''' Called when the TwoDView closes. '''
+    sql.event.remove(model.FunctionPoint, 'after_update', self.onFpUpdate)
+    sql.event.remove(model.FpToView, 'after_update', self.onFp2UseCaseUpdate)
+    
+  def applyStyle(self):
+    ''' Re-apply the styles to all items. '''
+    for i in self.items():
+      if hasattr(i, 'applyStyle'):
+        i.applyStyle()
   
   def sortFunctionPoints(self):
     ''' Sort the details in all_details. This is a list of (FpToView, FunctionPoint) tuples.
@@ -377,7 +315,7 @@ class MyScene(QtGui.QGraphicsScene):
     else:
       parent_items = [parent_item]
     for parent in parent_items:
-      item = FunctionPoint(fpview, fp, parent)
+      item = FunctionPoint(fpview, fp, parent, self.styles)
       self.fpviews[fpview] = item
       self.addItem(item)
 
@@ -414,10 +352,9 @@ class MyScene(QtGui.QGraphicsScene):
     # FIXME: use a relationship in the model for this!
     block_details = self.session.query(model.ArchitectureBlock).\
                           filter(model.ArchitectureBlock.Id == rep_details.Block).first()
-    block = BlockItem(rep_details, block_details)
+    block = BlockItem(self.styles, rep_details, block_details)
     self.addItem(block)
     block.setPos(coods)
-    block.setColor()
     
     self.block_details[rep_details.Id] = block_details
     self.block_items[rep_details.Id] = block
@@ -443,12 +380,7 @@ class MyScene(QtGui.QGraphicsScene):
       start = self.block_repr[s_id]
       for e_id in ends:
         end = self.block_repr[e_id]
-        line = QtCore.QLineF(start.x + start.width/2, 
-                             start.y + start.height/2,
-                             end.x + end.width/2,
-                             end.y + end.height/2)
-        item = Connection(connection, start, end, line)
-        item.setPen(ConnectionPen)
+        item = Connection(connection, start, end, self.styles)
         z = min(self.block_items[s_id].zValue(), self.block_items[e_id].zValue())
         item.setZValue(z-0.1)
         item.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
@@ -541,10 +473,9 @@ class TwoDView(QtGui.QGraphicsView):
   ''' The TwoDView renders the MyScene, showing the architecture view.
   '''
   selectedItemChanged = QtCore.pyqtSignal(object)
-  def __init__(self, details, drop2Details, session, block_colors):
-    scene = MyScene(details, drop2Details, session, block_colors)
+  def __init__(self, details, drop2Details, session):
+    scene = MyScene(details, drop2Details, session)
     QtGui.QGraphicsView.__init__(self, scene)
-    self.block_colors = block_colors
     for hint in [QtGui.QPainter.Antialiasing, QtGui.QPainter.TextAntialiasing]:
       self.setRenderHint(hint)
     self.setAcceptDrops(True)
@@ -566,6 +497,11 @@ class TwoDView(QtGui.QGraphicsView):
     self.last_rmouse_click = None
     self.session = session
     self.scene.selectionChanged.connect(self.onSelectionChanged)
+    
+  def close(self):
+    ''' Overload of the QWidget close function. '''
+    self.scene.close()
+    QtGui.QGraphicsView.close(self)
     
   def mouseReleaseEvent(self, event):
     ''' The mouse press event is intercepted in order to remember the position
@@ -807,15 +743,6 @@ class TwoDView(QtGui.QGraphicsView):
     self.session.add(new_view)
     # TODO: Cause the new view to be opened!
     
-    
-  def setColor(self, Id):
-    ''' Set the color for the currently selected blocks '''
-    for item in self.scene.selectedItems():
-      if isinstance(item, BlockItem):
-        item.details.Color = Id
-        item.setColor()
-    self.session.commit()
-    
   def onCopyToUseCase(self):
     ''' Called to copy a view, to be the basis for a new view. '''
     # TODO: Implement copy to use case
@@ -835,6 +762,8 @@ class TwoDView(QtGui.QGraphicsView):
         details = self.session.query(model.FunctionPoint).\
                        filter(model.FunctionPoint.Id == details.FunctionPoint).one()
       self.selectedItemChanged.emit(details)
+    Style.current_style.set(self.scene.styles)
+    Style.current_object.set(items)
 
   def exportSvg(self):
     print self.scene.exportSvg()

@@ -6,7 +6,7 @@ Created on Sep 25, 2013
 Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
-
+from urlparse import urlparse
 from contextlib import contextmanager
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy import Column, Integer, String, Float, Text, Boolean, DateTime, Enum
@@ -14,10 +14,13 @@ from sqlalchemy import ForeignKey, create_engine, Table
 from sqlalchemy.orm import relationship, backref, sessionmaker
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.sql import func
+from sqlalchemy.engine import Engine
+from sqlalchemy import event
 from datetime import datetime
 from collections import OrderedDict
+import export
 
-VERSION = 2
+VERSION = 3
 
 
 # TODO: Implement an undo method
@@ -123,6 +126,7 @@ REQUIREMENTS_STATES = OPEN_STATES + ['Done', 'Rejected', 'Duplicate']
 PRIORITIES = ['Must', 'Should', 'Could', 'Would']
 REQ_TYPES = ['Functional', 'Non-Functional', 'Comment']
 week_format = '%Y%W'
+sql_format  = '%Y-%m-%d %H:%M:%S.%f'
 
 
 class StrWrapper(str):
@@ -138,7 +142,10 @@ class WorkingWeek(TypeDecorator):
   @staticmethod
   def fromString(txt):
     # in strptime, %W only works if the weekday (w) is also specified...
-    return datetime.strptime(txt+'0', week_format+'%w')
+    if len(txt) == 6:
+      return datetime.strptime(txt+'0', week_format+'%w')
+    if txt.count('-')==2 and txt.count(':')==2:
+      return datetime.strptime(txt[:26], sql_format)
     
   
   def process_bind_param(self, value, _dialect):  #pylint:disable=R0201
@@ -161,10 +168,6 @@ class WorkingWeek(TypeDecorator):
 
 ###############################################################################
 ## The elements stored in the database
-class ColorPalette(Base):   #pylint:disable=W0232
-  ''' This table stores the various colors used in the model. '''
-  Color = Column(String)  # An QT color name.
-
 class DbaseVersion(Base):   #pylint:disable=W0232
   ''' Stores the version number of the database. '''
   Version = Column(Integer, default=VERSION)
@@ -306,6 +309,19 @@ class FunctionPoint(PlaneableItem):   #pylint:disable=W0232
       #'inherit_condition': (Id == PlaneableItem.Id)
   }
 
+class Style(Base):
+  ''' Stores styling details in a semicolon-separated string.
+      Style items include:
+        background: the standard QT style details.
+        pen:        the standard QT style details.
+        start_arraw: the polygon drawn at the start of a line.
+        end_arrow:   the polygon drawn at the end of a line.
+        font:        standard QT font details.
+  '''
+  Name    = Column(String)
+  Details = Column(Text)
+
+
 class View(PlaneableItem):   #pylint:disable=W0232
   ''' A 'view' on the architecture, showing certain blocks and interconnection.
   A view combines static elements (blocks) and dynamic elements (function points / actions).
@@ -316,11 +332,7 @@ class View(PlaneableItem):   #pylint:disable=W0232
   # Override the Id inherited from Base
   Id = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
   Refinement = Column(Integer, ForeignKey('functionpoint.Id', ondelete='CASCADE'), nullable=True)
-  #Requirements = relationship('Req2UseCase')
-#  Blocks = relationship("blockrepresentation",
-#                        backref=backref("view", cascade="delete"))
-#  Actions = relationship("fptousecase",
-#                         backref=backref("view", cascade="delete"))
+  style      = Column(Integer, ForeignKey('style.Id'), nullable=True)
   __mapper_args__ = {
       'polymorphic_identity':'view'
   }
@@ -336,9 +348,15 @@ class BlockRepresentation(Base):   #pylint:disable=W0232
   height = Column(Float)
   width = Column(Float)
   Order = Column(Integer)
-  Color = Column(Integer, ForeignKey('colorpalette.Id'), nullable=True)   # Index into a pallette
   Font  = Column(String)
   IsMultiple = Column(Boolean)
+  style_role = Column(String)
+
+
+class ConnectionRepresentation(Base):
+  ''' A connection has many view details that can be set '''
+  Connection = Column(Integer, ForeignKey('connection.Id', ondelete='CASCADE'), nullable=False)
+  style_role = Column(String)
   
   
 class FpToView(Base):   #pylint:disable=W0232
@@ -354,6 +372,7 @@ class FpToView(Base):   #pylint:disable=W0232
   Order = Column(Integer)
   Xoffset = Column(Float, default=0.0)
   Yoffset = Column(Float, default=0.0)
+  style_role = Column(String)
 
 
 class HiddenConnection(Base):   #pylint:disable=W0232
@@ -445,6 +464,26 @@ class PlannedEffort(Base):   #pylint:disable=W0232
 ## Database connections
 the_engine = None
 SessionFactory = None
+check_fkeys = True
+
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+  cursor = dbapi_connection.cursor()
+  if check_fkeys:
+    cursor.execute("PRAGMA foreign_keys=ON")
+  else:
+    cursor.execute("PRAGMA foreign_keys=OFF")
+  cursor.close()
+
+
+def fnameFromUrl(url):
+  parts = urlparse(url)
+  if parts.scheme != 'sqlite':
+    # This only works for sqlite, file-based databases.
+    return None
+  return parts.path[1:]
+  
 
 def changeEngine(new_engine, create=True):
   ''' Change the database engine used by the Session Factory.
@@ -454,7 +493,17 @@ def changeEngine(new_engine, create=True):
   SessionFactory = sessionmaker(bind=new_engine)
   if create:
     Base.metadata.create_all(new_engine)
-
+  
+def clearEngine():
+  global the_engine, SessionFactory
+  if the_engine:
+    the_engine = None
+    SessionFactory = None
+    
+def cleanDatabase():
+  ''' First drops all tables, then re-creates them. '''
+  Base.metadata.drop_all(the_engine)
+  Base.metadata.create_all(the_engine)
 
 def connectSession(url):
   ''' Connect to a database and return a session '''
