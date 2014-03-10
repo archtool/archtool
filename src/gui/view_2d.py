@@ -6,14 +6,15 @@ Created on Sep 26, 2013
 Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
-import math
+
 import model
 import string
-from model.config import getConfig
-import inspect
+from urlparse import urlparse
+import os.path
+from model.config import currentFile
 from PyQt4 import QtGui, QtCore
 import sqlalchemy as sql
-from primitives_2d import Block, Text, Line
+from primitives_2d import Block, Text, Line, NO_POS, extractSvgGradients
 from styles import Styles, Style
 
 
@@ -24,7 +25,7 @@ from styles import Styles, Style
 # TODO: Maak robuust voor meerdere instanties van het zelfde blok.
 # TODO: Verwijderen van geselecteerde elementen met Delete knop.
 # TODO: Add annotations (squares regions with a comment attached).
-# TODO: Use the style system
+# TODO: Gebruik maken van de ConnectionRepresentation.
 
 # FIXME: delete block in view leaves block outline on screen
 # FIXME: rename architecture block is not shown in open viewer.
@@ -93,14 +94,14 @@ class FunctionPoint(Text):
     tmplt = '''
                <g transform="translate($x,$y)">
                  $arrow
-                 <text dy=1em style="font-family:$font; font-size:$font_size;">$text</text>
+                 $txt
                </g>
     '''
     arrow=self.arrow.exportSvg() if self.arrow else ''
-    d = dict(text=str(self.toPlainText()),
-             x=self.x(), y=self.y()+self.boundingRect().height(),
-             font=getConfig('font_name'),
-             font_size=17.0/12*getConfig('font_size'),
+    txt = Text.exportSvg(self, NO_POS)  # The text position is the position of the group.
+    d = dict(text=str(self.text()),
+             x=self.x(), y=self.y(),
+             txt=txt,
              arrow = arrow)
     xml = string.Template(tmplt).substitute(d)
     return xml
@@ -118,7 +119,7 @@ class FunctionPoint(Text):
     y += self.details.Yoffset
     self.setPos(x,y)
     text = '%s: %s'%(self.details.Order, self.fp.Name)
-    self.setPlainText(text)
+    self.setText(text)
     if self.arrow:
       angle = -self.connection.line().angle()
       if self.fp.isResponse:
@@ -126,7 +127,7 @@ class FunctionPoint(Text):
       self.arrow.setRotation(angle)
 
   def mouseReleaseEvent(self, event):
-    QtGui.QGraphicsTextItem.mouseReleaseEvent(self, event)
+    Text.mouseReleaseEvent(self, event)
     commit = False
     xa, ya = self.anchorPos()
     x = self.x() - xa
@@ -172,14 +173,6 @@ class Connection(Line):
     y = (line.y1() + line.y2())/2.0
     return x, y
   
-  def exportSvg(self):
-    ''' Return a piece of SVG code representing the connection. '''
-    tmplt = string.Template('<line x1="$x1" y1="$y1" x2="$x2" y2="$y2" stroke="black" />')
-    l = self.line()
-    x1, y1, x2, y2 = l.x1(), l.y1(), l.x2(), l.y2()
-    return tmplt.substitute(x1=x1, y1=y1, x2=x2, y2=y2)
-
-
 def getDetails(item, dont_raise=False):
   while item:
     if hasattr(item, 'details'):
@@ -438,12 +431,21 @@ class MyScene(QtGui.QGraphicsScene):
   def exportSvg(self):
     # Order the items in their Z-order.
     # Export the svg items as XML nodes
-    tmpl = '''<svg><g transform="translate($x, $y)">
-    $lines
-    $blocks
-    $fps
+    tmpl = '''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+    <!-- Created with Archtool -->
+    <svg    xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg">
+   <g transform="translate($x, $y)">
+      $gradients
+      $lines
+      $blocks
+      $fps
     </g></svg>'''
 
+    gradients = extractSvgGradients(self.styles, BlockItem.ROLE)
     blocks = '\n'.join([b.exportSvg() for b in self.block_items.values()])
     fps    = '\n'.join([fp.exportSvg() for fp in self.fpviews.values()])
     lines  = '\n'.join([c.exportSvg() for c in self.connection_items.values()])
@@ -766,6 +768,18 @@ class TwoDView(QtGui.QGraphicsView):
     Style.current_object.set(items)
 
   def exportSvg(self):
-    print self.scene.exportSvg()
+    ''' Called when the user wants to export a view as SVG file.
+        The SVG is stored as a file containing the model and view names.
+    '''
+    svg = self.scene.exportSvg()
+    path = self.details.getParents()
+    model_url = currentFile()
+    model_name = urlparse(model_url)[2]
+    dirname, basename = os.path.split(model_name)
+    fname = '%s.%s.svg'%(basename, '.'.join([p.Name for p in path]))
+    fname = os.path.join(dirname, fname)
+    with open(fname, 'w') as f:
+      f.write(svg)
+    QtGui.QMessageBox.information(self, 'SVG Exported',
+                                 'The diagram was exported as %s'%fname)
 
-  

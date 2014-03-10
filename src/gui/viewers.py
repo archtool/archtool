@@ -13,7 +13,7 @@ from design import ArchitectureViewForm, ProjectViewForm
 import model
 from util import mkMenu
 from view_2d import TwoDView, MIME_TYPE
-from details_editor import EffortOverview, WorkerOverview, StateEditor
+from details_editor import EffortOverview, WorkerOverview, StyleEditor
 from req_export import exportRequirementQuestions, exportRequirementsOverview
 from viewer_base import ViewerWithTreeBase, makeModelItemTree
 from sqlalchemy import event
@@ -137,7 +137,7 @@ class ArchitectureView(ViewerWithTreeBase):
     
     self.ui.tblRequirements.cellClicked.connect(self.onCellClicked)
     self.ui.btnShowStyles.stateChanged.connect(self.onShowStyles)
-    self.stateWindow = StateEditor()
+    self.stateWindow = StyleEditor()
     self.stateWindow.hide()
     
         

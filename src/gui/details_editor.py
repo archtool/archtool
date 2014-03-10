@@ -10,19 +10,20 @@ from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, event
 from datetime import datetime, timedelta
 from statechange import StateChangeEditor, StateChangeView
-from gui.design import PlannedItemForm, XRefEditorForm, StateEditForm
+from gui.design import PlannedItemForm, XRefEditorForm, StyleEditForm
 import model
 from styles import Style
 
 
-class StateEditor(StateEditForm[1]):
+class StyleEditor(StyleEditForm[1]):
   def __init__(self):
     self.allow_role_updates = False
-    StateEditForm[1].__init__(self)
-    self.ui = StateEditForm[0]()
+    StyleEditForm[1].__init__(self)
+    self.ui = StyleEditForm[0]()
     self.ui.setupUi(self)
     self.ui.edtStyles.textChanged.connect(self.onTextChanged)
     self.ui.edtStyles.focusOutEvent = self.onEditFocusLost
+    self.ui.actionSave.triggered.connect(self.onEditFocusLost)
     self.ui.cmbStyle.currentIndexChanged.connect(self.onRoleChanged)
     self.stylesheet_changed = False
     Style.current_style.subscribe(self.onStylesheetChanged)
@@ -53,7 +54,8 @@ class StateEditor(StateEditForm[1]):
         return  # No ROLE defined, no more parents.
       roles = Style.current_style.get().findApplicableStyles(stereotype)
       roles.insert(0, '<default>')
-      self.ui.cmbStyle.addItems(sorted(roles))
+      roles = sorted(roles)
+      self.ui.cmbStyle.addItems(roles)
       current_role = item.role
       if current_role and current_role in roles:
         self.ui.cmbStyle.setCurrentIndex(roles.index(current_role))

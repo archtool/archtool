@@ -99,6 +99,14 @@ def addRecentFile(url):
       # This is a new file: add it to the list
       entry = FileHistory(Url=url)
       session.add(entry)
+      
+def currentFile():
+  ''' Returns the current (latest) file.
+  '''
+  with transactionScope() as session:
+    record = session.query(FileHistory).order_by(FileHistory.TimeStamp.desc()).first()
+    if record:
+      return record.Url
 
 
 engine = create_engine(CONFIG_URL)

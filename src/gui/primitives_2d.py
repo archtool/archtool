@@ -1,4 +1,7 @@
 '''
+Wrappers over the QtGraphics items that correspond to general primitives that
+can be exported as SVG elements.
+
 Created on Feb 17, 2014
 
 @author: EHWAAL
@@ -8,6 +11,78 @@ from PyQt4 import QtGui, QtCore
 from styles import Styles, ArrowTypes, StyledItem
 from math import atan2, pi
 import string
+import re
+from xml.sax.saxutils import escape
+
+
+# Define some constants to use as flags when exporting SVG
+NO_POS = 1    # Do not take the position into account
+
+
+
+def extractSvgGradients(style, stereotype):
+  ''' Analyse the style sheet, and extract all background gradients for a specific stereotype.
+  
+      Returns a piece of SVG code that defines these gradients for reference by other elements.
+  '''
+  tmplt = '''<linearGradient id="$role" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%"   stop-color="$c1" />
+        <stop offset="100%" stop-color="$c2" />
+      </linearGradient>'''
+  tmplt = string.Template(tmplt)
+  # Get all roles for which a gradient is defined, using a regular expression
+  re_exp = '^\s*(.*)-%s-color[12]:'%stereotype
+  roles = re.findall(re_exp, style.details.Details, re.MULTILINE)
+  roles = set(roles)    # Remove duplicates
+  roles.add('<default>')
+  
+  # For each role, add a gradient definition
+  gradients = []
+  for role in roles:
+    name = '%s-%s'%(role, stereotype)
+    # Use QT to determine the RGB value, in case a color name was used.
+    # Happily, the QT naming scheme for RGB equals the one used by SVG!
+    c1, c2 = [QtGui.QColor(style.findItem(name, 'color%i'%i)).name() for i in [1, 2]]
+    gradients.append(tmplt.substitute(locals(), role=escape(role)))
+    
+  return '\n'.join(gradients)
+
+
+def extractSvgStyle(item):
+  ''' Analyse a QGraphicsItem and extract the style information, formatted as SVG. '''
+  details = {}
+  if isinstance(item, QtGui.QAbstractGraphicsShapeItem) or \
+     isinstance(item, QtGui.QGraphicsLineItem):
+    pen = item.pen()
+    stroke_color = pen.color().name()  # The QT hash format is the same as SVG's.
+    stroke_width = pen.width()
+    details['stroke'] = str(stroke_color)
+    details['stroke-width'] = str(stroke_width)
+    
+  if isinstance(item, QtGui.QAbstractGraphicsShapeItem):
+    brush = item.brush()
+    fill_style   = brush.style()
+    fill_color   = brush.color().name()
+    
+    if fill_style in [QtCore.Qt.LinearGradientPattern, QtCore.Qt.RadialGradientPattern]:
+      role = item.role
+      if not role:
+        role = '<default>'
+      fill_color = 'url(#%s)'%escape(role)
+      
+    details['fill'] = str(fill_color)
+  
+  if isinstance(item, QtGui.QGraphicsSimpleTextItem):
+    f = item.font()
+    details['font-family'] = str(f.family())
+    if f.pointSize() >= 0:
+      details['font-size'] = str(f.pointSizeF())+'pt'
+    else:
+      details['font-size'] = str(f.pixelSize())+'px'
+  
+  style = ';'.join([':'.join(d) for d in details.items()])
+  return 'style="%s;"'%style
+
 
 
 class Arrow(QtGui.QGraphicsPolygonItem, StyledItem):
@@ -20,13 +95,16 @@ class Arrow(QtGui.QGraphicsPolygonItem, StyledItem):
     points = self.style.getArrow(self.full_role, self.arrow_type)
     self.setPolygon(points)
     self.setPen(self.style.getPen(self.full_role))
-  def exportSvg(self):
-    tmpl = string.Template('<g transform="translate($x,$y) rotate($angle)"><polyline points="$points" stroke="black"/></g>')
-    points = ' '.join(['%i,%i'%(c.x(), c.y()) for c in self.points])
+  def exportSvg(self, flags=0):
+    color = self.pen().color().name()
+    tmpl = string.Template('<g transform="translate($x,$y) rotate($angle)">'
+                           '<polyline points="$points" stroke="$color"/></g>')
+    points = self.style.getArrow(self.full_role, self.arrow_type)
+    points = ' '.join(['%i,%i'%(c.x(), c.y()) for c in points])
     x = self.x()
     y = self.y()
     angle = self.rotation()
-    return tmpl.substitute(points=points, x=x, y=y, angle=angle)
+    return tmpl.substitute(points=points, x=x, y=y, angle=angle, color=color)
 
 
 class Line(QtGui.QGraphicsLineItem, StyledItem):
@@ -44,28 +122,67 @@ class Line(QtGui.QGraphicsLineItem, StyledItem):
         self.__start.applyStyle()
       else:
         self.scene().removeItem(self.__start)
+        self.__start = None
     elif has_start:
       self.__start = Arrow(self, self.style, self.role, ArrowTypes.START)
       self.__start.setPos(self.line().p1())
       self.__start.rotate(360 - self.line().angle())
     if self.__end:
       if has_end:
-        self.end.applyStyle()
+        self.__end.applyStyle()
       else:
         self.scene().removeItem(self.__end)
+        self.__end = None
     elif has_end:
       self.__end = Arrow(self, self.style, self.role, ArrowTypes.END)
       self.__end.setPos(self.line().p2())
       self.__end.rotate(self.line().angle())
+  def exportSvg(self, flags=0):
+    tmplt = string.Template('''<g $style transform="translate($x,$y) rotate($angle)">
+      <line x1="$x1" y1="$y1" x2="$x2" y2="$y2" $style />
+      $start
+      $end
+    </g>''')
+    l = self.line()
+    x, y, angle = self.x(), self.y(), self.rotation()
+    x1, y1, x2, y2 = l.x1(), l.y1(), l.x2(), l.y2()   # pylint: disable=W0612
+    style = extractSvgStyle(self)                     # pylint: disable=W0612
+    start = self.__start.exportSvg() if self.__start else ''
+    end = self.__end.exportSvg() if self.__end else ''
+    result = tmplt.substitute(locals())
+    return result
     
-    
-class Text(QtGui.QGraphicsTextItem, StyledItem):
-  def __init__(self, txt, style, role):
-    QtGui.QGraphicsTextItem.__init__(self, txt)
+class Text(QtGui.QGraphicsSimpleTextItem, StyledItem):
+  def __init__(self, txt, style, role, parent=None):
+    QtGui.QGraphicsSimpleTextItem.__init__(self, txt, parent=parent)
     self.style, self.role = style, role
+    StyledItem.__init__(self, style, role, apply=False)
     Text.applyStyle(self)
   def applyStyle(self):
     self.setFont(self.style.getFont(self.full_role))
+  def exportSvg(self, flags=0):
+    # SVG text position (0,0) is the text baseline;
+    # PyQT text position (0,0) is the top left corner.
+    # The difference equals
+    
+    if flags & NO_POS:
+      x, y = 0, 0
+    else:
+      x, y = self.pos().x(), self.pos().y()
+    
+    # Determine the height of the text
+    # SVG now has a 'em' unit, but it is not yet widely supported.
+    # Thus we use the 'pt' unit to adjust the baseline of the text.
+    f = self.font()
+    if f.pointSize() >= 0:
+      size = str(f.pointSizeF())+'pt'
+    else:
+      size = str(f.pixelSize())
+
+    tmplt = string.Template('<text x="$x" y="$y" dy="$size" $style>$txt</text>')
+    style = extractSvgStyle(self)
+    txt = str(self.text())
+    return tmplt.substitute(style=style, txt=txt, x=x, y=y, size=size)
 
 
 class ResizeHandle(QtGui.QGraphicsPolygonItem):
@@ -107,18 +224,18 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
     self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
     self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
     self.text = None
+    StyledItem.__init__(self, style, role)
     if text:
-      self.text = QtGui.QGraphicsTextItem(text, parent=self)
+      self.text = Text(text, style, self.full_role, self)
     if resizable:
       self.corner = ResizeHandle(self)
       self.corner.setPos(QtCore.QPointF(details.width, details.height))
-    StyledItem.__init__(self, style, role)
     
   def applyStyle(self):
     self.setPen(self.style.getPen(self.full_role))
     self.setBrush(self.style.getBrush(self.full_role))
     if self.text:
-      self.text.setFont(self.style.getFont(self.full_role))
+      self.text.applyStyle()
       self.text.setPos(self.style.getOffset(self.full_role, default=[10, 1]))
     
   def mouseReleaseEvent(self, event):
@@ -143,14 +260,14 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
   def fpPos(self):
     return self.x(), self.y() - self.rect().height()
   
-
-  def exportSvg(self):
-    tmplt = '''<g  transform="translate($x, $y)">
-                 <rect width="$width" height="$height" fill="white" stroke="black" />
-                 <text x=10 y=1 dy=1em style="font-family:$font; font-size:$font_size;">$Name</text>
+  def exportSvg(self, flags=0):
+    tmplt = '''<g  transform="translate($x, $y)" >
+                 <rect width="$width" height="$height"  $style />
+                 $txt
                </g>'''
     d = self.details.toDict()
     d.update(self.block_details.toDict())
-    return string.Template(tmplt).substitute(d, font=getConfig('font_name'),
-                                                font_size=17.0/12*getConfig('font_size'))
+    d['style'] = extractSvgStyle(self)
+    txt = self.text.exportSvg()
+    return string.Template(tmplt).substitute(d, txt=txt)
   

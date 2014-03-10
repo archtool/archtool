@@ -20,13 +20,13 @@ class ArrowTypes(Const):
   START = 'start'
   END   = 'end'
   
-
-
+  
 class StyledItem(object):
   ROLE = None
-  def __init__(self, style, role):
+  def __init__(self, style, role, apply=True):
     self.style, self.role = style, role
-    self.applyStyle()
+    if apply:
+      self.applyStyle()
   @property
   def full_role(self):
     if self.ROLE:
@@ -190,6 +190,7 @@ def createDefaultStyle(session):
       color2:#00529c;
       width:3;
       archblock-width:1;
+      archblock-offset:[10,5];
       functionpoint-end:[[0,0], [-5, 5], [0, 0], [-5, -5], [0,0]];
       arrow-functionpoint-offset:[-10,10];
       type1-archblock-color2:white;
