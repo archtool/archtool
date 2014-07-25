@@ -15,6 +15,7 @@ from model.config import currentFile
 from PyQt4 import QtGui, QtCore
 import sqlalchemy as sql
 from primitives_2d import Block, Text, Line, NO_POS, extractSvgGradients
+from connector import Connection
 from styles import Styles, Style
 
 
@@ -27,6 +28,7 @@ from styles import Styles, Style
 # TODO: Add annotations (squares regions with a comment attached).
 # TODO: Gebruik maken van de ConnectionRepresentation.
 
+# FIXME: When dropping a new block or selecting a menu item, deselect the current items.
 # FIXME: delete block in view leaves block outline on screen
 # FIXME: rename architecture block is not shown in open viewer.
 # FIXME: Zorg dat bij het aanmaken van iets nieuws, dit meteen geselecteerd is.
@@ -35,6 +37,7 @@ MIME_TYPE = 'application/x-qabstractitemmodeldatalist'
 
 BLOCK_WIDTH  = 100
 BLOCK_HEIGHT = 30
+
 
 class NoDetailsFound(Exception):
   ''' Exception that is raised when looking for a widget at a certain place 
@@ -50,46 +53,69 @@ class BlockItem(Block):
     self.details = rep_details
     self.block_details = block_details
     Block.__init__(self, rep_details, style, self.details.style_role, block_details.Name)
+    self.applyStyle()
   def setRole(self, role):
     ''' Called by the style editing mechanism when the user changes the role. 
         The role is here only the user-determined part, and does not include the
         hard-coded part from ROLE.'''
     self.details.style_role = role
     Block.setRole(self, role)
+    self.applyStyle()
 
-class FunctionPoint(Text):
-  ROLE = 'functionpoint'
-  def __init__(self, details, fp, connection, style):
-    text = '%s: %s'%(details.Order, fp.Name)
-    role = details.style_role
-    Text.__init__(self, text, style, role)
-    
-    self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
-    self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
-    self.connection = connection
+class AnnotationItem(Block):
+  ''' Representation of an annotation. '''
+  ROLE = 'annotation'
+  def __init__(self, style, details):
+    # TODO: Take into account the anchor position
     self.details = details
-    self.fp = fp
-    
-    if isinstance(self.connection, BlockItem):
-      self.arrow = None
-    else:
-      # Add the arrow.
-      length = style.getFloat('%s-arrow-%s-length'%(role, self.ROLE), 1.0)
-      self.arrow = Line(-10*length, 0, 0, 0, self, style, self.ROLE)
-      self.arrow.setPos(style.getOffset('%s-arrow-%s'%(role, self.ROLE), 
-                                        default=[-10,10]))
-    self.move()
-  def applyStyle(self):
-    Text.applyStyle(self)
-    if self.arrow:
-      self.arrow.applyStyle()
+    Block.__init__(self, details, style, details.style_role, details.Description)
+    self.applyStyle()
   def setRole(self, role):
     ''' Called by the style editing mechanism when the user changes the role. 
         The role is here only the user-determined part, and does not include the
         hard-coded part from ROLE.'''
     self.details.style_role = role
-    FunctionPoint.setRole(self, role)
+    Block.setRole(self, role)
+    self.applyStyle()
+    
+    
+class FunctionPoint(Text):
+  ROLE = 'functionpoint'
+  def __init__(self, details, fp, anchor, style):
+    text = '%s: %s'%(details.Order, fp.Name)
+    role = details.style_role
+    self.anchor = anchor
+    self.details = details
+    self.fp = fp
+    self.arrow = None
+    Text.__init__(self, text, style, role, apply=False)
+    
+    self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
+    self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+    
+    if isinstance(self.anchor, BlockItem):
+      self.arrow = None
+    else:
+      # Add the arrow.
+      length = style.getFloat('%s-arrow-%s-length'%(role, self.ROLE), 1.0)
+      self.arrow = Line(-10*length, 0, 0, 0, self, style, (role, self.ROLE))
 
+    self.applyStyle()
+
+  def applyStyle(self):
+    Text.applyStyle(self)
+    if self.arrow:
+      self.arrow.applyStyle()
+    self.updatePos()
+  def setRole(self, role):
+    ''' Called by the style editing mechanism when the user changes the role. 
+        The role is here only the user-determined part, and does not include the
+        hard-coded part from ROLE.'''
+    self.details.style_role = role
+    self.arrow.setRole(role)
+    Text.setRole(self, role)
+    self.applyStyle()
+    
   def exportSvg(self):
     tmplt = '''
                <g transform="translate($x,$y)">
@@ -99,7 +125,7 @@ class FunctionPoint(Text):
     '''
     arrow=self.arrow.exportSvg() if self.arrow else ''
     txt = Text.exportSvg(self, NO_POS)  # The text position is the position of the group.
-    d = dict(text=str(self.text()),
+    d = dict(text=str(self.text.toPlainText()),
              x=self.x(), y=self.y(),
              txt=txt,
              arrow = arrow)
@@ -107,72 +133,46 @@ class FunctionPoint(Text):
     return xml
 
   def anchorPos(self):
-    x, y = self.connection.fpPos()
+    x, y = self.anchor.fpPos()
     order = self.details.order_on_target
     x += 10*order
     y -= 20*order
     return x, y
     
-  def move(self):
+  def updatePos(self):
+    p = self.parentItem()
+    text = '%s: %s'%(self.details.Order, self.fp.Name)
+    self.setText(text)
     x, y = self.anchorPos()
     x += self.details.Xoffset
     y += self.details.Yoffset
     self.setPos(x,y)
-    text = '%s: %s'%(self.details.Order, self.fp.Name)
-    self.setText(text)
+    #print 'background rect:', p.rect(), p.pos(), self.pos()
     if self.arrow:
-      angle = -self.connection.line().angle()
+      angle = -self.anchor.line().angle()
       if self.fp.isResponse:
         angle += 180.0
       self.arrow.setRotation(angle)
-
+      self.arrow.setPos(self.style.getOffset('%s-arrow-%s'%(self.role, self.ROLE), 
+                                        default=[-10,10]))
+      
   def mouseReleaseEvent(self, event):
     Text.mouseReleaseEvent(self, event)
-    commit = False
-    xa, ya = self.anchorPos()
-    x = self.x() - xa
-    y = self.y() - ya
-    if x != self.details.Xoffset:
-      self.details.Xoffset = x
-      commit = True
-    if y != self.details.Yoffset:
-      self.details.Yoffset = y
-      commit = True
-    if commit:
-      self.scene().session.commit()
+    self.scene().session.commit()
+      
+  def mouseMoveEvent(self, event):
+    # Get the current position
+    p = self.pos()
+    Text.mouseMoveEvent(self, event)
+    
+    # If moved, make it permanent
+    if self.pos() != p:
+      np = self.pos()
+      self.details.Xoffset += np.x() - p.x()
+      self.details.Yoffset += np.y() - p.y()
 
-class Connection(Line):
-  ROLE = 'connection'
-  def __init__(self, details, start, end, style, *args, **kwds):
-    self.details = details
-    # Start and end are the BlockRepresentation details for this line.
-    self.start = start
-    self.end = end
-    line = QtCore.QLineF(start.x + start.width/2, 
-                         start.y + start.height/2,
-                         end.x + end.width/2,
-                         end.y + end.height/2)
 
-    # TODO: make use of the ConnectionRepresentation object!
-    role = self.ROLE
-    Line.__init__(self, line.x1(), line.y1(), line.x2(), line.y2(), None, style, role)
-  def applyStyle(self):
-    self.setPen(self.style.getPen(self.ROLE))
-  def setRole(self, role):
-    ''' Called by the style editing mechanism when the user changes the role. 
-        The role is here only the user-determined part, and does not include the
-        hard-coded part from ROLE.'''
-    # TODO: Use the ConnectionRepresentation!
-    #self.details.style_role = role
-    Connection.setRole(self, '')
-  def fpPos(self):
-    ''' Return the position where actions are placed.
-    '''
-    line = self.line()
-    x = (line.x1() + line.x2())/2.0
-    y = (line.y1() + line.y2())/2.0
-    return x, y
-  
+
 def getDetails(item, dont_raise=False):
   while item:
     if hasattr(item, 'details'):
@@ -193,6 +193,8 @@ class MyScene(QtGui.QGraphicsScene):
     self.drop2Details = drop2Details
     self.session = session
     self.details = details
+
+    # TODO: Remove all references to data bits except self.anchors
     self.connections = {}   # Connection.Id : Connection
     self.connection_items = {} # Connection.Id : connection item.
     self.all_details = []   # An ordered list of (fptoview, functionpoint) tuples
@@ -204,51 +206,49 @@ class MyScene(QtGui.QGraphicsScene):
     self.styles.subscribe(lambda _: self.applyStyle())
     
     # Add the existing blocks and connections
-    self.block_repr = {}    # BlockRepr.Id : BlockRepr
-    # FIXME: Replace block_details with a relationship in the model.
+    self.anchors = {}    # Anchor.Id : Item tuples
     self.block_details = {} # ArchBlock.Id : ArchBlock
     self.block_items = {}   # ArchBlock.Id : BlockItem
     q = self.session.query(model.BlockRepresentation).order_by(model.BlockRepresentation.Order)
     blocks = q.filter(model.BlockRepresentation.View == details.Id).all()
     for block in blocks:
-      self.block_repr[block.Id] = block
+      self.anchors[block.Id] = block
       self.addBlock(block, add_connections=False)
+      
+    q = self.session.query(model.Annotation).order_by(model.Annotation.Order)
+    annotations = q.filter(model.Annotation.View == details.Id).all()
+    for a in annotations:
+      self.addAnnotation(a)
     
     # Add connections that are relevant for this view.
-    hidden = self.session.query(model.HiddenConnection.Connection).\
-                 filter(model.HiddenConnection.View == self.details.Id).all()
-    q = self.session.query(model.Connection)
-    known_blocks = set([d.Block for d in self.block_repr.values()])
+    q = self.session.query(model.ConnectionRepresentation).\
+      filter(model.ConnectionRepresentation.View==details.Id)
     for connection in q:
-      # Skip connections that are hidden
-      if connection.Id in hidden:
-        continue
-      # Show connections for which start and end are drawn
-      if connection.Start in known_blocks and \
-         connection.End in known_blocks:
-        self.addConnection(connection)
+      self.addConnection(connection)
 #
     # self.fp_details is sorted by 'order'.
-    all_details = self.session.query(model.FpToView, model.FunctionPoint).\
-                     filter(model.FpToView.View==self.details.Id).\
-                     filter(model.FunctionPoint.Id == model.FpToView.FunctionPoint).\
-                     order_by(model.FpToView.Order.asc()).all()
+    all_details = self.session.query(model.FpRepresentation, model.FunctionPoint).\
+                     filter(model.FpRepresentation.View==self.details.Id).\
+                     filter(model.FunctionPoint.Id == model.FpRepresentation.FunctionPoint).\
+                     order_by(model.FpRepresentation.Order.asc()).all()
     
     self.processActions(all_details)
-    self.fpviews = {}   # model.FpToView : FunctionPoint
+    self.fpviews = {}   # model.FpRepresentation : FunctionPoint
     
     for fpview, fpdetails in all_details:        
       self.addAction(fpview, fpdetails)
       
     sql.event.listen(model.FunctionPoint, 'after_update', self.onFpUpdate)
-    sql.event.listen(model.FpToView, 'after_update', self.onFp2UseCaseUpdate)
+    sql.event.listen(model.FpRepresentation, 'after_update', self.onFp2UseCaseUpdate)
+    sql.event.listen(model.Annotation, 'after_update', self.onAnnotationUpdate)
     
     self.sortBlocks(blocks)
     
   def close(self):
     ''' Called when the TwoDView closes. '''
     sql.event.remove(model.FunctionPoint, 'after_update', self.onFpUpdate)
-    sql.event.remove(model.FpToView, 'after_update', self.onFp2UseCaseUpdate)
+    sql.event.remove(model.FpRepresentation, 'after_update', self.onFp2UseCaseUpdate)
+    sql.event.remove(model.Annotation, 'after_update', self.onAnnotationUpdate)
     
   def applyStyle(self):
     ''' Re-apply the styles to all items. '''
@@ -257,8 +257,8 @@ class MyScene(QtGui.QGraphicsScene):
         i.applyStyle()
   
   def sortFunctionPoints(self):
-    ''' Sort the details in all_details. This is a list of (FpToView, FunctionPoint) tuples.
-        Sort them by the Order element of the FpToView record.
+    ''' Sort the details in all_details. This is a list of (FpRepresentation, FunctionPoint) tuples.
+        Sort them by the Order element of the FpRepresentation record.
     '''
     self.all_details = sorted(self.all_details, key=lambda x:x[0].Order)
     self.processActions(self.all_details)
@@ -287,30 +287,24 @@ class MyScene(QtGui.QGraphicsScene):
         blocks[block] = others + 1
     
 
-  def addAction(self, fpview, fpdetails, parent_item = None):
+  def addAction(self, fpview, fpdetails, anchor_item = None):
     ''' Attach an action to the given item.
     
-        fpview: an model.FpToView instance.
-        pfdetails: the associated model.FunctionPoint instance.
+        fpview: an model.FpRepresentation instance.
+        fpdetails: the associated model.FunctionPoint instance.
+        anchor_item: A QGraphicsItem that is the parent for this fp.
 
     '''
     self.all_details.append((fpview, fpdetails))
     self.known_fps.add(fpdetails)
     self.processActions(self.all_details)
     fp = fpdetails
-    if parent_item is None:
-      if fp.Connection != None:
-        # FIXME: This does not work for multiple connections...
-        parent_items = [self.connection_items[fp.Connection]]
-      else:
-        block_reprs = [b.Id for b in self.block_repr.values() if b.Block==fp.Block]
-        parent_items = [self.block_items[rep] for rep in block_reprs]
-    else:
-      parent_items = [parent_item]
-    for parent in parent_items:
-      item = FunctionPoint(fpview, fp, parent, self.styles)
-      self.fpviews[fpview] = item
-      self.addItem(item)
+    # Find the anchor, if not already specified.
+    if anchor_item is None:
+      anchor_item = self.anchors[fpview.AnchorPoint]
+    item = FunctionPoint(fpview, fp, anchor_item, self.styles)
+    self.fpviews[fpview] = item
+    self.addItem(item)
 
   def dragEnterEvent(self, event):
     if event.mimeData().hasFormat(MIME_TYPE):
@@ -333,53 +327,42 @@ class MyScene(QtGui.QGraphicsScene):
                                               y = coods.y(),
                                               height = BLOCK_HEIGHT,
                                               width = BLOCK_WIDTH,
-                                              Order = len(self.block_repr))
+                                              Order = len(self.anchors))
       self.session.add(new_details)
       self.session.commit()
       
       self.addBlock(new_details)
     
   def addBlock(self, rep_details, add_connections=True):
-    self.block_repr[rep_details.Id] = rep_details
     coods = QtCore.QPointF(rep_details.x, rep_details.y)
-    # FIXME: use a relationship in the model for this!
-    block_details = self.session.query(model.ArchitectureBlock).\
-                          filter(model.ArchitectureBlock.Id == rep_details.Block).first()
+    block_details = rep_details.theBlock
     block = BlockItem(self.styles, rep_details, block_details)
+    self.anchors[rep_details.Id] = block
     self.addItem(block)
     block.setPos(coods)
     
     self.block_details[rep_details.Id] = block_details
     self.block_items[rep_details.Id] = block
-    
-    # TODO: Add any connections to the new block, if there are
-    if add_connections:
-      blocks_in_view = self.session.query(model.BlockRepresentation.Block).\
-                          filter(model.BlockRepresentation.View==self.details.Id)
-      blocks_in_view = [b[0] for b in blocks_in_view]
-      for con in self.session.query(model.Connection).filter(model.Connection.Start==block_details.Id).\
-                    filter(model.Connection.End.in_(blocks_in_view)):
-        self.addConnection(con)
-      for con in self.session.query(model.Connection).filter(model.Connection.End==block_details.Id).\
-                    filter(model.Connection.Start.in_(blocks_in_view)):
-        self.addConnection(con)
         
+  def addAnnotation(self, details):
+    coods = QtCore.QPointF(details.x, details.y)
+    block = AnnotationItem(self.styles, details)
+    details.item = block
+    self.addItem(block)
+    block.setPos(coods)
+    self.anchors[details.Id] = block
             
-  def addConnection(self, connection):
+  def addConnection(self, connection_repr):
     # Find BlockRepr ids for all starts and ends
-    starts = [i for i, block in self.block_details.iteritems() if block.Id==connection.Start]
-    ends   = [i for i, block in self.block_details.iteritems() if block.Id==connection.End]
-    for s_id in starts:
-      start = self.block_repr[s_id]
-      for e_id in ends:
-        end = self.block_repr[e_id]
-        item = Connection(connection, start, end, self.styles)
-        z = min(self.block_items[s_id].zValue(), self.block_items[e_id].zValue())
-        item.setZValue(z-0.1)
-        item.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
-        self.addItem(item)
-        self.connections[connection.Id] = connection
-        self.connection_items[connection.Id] = item
+    start = self.anchors[connection_repr.Start]
+    end = self.anchors[connection_repr.End]
+    item = Connection(connection_repr, start, end, self.styles)
+    item.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
+    item.applyStyle()
+    self.addItem(item)
+    self.anchors[connection_repr.Id] = item
+    self.connections[connection_repr.Id] = connection_repr
+    self.connection_items[connection_repr.Id] = item
     
   def mouseMoveEvent(self, event):
     QtGui.QGraphicsScene.mouseMoveEvent(self, event)
@@ -393,25 +376,13 @@ class MyScene(QtGui.QGraphicsScene):
     if len(items) > 0:
       # Update the details without committing the changes
       for it in items:
-        it.details.x = it.x()
-        it.details.y = it.y()
-      # Move the connections as well.
-      # For simplicity, just move all connections. If this takes too much time, 
-      # in future this can be optimized.
-      for it in self.connection_items.itervalues():
-        start, end = it.start, it.end
-        line = QtCore.QLineF(start.x + start.width/2, 
-                     start.y + start.height/2,
-                     end.x + end.width/2,
-                     end.y + end.height/2)
-        it.setLine(line)
-        z = min(self.block_items[start.Id].zValue(),
-                self.block_items[end.Id].zValue())
-        it.setZValue(z-0.1)
+        # Only update the model: the positions of the graphics item were already changed.
+        it.updatePos()
         
+      # Move function points as well.
       for d, it in self.fpviews.iteritems():
         if not it in items:
-          it.move()
+          it.updatePos()
         
         
   def onFpUpdate(self, mapper, connection, target):
@@ -420,17 +391,26 @@ class MyScene(QtGui.QGraphicsScene):
       return
     for view, fp in self.all_details:
       if fp == target:
-        self.fpviews[view].move()
+        self.fpviews[view].updatePos()
 
   def onFp2UseCaseUpdate(self, mapper, connection, target):
     # Check if the fp2uc is actually shown in this view
     if target not in self.fpviews:
       return
-    self.fpviews[target].move()
+    self.fpviews[target].updatePos()
+    
+  def onAnnotationUpdate(self, mapper, connection, target):
+    if hasattr(target, 'item'):
+      target.item.text.setText(target.Description)
 
   def exportSvg(self):
-    # Order the items in their Z-order.
-    # Export the svg items as XML nodes
+    ''' Determine the SVG representation of this view,
+        and return it as a string.
+        
+        String templates are filled-in to create the SVG code,
+        no formal XML parsing is applied.
+    '''
+    # TODO: Order the items in their Z-order.
     tmpl = '''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
     <!-- Created with Archtool -->
     <svg    xmlns:dc="http://purl.org/dc/elements/1.1/"
@@ -443,12 +423,16 @@ class MyScene(QtGui.QGraphicsScene):
       $lines
       $blocks
       $fps
+      $annotations
     </g></svg>'''
 
+    connections = [a for a in self.anchors.values() if isinstance(a, Connection)]
+    annotations = [a for a in self.anchors.values() if isinstance(a, AnnotationItem)]
     gradients = extractSvgGradients(self.styles, BlockItem.ROLE)
     blocks = '\n'.join([b.exportSvg() for b in self.block_items.values()])
     fps    = '\n'.join([fp.exportSvg() for fp in self.fpviews.values()])
-    lines  = '\n'.join([c.exportSvg() for c in self.connection_items.values()])
+    lines  = '\n'.join([c.exportSvg() for c in connections])
+    annotations = '\n'.join([a.exportSvg() for a in annotations])
     rect = self.sceneRect()
     x = -rect.x()
     y = -rect.y()
@@ -487,6 +471,7 @@ class TwoDView(QtGui.QGraphicsView):
     #a.triggered.connect(self.onAddBlock)
     # TODO: Implement copy to use case
     self.menu_noitem = mkMenu([('Nieuw Blok', self.onAddBlock),
+                               ('Nieuwe Annotatie', self.onAddAnnotation),
                                ('Copieer naar Nieuw View', self.onCopyToUseCase),
                                ('Exporteer als SVG', self.exportSvg)], self)
     self.menu_action = mkMenu([('Eerder', self.onAdvance),
@@ -509,8 +494,8 @@ class TwoDView(QtGui.QGraphicsView):
     ''' The mouse press event is intercepted in order to remember the position
     of the right-click action, when adding an object using a right-click menu.
     '''
+    print 'Mouses release at', event.pos()
     if event.button() == QtCore.Qt.RightButton:
-      self.last_rmouse_click = event.pos()
       self.contextMenuEvent(event)
     else:
       # Forward left-click mouse events.
@@ -527,7 +512,7 @@ class TwoDView(QtGui.QGraphicsView):
                   ('---', None)]
     def bind(n):
       ''' Utility: bind a menu action trigger to the right function '''
-      return lambda: self.addExistingAction(n)
+      return lambda: self.addExistingAction(n, details.Id)
     #for fp in details.FunctionPoints:
     for fp in details.FunctionPoints:
       definition.append((fp.Name, bind(fp.Id)))
@@ -538,19 +523,21 @@ class TwoDView(QtGui.QGraphicsView):
         The function checks what the mouse was pointing at when the menu
         was requested, so the right menu can be shown.
     '''
+    self.last_rmouse_click = event.pos()
     item = self.itemAt(event.pos())
     details, _ = getDetails(item, dont_raise=True)
     #print item.details, item.details.Name
     menu = None
     if item is None:
       menu = self.menu_noitem
-    elif isinstance(details, model.Connection):
+    elif isinstance(details, model.ConnectionRepresentation):
       # Create the menu for a connection
-      definition = self.menuActionDetails(details, [('Verbergen', self.onHideConnection),
+      connection = details.theConnection
+      definition = self.menuActionDetails(connection, [('Verbergen', self.onHideConnection),
                                                     ('---', None),
                                                     ('Verwijder Verbinding', self.onDeleteItem)])
       menu = mkMenu(definition, self)
-    elif isinstance(details, model.FpToView):
+    elif isinstance(details, model.FpRepresentation):
       # Use the action menu
       menu = self.menu_action
     else:
@@ -570,17 +557,36 @@ class TwoDView(QtGui.QGraphicsView):
     
   def onConnect(self):
     ''' Called when two blocks are connected '''
-    # FIXME: check if this connection should run between more blocks.
     items = self.scene.selectedItems()
     if len(items) != 2:
       return
     
     source, target = [getDetails(i)[0].Block for i in items]
-    details = model.Connection(Start=source, End=target)
-    self.session.add(details)
-    self.session.commit()
-    self.scene.addConnection(details)
-    self.scene.clearSelection()
+    # Find the connection object, or create it if it does not yet exist.
+    # This connection is between Architecture Blocks, not their representations.
+    with model.sessionScope(self.session) as session:
+      bc = model.BlockConnection
+      conns = session.query(bc).\
+                           filter(bc.Start.in_([source, target])).\
+                           filter(bc.End.in_([source, target])).all()
+      if conns:
+        connection = conns[0]
+      else:
+        connection = model.BlockConnection(Start=source, End=target)
+        session.add(connection)
+        # We need a valid primary key, so flush the session but do not commit.
+        session.flush()
+
+      # Add the representation of the connection, between two representations of blocks.
+      source, target = [getDetails(i)[0].Id for i in items]
+      details = model.ConnectionRepresentation(Connection=connection.Id,
+                                               Start=source,
+                                               End=target)
+      session.add(details)
+      # Flush the database so that all references are updated.
+      session.flush()
+      self.scene.addConnection(details)
+      self.scene.clearSelection()
 
   def onAddBlock(self, triggered):
     ''' Called to add a new block to the view. '''
@@ -596,11 +602,32 @@ class TwoDView(QtGui.QGraphicsView):
     pos = self.mapToScene(self.last_rmouse_click)
     repr_details = model.BlockRepresentation(Block=block_details.Id, View=self.details.Id, 
                                              x=pos.x(), y=pos.y(), 
-                                             Order = len(self.scene.block_repr),
+                                             Order = len(self.scene.anchors),
                                              width=BLOCK_WIDTH, height=BLOCK_HEIGHT)
     self.session.add(repr_details)
     self.session.commit()
     self.scene.addBlock(repr_details)
+    
+  def onAddAnnotation(self, triggered=False):
+    ''' Called to add a new annotation to the view. '''
+    pos = self.mapToScene(self.last_rmouse_click)
+    item = self.itemAt(self.last_rmouse_click)
+    anchor = anchor_type = None
+    x, y = self.last_rmouse_click.x(), self.last_rmouse_click.y()
+    if item:
+      anchor = item.details.Id
+      anchor_type = item.details.__name__
+      x = y = 0.0
+    details = model.Annotation(View=self.details.Id,
+                                x=x, y=y,
+                                AnchorPoint=anchor,
+                                AnchorType=anchor_type,
+                                Order = len(self.scene.anchors),
+                                width=BLOCK_WIDTH, height=BLOCK_HEIGHT)
+    self.session.add(details)
+    self.session.commit()
+    self.scene.addAnnotation(details)
+    
     
   def onDeleteItem(self):
     ''' Deletes the block located at the last known right-click
@@ -638,8 +665,8 @@ class TwoDView(QtGui.QGraphicsView):
       return
     
     # Check if there are any actions on this connection in this view
-    actions = self.session.query(model.FpToView, model.FunctionPoint.Connection).\
-                   filter(model.FpToView.View==self.details.Id).\
+    actions = self.session.query(model.FpRepresentation, model.FunctionPoint.Connection).\
+                   filter(model.FpRepresentation.View==self.details.Id).\
                    filter(model.FunctionPoint.Connection.Id==connection.Id).all()
     if len(actions) > 0:
       # Ask the user if he is sure.
@@ -671,21 +698,22 @@ class TwoDView(QtGui.QGraphicsView):
     item = self.itemAt(self.last_rmouse_click)
     details, item = getDetails(item)
     # Determine if adding an action to a block or to a connection.
-    if isinstance(details, model.Connection):
-      fp = model.FunctionPoint(Name=str(text), Connection=details.Id, Parent=None)
+    if isinstance(details, model.ConnectionRepresentation):
+      fp = model.FunctionPoint(Name=str(text), Connection=details.Connection, Parent=None)
     else:
       fp = model.FunctionPoint(Name=str(text), Block=details.Block, Parent=None)
     self.session.add(fp)
     self.session.commit()
     # Also create the link to the FP in the view.
-    self.addExistingAction(fp.Id)
+    self.addExistingAction(fp.Id, details.Id)
     
-  def addExistingAction(self, fp_id):
+  def addExistingAction(self, fp_id, anchor_id):
     ''' Show an already existing action in the current view. '''
-    order=self.session.query(sql.func.count(model.FpToView.Id)).\
-                             filter(model.FpToView.View==self.details.Id).one()[0]
+    order=self.session.query(sql.func.count(model.FpRepresentation.Id)).\
+                             filter(model.FpRepresentation.View==self.details.Id).one()[0]
     fp = self.session.query(model.FunctionPoint).filter(model.FunctionPoint.Id==fp_id).one()
-    fp2uc = model.FpToView(FunctionPoint=fp_id, View=self.details.Id, Order=order)
+    fp2uc = model.FpRepresentation(FunctionPoint=fp_id, View=self.details.Id, Order=order,
+                                   AnchorPoint=anchor_id)
     self.session.add(fp2uc)
     self.session.commit()
     _, item = getDetails(self.itemAt(self.last_rmouse_click))
@@ -716,7 +744,7 @@ class TwoDView(QtGui.QGraphicsView):
     for count, it in enumerate(items):
       it.Order = count
     self.session.commit()
-    if cls == model.FpToView:
+    if cls == model.FpRepresentation:
       self.scene.sortFunctionPoints()
     else:
       self.scene.sortBlocks(items)
@@ -727,9 +755,9 @@ class TwoDView(QtGui.QGraphicsView):
 
   def normalizeActions(self):
     ''' Cause the order field for the actions in the view to be normalised.'''
-    actions = self.session.query(model.FpToView).\
-                               filter(model.FpToView.View==self.details.Id).\
-                               order_by(model.FpToView.Order.asc()).all()
+    actions = self.session.query(model.FpRepresentation).\
+                               filter(model.FpRepresentation.View==self.details.Id).\
+                               order_by(model.FpRepresentation.Order.asc()).all()
     for count, details in enumerate(actions):
       details.Order = count
     self.session.commit()
@@ -760,7 +788,7 @@ class TwoDView(QtGui.QGraphicsView):
       details = items[0].details
       if details.__class__ == model.BlockRepresentation:
         details = self.scene.block_details[details.Id]
-      elif details.__class__ == model.FpToView:
+      elif details.__class__ == model.FpRepresentation:
         details = self.session.query(model.FunctionPoint).\
                        filter(model.FunctionPoint.Id == details.FunctionPoint).one()
       self.selectedItemChanged.emit(details)

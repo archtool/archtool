@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Created on Sep 25, 2013
 
@@ -15,20 +16,30 @@ from gui.workitem_view import WorkitemView
 from gui.styles import Styles
 from req_export import exportRequirementQuestions, exportRequirementsOverview
 from export import export, upgradeDatabase
+from export.req_document import exportRequirementsDocument
 import sys
 import model
 from model import config
 import os.path
+import logging
 
 
 # FIXME: Bij het openen van een file of het maken van een nieuwe, de recent files aanpassen.
 
+# TODO: Annotaties kunnen invoegen in een Use Case.
+# TODO: Een view kunnen representeren als een Sequence Diagram ipv Collaboration Diagram.
+# TODO: Een Use Case droppen in een andere Use Case, dit wordt dan een blokje.
+# TODO: Dubbel-klik op een Use Case blokje opent deze use case.
 # TODO: Een verbinding tussen blokken kunnen verbergen, bv. passtimehandlr->displaycontentgen in BusDetectieOpEntryLus
 # TODO: Navigeren van acties naar views waarin deze voorkomt
 # TODO: De richting van een verbinding tussen blokken kunnen zien en omdraaien
 # TODO: De schatting van een (groep) Use Cases opvragen.
-# TODO: Een Use Case exporteren als SVG plaatje.
-
+# TODO: Versies toevoegen, met een timestamp voor elke substantiele wijziging (niet alleen visuele wijzigingen).
+# TODO: Diffs kunnen laten zien, en een document met alleen de wijzigingen kunnen genereren, of de
+#       wijzigingen gehighlight (vanaf een bepaalde datum / versie)
+# TODO: Grote workitems moeten kunnen worden toebedeeld aan meerdere mensen, en hun time-remaining schattingen samengevoegd.
+# TODO: Export SRS documents as Word format.
+# TODO: Edit the configuration...
 
 SQLITE_URL_PREFIX = 'sqlite:///'
 
@@ -56,7 +67,7 @@ class ArchitectureTool(MainWindowForm[1]):
                          (self.ui.actionExport_as_CSV, self.exportCsv),
                          (self.ui.actionNew_from_CSV, self.newFromCsv),
                          (self.ui.actionWork_Items, self.onWorkItemView),
-                         #(self.ui.actionRequirements_Document)
+                         (self.ui.actionRequirements_Document, self.onRequirementsDocument)
                          ]:
       action.triggered.connect(func)
 
@@ -65,19 +76,23 @@ class ArchitectureTool(MainWindowForm[1]):
     for f in recent:
       a = QtGui.QAction(os.path.basename(f), self)
       a.triggered.connect(partial(self.open, url=f))
+      # TODO: make this a tool tip, not a status tip.
+      a.setStatusTip(f)
       self.ui.menuRecent_Files.addAction(a)
 
     # Open the most recent file
     if len(recent) > 0:
       self.open(url=recent[0])
       
-  def onNew(self):
-    fname = str(QtGui.QFileDialog.getSaveFileName(self, "Open an architecture model", 
+  def onNew(self, fname=None):
+    if not fname:
+      fname = str(QtGui.QFileDialog.getSaveFileName(self, "Open an architecture model",
                                                   '.', "*.db"))
     if fname == '':
       return
     
-    self.centralwidget.clean()
+    if self.centralwidget:
+      self.centralwidget.clean()
     self.open(url=SQLITE_URL_PREFIX+fname, new=True)
     # Write the version number to the database
     self.session.add(model.DbaseVersion())
@@ -126,6 +141,7 @@ class ArchitectureTool(MainWindowForm[1]):
         # User wants to convert the model.
         upgradeDatabase(url)
         self.open(url=url)
+        return
     
     Styles.load(self.session)
     self.centralwidget = ArchitectureView(self)
@@ -189,7 +205,30 @@ class ArchitectureTool(MainWindowForm[1]):
     importCsv(csvname, fname)
     # Open the database
     self.open(url=SQLITE_URL_PREFIX+fname)
+    
+  def onRequirementsDocument(self):
+    ''' Called when the user wants to generate a requirements document. 
+        Requirements documents are generated from one top element, and include
+        all its child elements.
+    '''
+    # Find the possible top requirements for the document, and let the user choose one.
+    tops = self.session.query(model.Requirement.Name).filter(model.Requirement.Parent==None).all()
+    tops = [t[0] for t in tops]
+    top_item, ok = QtGui.QInputDialog.getItem(self, "Requirements Document", 
+              "Vanaf welk requirement wilt u het document genereren?", tops, editable=False)
+    if ok and str(top_item) != '':
+      top_item = str(top_item)
+      exportRequirementsDocument(self.session, top_item)
 
+
+  def customEvent(self, ev):
+    ''' Custom event handler.
+        Custom events are expected to follow the command pattern.
+    '''
+    try:
+      ev.execute(self)
+    except:
+      logging.exception('Exception while handling custom event.')
 
 def run():
   ''' Start the GUI.

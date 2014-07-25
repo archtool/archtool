@@ -1,0 +1,73 @@
+<svg><g transform="translate(1580.5, 675.5)">
+    <line x1="-1193.0" y1="-337.0" x2="-1192.5" y2="-492.0" stroke="black" />
+<line x1="-861.0" y1="-660.0" x2="-1192.5" y2="-492.0" stroke="black" />
+<line x1="-1519.0" y1="-501.5" x2="-1383.5" y2="-636.0" stroke="black" />
+<line x1="-1192.5" y1="-492.0" x2="-1383.5" y2="-636.0" stroke="black" />
+<line x1="-1192.5" y1="-492.0" x2="-876.5" y2="-491.0" stroke="black" />
+    <g  transform="translate(-1466.0, -652.0)">
+                 <rect width="165.0" height="32.0" fill="white" stroke="black" />
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">Gmail POP3 server</text>
+               </g>
+<g  transform="translate(-1580.0, -517.0)">
+                 <rect width="122.0" height="31.0" fill="white" stroke="black" />
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">Amber Alert</text>
+               </g>
+<g  transform="translate(-1286.0, -508.0)">
+                 <rect width="187.0" height="32.0" fill="white" stroke="black" />
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">Amber Alert Receiver</text>
+               </g>
+<g  transform="translate(-933.0, -506.0)">
+                 <rect width="113.0" height="30.0" fill="white" stroke="black" />
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">KvReceiver</text>
+               </g>
+<g  transform="translate(-1243.0, -352.0)">
+                 <rect width="100.0" height="30.0" fill="white" stroke="black" />
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">Config</text>
+               </g>
+<g  transform="translate(-911.0, -675.0)">
+                 <rect width="100.0" height="30.0" fill="white" stroke="black" />
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">Logger</text>
+               </g>
+    
+               <g transform="translate(-1288.0,-567.0)">
+                 <line x1="-10.0" y1="0.0" x2="0.0" y2="0.0" style="stroke:#00529c;stroke-width:3;fill:#00529c;" /><g transform="translate(0.0,0.0) rotate(0.0)"><polyline points="0,0 -5,5 0,0 -5,-5 0,0" stroke="#00529c"/></g>
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">1: Retrieve Alerts</text>
+               </g>
+    
+
+               <g transform="translate(-1325.0,-415.0)">
+                 
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">3: Map Alert Regio To Timingpoints</text>
+               </g>
+    
+
+               <g transform="translate(-1168.75,-377.5)">
+                 <line x1="-10.0" y1="0.0" x2="0.0" y2="0.0" style="stroke:#00529c;stroke-width:3;fill:#00529c;" /><g transform="translate(0.0,0.0) rotate(0.0)"><polyline points="0,0 -5,5 0,0 -5,-5 0,0" stroke="#00529c"/></g>
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">4: Get Validity Period</text>
+               </g>
+    
+
+               <g transform="translate(-1443.25,-533.75)">
+                 <line x1="-10.0" y1="0.0" x2="0.0" y2="0.0" style="stroke:#00529c;stroke-width:3;fill:#00529c;" /><g transform="translate(0.0,0.0) rotate(0.0)"><polyline points="0,0 -5,5 0,0 -5,-5 0,0" stroke="#00529c"/></g>
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">0: Sends Alert</text>
+               </g>
+    
+
+               <g transform="translate(-1034.5,-464.5)">
+                 <line x1="-10.0" y1="0.0" x2="0.0" y2="0.0" style="stroke:#00529c;stroke-width:3;fill:#00529c;" /><g transform="translate(0.0,0.0) rotate(0.0)"><polyline points="0,0 -5,5 0,0 -5,-5 0,0" stroke="#00529c"/></g>
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">5: Send GMs</text>
+               </g>
+    
+
+               <g transform="translate(-1013.75,-550.0)">
+                 <line x1="-10.0" y1="0.0" x2="0.0" y2="0.0" style="stroke:#00529c;stroke-width:3;fill:#00529c;" /><g transform="translate(0.0,0.0) rotate(0.0)"><polyline points="0,0 -5,5 0,0 -5,-5 0,0" stroke="#00529c"/></g>
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">6: Log alert details</text>
+               </g>
+    
+
+               <g transform="translate(-1306.0,-444.0)">
+                 
+                 <text x="10" y="1" dy="1em" style="font-size:12.0pt;font-family:arial;">2: Convert to KV8GeneralMessage</text>
+               </g>
+    
+    </g></svg>

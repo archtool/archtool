@@ -7,7 +7,6 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 import re
-import sys
 from urlparse import urlparse
 from contextlib import contextmanager
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
@@ -23,13 +22,7 @@ from datetime import datetime
 from collections import OrderedDict
 import export
 
-VERSION = 7
-
-
-# Determine which encoding to use when interacting with files
-# The database stores unicode, and unicode is used inside the program by Python
-ENCODING = 'cp1252' if 'win' in sys.platform else 'utf-8'
-
+VERSION = 5
 
 
 # TODO: Implement an undo method
@@ -132,11 +125,6 @@ class MyBase(object):
   def create(cls, engine):
     ''' Create a table in a database '''
     cls.__table__.create(engine) #pylint:disable=E1101
-    
-  @classmethod
-  def drop(cls, engine):
-    ''' delete (drop) a table from the database '''
-    cls.__table__.drop(engine)
 
   @classmethod
   def getTables(cls):
@@ -156,11 +144,6 @@ class MyBase(object):
   
   @classmethod
   def editableColumnDetails(cls):
-    ''' Return the columns that can be edited manually by users.
-    
-        The standard implementation returns all columns except primary keys
-        and the 'ItemType' and 'AnchorType' columns.
-    '''
     cols = cls.getColumns().values()
     names = []
     columns = []
@@ -169,7 +152,7 @@ class MyBase(object):
         continue
       if len(c.foreign_keys) > 0:
         continue
-      if c.name in ['ItemType', 'AnchorType']:
+      if c.name == 'ItemType':
         continue
       names.append(c.name)
       columns.append(c)
@@ -337,9 +320,6 @@ class DbaseVersion(Base):   #pylint:disable=W0232
   ''' Stores the version number of the database. '''
   Version = Column(Integer, default=VERSION)
 
-
-###############################################################################
-## Structural model
 class ArchitectureBlock(Base):   #pylint:disable=W0232
   ''' A building block of the architecture.
   
@@ -353,7 +333,7 @@ class ArchitectureBlock(Base):   #pylint:disable=W0232
   Representations = relationship("BlockRepresentation", backref='block_obj',
                                  passive_deletes=True)
 
-class BlockConnection(Base):   #pylint:disable=W0232
+class Connection(Base):   #pylint:disable=W0232
   ''' The Architecture Blocks are inter-connected.
   
   The connections are directional so the direction of FP's can be
@@ -367,14 +347,14 @@ class BlockConnection(Base):   #pylint:disable=W0232
   FunctionPoints = relationship("FunctionPoint", passive_deletes=True)
 
 
+
 # Define an n-to-m mapper class between planeable items
 planeablexref = Table('planeablexref', Base.metadata,
   Column('A', Integer, ForeignKey('planeableitem.Id', ondelete='CASCADE')),
   Column('B', Integer, ForeignKey('planeableitem.Id', ondelete='CASCADE')))
 
 
-###############################################################################
-## Behavioural model, based on 'planable items' (requirements, usecases, etc).
+
 class PlaneableItem(Base):   #pylint:disable=W0232
   ''' Base table for anything that can be planned, such as requirements, 
       function points and projects.
@@ -451,6 +431,124 @@ class PlaneableItem(Base):   #pylint:disable=W0232
     parents.reverse()
     return parents
     
+
+
+class FunctionPoint(PlaneableItem):   #pylint:disable=W0232
+  ''' A Function Point represents a bit of communication between parts of the architecture.
+  
+  These communications can be counted to get a measurement of the amount of work involved in
+  creating the system.
+  
+  Sometimes, a significant of 'internal' processing is required before a message can be sent.
+  This work can be represented by function points that are inside a block.
+  '''
+  short_type = 'fp'
+
+  # Override the Id inherited from Base
+  Id = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
+  # FPs are linked to a connection.
+  Connection = Column(Integer, ForeignKey('connection.Id', ondelete='CASCADE'))
+  # Some FPs are linked to a block, not to a connection. These are 'internal' fps.
+  Block = Column(Integer, ForeignKey('architectureblock.Id', ondelete='CASCADE'))
+  # Complex FP's can be split into smaller ones. The complex ones should not be counted!
+  # This flag is true if the message goes against the connection direction
+  isResponse = Column(Boolean)
+#  Representations = relationship("fptousecase",
+#                                 backref=backref("functionpoint", cascade="delete"))
+  __mapper_args__ = {
+      'polymorphic_identity':'functionpoint',
+      #'inherit_condition': (Id == PlaneableItem.Id)
+  }
+
+class Style(Base):
+  ''' Stores styling details in a semicolon-separated string.
+      Style items include:
+        background: the standard QT style details.
+        pen:        the standard QT style details.
+        start_arraw: the polygon drawn at the start of a line.
+        end_arrow:   the polygon drawn at the end of a line.
+        font:        standard QT font details.
+  '''
+  Name    = Column(String)
+  Details = Column(Text)
+
+
+class View(PlaneableItem):   #pylint:disable=W0232
+  ''' A 'view' on the architecture, showing certain blocks and interconnection.
+  A view combines static elements (blocks) and dynamic elements (function points / actions).
+  Due to the dynamic elements, a view can be planned for implementation.
+  '''
+  short_type = 'view'
+
+  # Override the Id inherited from Base
+  Id = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
+  Refinement = Column(Integer, ForeignKey('functionpoint.Id', ondelete='CASCADE'), nullable=True)
+  style      = Column(Integer, ForeignKey('style.Id'), nullable=True)
+  __mapper_args__ = {
+      'polymorphic_identity':'view'
+  }
+
+
+class BlockRepresentation(Base):   #pylint:disable=W0232
+  ''' A Architecture Block can be seen on many views.
+  '''
+  Block = Column(Integer, ForeignKey('architectureblock.Id', ondelete='CASCADE'))
+  View = Column(Integer, ForeignKey('view.Id', ondelete='CASCADE'))
+  x = Column(Float)
+  y = Column(Float)  
+  height = Column(Float)
+  width = Column(Float)
+  Order = Column(Integer)
+  Font  = Column(String)
+  IsMultiple = Column(Boolean)
+  style_role = Column(String)
+
+
+class ConnectionRepresentation(Base):
+  ''' A connection has many view details that can be set '''
+  Connection = Column(Integer, ForeignKey('connection.Id', ondelete='CASCADE'), nullable=False)
+  style_role = Column(String)
+  
+  
+class FpToView(Base):   #pylint:disable=W0232
+  ''' Mapper class that links function points to use cases.
+  
+  In each use case, the FPs are ordered. Thus these use cases are closely linked
+  to test cases describing cause and effect.
+  
+  The co-ordinates are an offset from where they would normally be plotted.
+  '''
+  View = Column(Integer, ForeignKey('view.Id', ondelete='CASCADE'))
+  FunctionPoint = Column(Integer, ForeignKey('functionpoint.Id', ondelete='CASCADE'))
+  Order = Column(Integer)
+  Xoffset = Column(Float, default=0.0)
+  Yoffset = Column(Float, default=0.0)
+  style_role = Column(String)
+
+
+class HiddenConnection(Base):   #pylint:disable=W0232
+  ''' In some views, not all connections for the blocks in the drawing are wanted.
+      Allow connections to be hidden.
+  '''
+  View = Column(Integer, ForeignKey('view.Id', ondelete='CASCADE'))
+  Connection = Column(Integer, ForeignKey('connection.Id', ondelete='CASCADE'))
+  
+
+class Requirement(PlaneableItem):   #pylint:disable=W0232
+  ''' Requirements management is incorporated.
+  Requirements, unlike function points, are not linked to the architecture.
+  '''
+  short_type = 'req'
+  
+  # Override the Id inherited from Base
+  Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
+  Type = Column(Enum(*REQ_TYPES.values()), default=REQ_TYPES.FUNCTIONAL)
+  
+  __mapper_args__ = {
+      'polymorphic_identity':'requirement'
+  }
+
+
 class PlaneableStatus(Base):
   ''' Status for a planeable item. '''
   Planeable     = Column(Integer, ForeignKey('planeableitem.Id', ondelete='CASCADE'), default=None)
@@ -478,176 +576,8 @@ class PlaneableStatus(Base):
     return session.query(PlaneableStatus, func.max(PlaneableStatus.TimeStamp)).\
                    group_by(PlaneableStatus.Planeable)
     
+      
 
-#######################################
-# Specific planeable items.
-class FunctionPoint(PlaneableItem):   #pylint:disable=W0232
-  ''' A Function Point represents a bit of communication between parts of the architecture.
-  
-  These communications can be counted to get a measurement of the amount of work involved in
-  creating the system.
-  
-  Sometimes, a significant of 'internal' processing is required before a message can be sent.
-  This work can be represented by function points that are inside a block.
-  '''
-  short_type = 'fp'
-
-  # Override the Id inherited from Base
-  Id = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
-  # FPs are linked to a connection.
-  Connection = Column(Integer, ForeignKey('blockconnection.Id', ondelete='CASCADE'))
-  # Some FPs are linked to a block, not to a connection. These are 'internal' fps.
-  Block = Column(Integer, ForeignKey('architectureblock.Id', ondelete='CASCADE'))
-  # Complex FP's can be split into smaller ones. The complex ones should not be counted!
-  # This flag is true if the message goes against the connection direction
-  isResponse = Column(Boolean)
-#  Representations = relationship("fptousecase",
-#                                 backref=backref("functionpoint", cascade="delete"))
-  __mapper_args__ = {
-      'polymorphic_identity':'functionpoint',
-      #'inherit_condition': (Id == PlaneableItem.Id)
-  }
-
-class Requirement(PlaneableItem):   #pylint:disable=W0232
-  ''' Requirements management is incorporated.
-  Requirements, unlike function points, are not linked to the architecture.
-  '''
-  short_type = 'req'
-  
-  # Override the Id inherited from Base
-  Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
-  Type = Column(Enum(*REQ_TYPES.values()), default=REQ_TYPES.FUNCTIONAL)
-  
-  __mapper_args__ = {
-      'polymorphic_identity':'requirement'
-  }
-
-
-class View(PlaneableItem):   #pylint:disable=W0232
-  ''' A 'view' on the architecture, showing certain blocks and interconnection.
-  A view combines static elements (blocks) and dynamic elements (function points / actions).
-  Due to the functional elements, a view can be planned for implementation.
-  '''
-  short_type = 'view'
-
-  # Override the Id inherited from Base
-  Id = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
-  Refinement = Column(Integer, ForeignKey('functionpoint.Id', ondelete='CASCADE'), nullable=True)
-  style      = Column(Integer, ForeignKey('style.Id'), nullable=True)
-  __mapper_args__ = {
-      'polymorphic_identity':'view'
-  }
-
-
-###############################################################################
-## Graphical Representation
-class Style(Base):
-  ''' Stores styling details in a semicolon-separated string.
-      Style items include:
-        background: the standard QT style details.
-        pen:        the standard QT style details.
-        start_arrow: the polygon drawn at the start of a line.
-        end_arrow:   the polygon drawn at the end of a line.
-        font:        standard QT font details.
-  '''
-  Name    = Column(String)
-  Details = Column(Text)
-
-
-class Anchor(Base):   #pylint:disable=W0232
-  ''' Base table for anything that can be planned, such as requirements, 
-      function points and projects.
-  '''
-  View       = Column(Integer, ForeignKey('view.Id', ondelete='CASCADE'))
-  style_role = Column(String)
-  Order      = Column(Integer)
-  AnchorType = Column(String(50))
-
-  __mapper_args__ = {
-      'polymorphic_identity':'anchor',
-      'polymorphic_on':AnchorType
-  }
-  
-  # TODO: Add the function to get the anchor location here.
-
-
-class BlockRepresentation(Anchor):   #pylint:disable=W0232
-  ''' A Architecture Block can be seen on many views.
-  '''
-  # Override the Id inherited from Base
-  Id = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), primary_key=True)
-  Block  = Column(Integer, ForeignKey('architectureblock.Id', ondelete='CASCADE'))
-  x      = Column(Float)
-  y      = Column(Float)  
-  height = Column(Float)
-  width  = Column(Float)
-  IsMultiple = Column(Boolean)
-
-  theBlock = relationship(ArchitectureBlock)
-  
-  __mapper_args__ = {
-      'polymorphic_identity':'blockrepresentation',
-  }
-
-
-class ConnectionRepresentation(Anchor):
-  ''' A connection has many view details that can be set '''
-  # Override the Id inherited from Base
-  Id = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), primary_key=True)
-  Connection = Column(Integer, ForeignKey('blockconnection.Id', ondelete='CASCADE'), nullable=False)
-  Start      = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
-  End        = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
-  theConnection = relationship(BlockConnection)
-  
-  __mapper_args__ = {
-      'polymorphic_identity':'connectionrepresentation',
-      'inherit_condition': (Id == Anchor.Id)
-  }
-
-  
-class FpRepresentation(Anchor):   #pylint:disable=W0232
-  ''' Mapper class that links function points to use cases.
-  
-  In each use case, the FPs are ordered. Thus these use cases are closely linked
-  to test cases describing cause and effect.
-  
-  The co-ordinates are an offset from where they would normally be plotted.
-  '''
-  # Override the Id inherited from Base
-  Id = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), primary_key=True)
-  FunctionPoint = Column(Integer, ForeignKey(FunctionPoint.Id, ondelete='CASCADE'))
-  AnchorPoint   = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
-  Xoffset = Column(Float, default=0.0)
-  Yoffset = Column(Float, default=0.0)
-  
-  __mapper_args__ = {
-      'polymorphic_identity':'fprepresentation',
-      'inherit_condition': (Id == Anchor.Id)
-  }
-
-
-class Annotation(Anchor):
-  ''' An annotation is a comment or description that can be added to a View. '''
-  # Override the Id inherited from Base
-  Id = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), primary_key=True)
-  AnchorPoint = Column(Integer,  ForeignKey(Anchor.Id, ondelete='CASCADE'),
-                       nullable=True)
-  x           = Column(Float) # Relative to anchor, if any
-  y           = Column(Float) # Relative to anchor, if any  
-  height      = Column(Float)
-  width       = Column(Float)
-  Description = Column(Text)
-  
-  __mapper_args__ = {
-      'polymorphic_identity':'annotation',
-      'inherit_condition': (Id == Anchor.Id)
-  }
-
-
-  @classmethod
-  def editableColumnDetails(cls):
-    return ['Description'], [cls.Description]
-  
 
 ###############################################################################
 ## Project Planning
@@ -679,6 +609,25 @@ class PlannedEffort(Base):   #pylint:disable=W0232
   Week    = Column(WorkingWeek)  # If null: default effort for worker on project
   Hours   = Column(Float)
 
+
+###############################################################################
+## Annotations
+class Annotation(Base):
+  ''' An annotation is a comment or description that can be added to a View. '''
+  View        = Column(Integer, ForeignKey('view.Id', ondelete='CASCADE'))
+  AnchorId    = Column(Integer, nullable=True)
+  AnchorType  = Column(String, nullable=True)
+  x           = Column(Float) # Relative to anchor, if any
+  y           = Column(Float) # Relative to anchor, if any  
+  height      = Column(Float)
+  width       = Column(Float)
+  Order       = Column(Integer)
+  style_role  = Column(String)
+  Description = Column(Text)
+  
+  @classmethod
+  def editableColumnDetails(cls):
+    return ['Description'], [cls.Description]
 
 
 ###############################################################################
@@ -716,7 +665,7 @@ def fnameFromUrl(url):
   parts = urlparse(url)
   if parts.scheme != 'sqlite':
     # This only works for sqlite, file-based databases.
-    raise RuntimeError('Only SQLITE database supported for upgrade')
+    return None
   return parts.path[1:]
   
 

@@ -7,7 +7,6 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 
-from functools import partial
 from PyQt4 import QtCore, QtGui
 from design import ArchitectureViewForm, ProjectViewForm
 import model
@@ -15,7 +14,8 @@ from util import mkMenu
 from view_2d import TwoDView, MIME_TYPE
 from details_editor import EffortOverview, WorkerOverview, StyleEditor
 from req_export import exportRequirementQuestions, exportRequirementsOverview
-from viewer_base import ViewerWithTreeBase, makeModelItemTree
+from viewer_base import ViewerWithTreeBase
+import sqlalchemy
 from sqlalchemy import event
 import logging
 
@@ -35,7 +35,7 @@ class PlanningView(ViewerWithTreeBase):
     tree_models = {self.ui.treeProjects:model.Project}
     self.tree_models = tree_models
     for widget, model_class in tree_models.iteritems():
-      makeModelItemTree(widget, model_class, self)
+      widget.setModelClass(model_class, self)
       widget.itemClicked.connect(self.onTreeItemClicked)
       
     # Add a context menu to the workers viewer
@@ -56,8 +56,8 @@ class PlanningView(ViewerWithTreeBase):
     ViewerWithTreeBase.open(self, session)
     
     # Populate the workers list.
-    all = self.session.query(model.Worker).all()
-    for details in all:
+    workers = self.session.query(model.Worker).all()
+    for details in workers:
       item = QtGui.QListWidgetItem(details.Name, self.ui.lstWorkers)
       item.details = details
       
@@ -91,7 +91,7 @@ class PlanningView(ViewerWithTreeBase):
     
     worker = model.Worker(Name=str(text))
     with model.sessionScope(self.session) as session:
-      self.session.add(worker)
+      session.add(worker)
 
     item = QtGui.QListWidgetItem(worker.Name, self.ui.lstWorkers)
     item.details = worker
@@ -103,7 +103,7 @@ class PlanningView(ViewerWithTreeBase):
     
     with model.sessionScope(self.session) as session:
       for item in selection:
-        self.session.delete(item.details)
+        session.delete(item.details)
     for item in selection:
       index = self.ui.lstWorkers.row(item)
       _ = self.ui.lstWorkers.takeItem(index)
@@ -114,7 +114,6 @@ class PlanningView(ViewerWithTreeBase):
 class ArchitectureView(ViewerWithTreeBase):
   ''' Viewer showing requirements and Use Cases.
   '''
-  REGTBL_COLUMNS = ['Name', 'Priority', 'Status']
   DoubleClickItem = QtCore.pyqtSignal(object)
 
   def __init__(self, parent):
@@ -127,16 +126,13 @@ class ArchitectureView(ViewerWithTreeBase):
     self.tree_models = tree_models
 
     for widget, model_class in tree_models.iteritems():
-      makeModelItemTree(widget, model_class, self)
+      widget.setModelClass(model_class, self)
       widget.itemClicked.connect(self.onTreeItemClicked)
     self.ui.treeUseCases.itemDoubleClicked.connect(self.onView)
             
     self.ui.tabGraphicViews.tabCloseRequested.connect(self.onTabCloseRequested)
     
-    self.fillFilterBoxes()
-    
-    self.ui.tblRequirements.cellClicked.connect(self.onCellClicked)
-    self.ui.btnShowStyles.stateChanged.connect(self.onShowStyles)
+    self.ui.btnShowStyles.clicked.connect(self.onShowStyles)
     self.stateWindow = StyleEditor()
     self.stateWindow.hide()
     
@@ -152,8 +148,12 @@ class ArchitectureView(ViewerWithTreeBase):
     ''' Overrides the QWidget.close. '''
     # Unsubscribe to database events.
     for cls in [model.ArchitectureBlock, model.View, model.Requirement]:
-      event.remove(cls, 'after_update', self.onDetailUpdate)
-      event.remove(cls, 'after_insert', self.onDetailInsert)
+      try:
+        event.remove(cls, 'after_update', self.onDetailUpdate)
+        event.remove(cls, 'after_insert', self.onDetailInsert)
+      except sqlalchemy.exc.InvalidRequestError:
+        # No event handlers were found: ignore.
+        pass
       
     ViewerWithTreeBase.close(self)
     
@@ -165,7 +165,7 @@ class ArchitectureView(ViewerWithTreeBase):
     '''
     # Clean up all tree widgets
     for widget in [self.ui.treeBlocks, self.ui.treeUseCases, 
-                   self.ui.treeRequirements, self.ui.tblRequirements]:
+                   self.ui.treeRequirements]:
       widget.clear()
       
     # Close all views in the tab window
@@ -175,10 +175,8 @@ class ArchitectureView(ViewerWithTreeBase):
     # Clean up the internal object caches
     self.detail_items = {self.ui.treeBlocks:{},
                          self.ui.treeUseCases:{},
-                         self.ui.treeRequirements:{},
-                         self.ui.tblRequirements:{}} # ID, QTreeWidgetItem tuples
+                         self.ui.treeRequirements:{}} # ID, QTreeWidgetItem tuples
     
-    self.tbl_requirements = {} # tbl item : requirement details.
     self.closeDetailsViewer()
 
 
@@ -188,15 +186,12 @@ class ArchitectureView(ViewerWithTreeBase):
     
     # Populate the requirements table
     if False:
-      all = self.session.query(model.Requirement).all()
-      for req in all:
+      requirements = self.session.query(model.Requirement).all()
+      for req in requirements:
         self.addTableElement(req)
         
-  def onShowStyles(self, state):      
-    if not state:
-      self.stateWindow.hide()
-    else:
-      self.stateWindow.show()
+  def onShowStyles(self):      
+    self.stateWindow.show()
 
   def onItemChanged(self, item, column):
     new_name = str(item.text(0))
@@ -240,82 +235,6 @@ class ArchitectureView(ViewerWithTreeBase):
     widget = self.ui.tabGraphicViews.widget(index)
     self.ui.tabGraphicViews.removeTab(index)
     widget.close()
-    
-  def fillFilterBoxes(self):
-    ''' Fill the boxes that are used to determine a filter with the items
-    that can be filtered on: the different states and the different priorities.
-    '''
-    self.req_stat_filters = []
-    self.req_prio_filters = []
-    for box, options, l in [
-              (self.ui.grpReqStatFilter, model.REQUIREMENTS_STATES, 
-               self.req_stat_filters),
-              (self.ui.grpReqPrioFilter, model.PRIORITIES, 
-               self.req_prio_filters)]:
-      layout = box.layout()
-      for status in options:
-        w = QtGui.QCheckBox(box)
-        w.setChecked(False)
-        w.setText(status)
-        layout.addWidget(w)
-        w.stateChanged.connect(self.onFilterRequirements)
-        l.append(w)
-        
-        
-    lbls = model.Requirement.getFields() + ['Status']
-    lbls.remove('Description')
-    lbls.remove('Id')
-    self.ui.tblRequirements.setHorizontalHeaderLabels(self.REGTBL_COLUMNS)
-    
-  def onFilterRequirements(self, value):
-    prios  = [s for s, w in zip(model.PRIORITIES, self.req_prio_filters) if w.isChecked()]
-    states = [s for s, w in zip(model.REQUIREMENTS_STATES, self.req_stat_filters) if w.isChecked()]
-    prios = set(prios)
-    states = set(states)
-    self.filterRequirementsTree(prios, states)
-    self.filterRequirementsTable(prios, states)
-    
-  def filterRequirementsTable(self, prios, states):
-    # Clear the table and build it anew
-    self.ui.tblRequirements.clearContents()
-    requirements = []
-    for requirement in self.session.query(model.Requirement):
-      # Apply the filter
-      if requirement.Priority not in prios:
-        continue
-      if len(requirement.StateChanges) == 0:
-        if model.REQUIREMENTS_STATES[0] not in states:
-          continue
-      elif requirement.StateChanges[0].Status not in states:
-        continue
-      # This requirement passes the filter: add it to the table.
-      requirements.append(requirement)
-      
-    # Set the dimensions of the table
-    self.ui.tblRequirements.setRowCount(len(requirements))
-    # Fill the table
-    for row, req in enumerate(requirements):
-      self.ui.tblRequirements.setItem(row, 0, QtGui.QTableWidgetItem(req.Name))
-      if req.Description:
-        self.ui.tblRequirements.setItem(row, 1, QtGui.QTableWidgetItem(req.Description))
-      self.ui.tblRequirements.setItem(row, 2, QtGui.QTableWidgetItem(req.Priority))
-      if len(req.StateChanges) > 0:
-        state = req.StateChanges[0]
-        self.ui.tblRequirements.setItem(row, 3, QtGui.QTableWidgetItem(state.Status))
-        if state.TimeRemaining:
-          self.ui.tblRequirements.setItem(row, 4, QtGui.QTableWidgetItem(str(state.TimeRemaining)))
-        else:
-          self.ui.tblRequirements.setItem(row, 4, QtGui.QTableWidgetItem('-'))
-      else:
-        self.ui.tblRequirements.setItem(row, 3, QtGui.QTableWidgetItem(model.REQUIREMENTS_STATES[0]))
-        self.ui.tblRequirements.setItem(row, 4, QtGui.QTableWidgetItem('-'))
-      self.tbl_requirements[self.ui.tblRequirements.item(row, 0)] = req
-      
-  def onCellClicked(self, row, column):
-    item = self.ui.tblRequirements.item(row, 0)
-    requirement = self.tbl_requirements[item]
-    if requirement:
-      self.onItemSelectionChanged(requirement)
     
   def filterRequirementsTree(self, prios, states):
     for item in self.detail_items[self.ui.treeRequirements].values():
@@ -400,7 +319,7 @@ class ArchitectureView(ViewerWithTreeBase):
     '''
     widget = self.getTreeWidget(target)
     if widget is None:
-      loggin.error('onDetailUpdate called for wrong target %r'%target)
+      logging.error('onDetailUpdate called for wrong target %r'%target)
       return
     
     item = self.detail_items[widget].get(target.Id, None)

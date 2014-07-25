@@ -2,7 +2,12 @@
 Created on Feb 15, 2014
 
 @author: EHWAAL
+
+Copyright (C) 2014 Evert van de Waal
+This program is released under the conditions of the GNU General Public License.
 '''
+
+# TODO: Font names containing spaces are not handled properly.
 
 
 import re
@@ -10,6 +15,7 @@ import model
 from util import Const
 from PyQt4 import QtGui, QtCore
 from json import loads
+import logging
 
 DEFAULT_COLOR      = 'darkslateblue'
 DEFAULT_BACKGROUND = 'white'
@@ -20,18 +26,72 @@ class ArrowTypes(Const):
   START = 'start'
   END   = 'end'
   
-  
+
+class StyleTypes(Const):
+  BOOL      = 1
+  COLOR     = 2
+  LINESTYLE = 3
+  ARROW     = 4
+  HALIGN    = 5
+  VALIGN    = 6
+  FLOAT     = 7
+  FONT      = 8
+  XYCOOD    = 9
+  CONNECTOR = 10
+
+
+class ConnectorTypes(Const):
+  DIRECT  = 1
+  SQUARED = 2
+
+
+KNOWN_STYLEITEMS = {'halign'          :StyleTypes.HALIGN,
+                    'valign'          :StyleTypes.VALIGN,
+                    'font'            :StyleTypes.FONT,
+                    'color1'          :StyleTypes.COLOR,
+                    'color2'          :StyleTypes.COLOR,
+                    'background-color':StyleTypes.COLOR,
+                    'color'           :StyleTypes.COLOR,
+                    'width'           :StyleTypes.FLOAT,
+                    'line'            :StyleTypes.LINESTYLE,
+                    'alpha'           :StyleTypes.FLOAT,
+                    'font'            :StyleTypes.FONT,
+                    'offset'          :StyleTypes.XYCOOD,
+                    'is_gradient'     :StyleTypes.BOOL,
+                    'end'             :StyleTypes.ARROW,
+                    'start'           :StyleTypes.ARROW,
+                    'constyle'        :StyleTypes.CONNECTOR
+                   }
+
+
 class StyledItem(object):
   ROLE = None
   def __init__(self, style, role, apply=True):
-    self.style, self.role = style, role
-    if apply:
-      self.applyStyle()
+    self.style = style
+    if isinstance(role, tuple):
+      self.role, self.ROLE = role
+    else:
+      self.role = role
+  @property
+  def stereotype(self):
+    item = self
+    while True:
+      if hasattr(item, 'ROLE'):
+        return item.ROLE
+      if item.parent():
+        item = item.parent()
+        continue
+      return None
+        
   @property
   def full_role(self):
-    if self.ROLE:
+    if self.ROLE and self.role:
       return '%s-%s'%(self.role, self.ROLE)
-    return self.role
+    if self.role is not None:
+      return self.role
+    elif self.ROLE:
+      return self.ROLE
+    return ''
   def setRole(self, role):
     self.role = role
     self.applyStyle()
@@ -40,6 +100,40 @@ class StyledItem(object):
 
 
 
+def getBool(text):
+  ''' Convert a text to a boolean value '''
+  if text is None:
+    return False
+  return text.lower() in ['y', 'j', 'ja', 'yes', '1', 'true']
+
+def getFont(text):
+  fname = 'arial'
+  size = 12
+  italic = False
+  weight = 1
+  underline = False
+  strikeout = False
+  for pt in [f.strip().lower() for f in text.split()]:
+    if pt == 'bold':
+      weight = 3
+    elif pt == 'italic':
+      italic = True
+    elif pt.endswith('pt'):
+      size = int(pt[:-2])
+    elif pt == 'underline':
+      underline = True
+    elif pt == 'strikeout':
+      strikeout = True
+    else:
+      fname = pt
+  font = QtGui.QFont(fname, size, weight, italic)
+  font.setUnderline(underline)
+  font.setStrikeOut(strikeout)
+  return font
+  
+def getItemType(item):
+  type_name = item.split('-')[-1]
+  return KNOWN_STYLEITEMS[type_name]
 
 class Observable(object):
   ''' An object which keeps track of which object is currently being styled. 
@@ -49,11 +143,12 @@ class Observable(object):
     self.subject = None
     self.listners   = []
   def set(self, object):
-    old_object = self.subject
     self.subject = object
-    if object != old_object:
-      for listner in self.listners:
+    for listner in self.listners:
+      try:
         listner(object)
+      except:
+        logging.exception('Exception when calling observer')
   def get(self):
     return self.subject
   def subscribe(self, listner):
@@ -66,9 +161,20 @@ class Observable(object):
 
 
 class Style(Observable):
+  PART_SEP = '-'    # Separates parts of a name.
+  qt = QtCore.Qt
+  
   linestyles = dict(solid=QtCore.Qt.SolidLine,
                     dashed=QtCore.Qt.DashLine,
                     dotted=QtCore.Qt.DotLine)
+  
+  halignopts = {'left': qt.AlignLeft,
+            'right': qt.AlignRight,
+            'center': qt.AlignHCenter}
+  
+  valignopts = {'top': qt.AlignTop,
+            'bottom': qt.AlignBottom,
+            'center': qt.AlignVCenter}
   
   current_object = Observable() # List of QGraphicsItems
   current_style  = Observable()
@@ -76,7 +182,16 @@ class Style(Observable):
   def __init__(self, details):
     Observable.__init__(self)
     self.details = details
+    self.requested_keys = set()
     self.reloadDetails()
+    
+  def requestedItems(self, stereotype):
+    pattern = '[A-Za-z0-9_\-]*%s-([A-Za-z0-9_\-]*)'%stereotype
+    all_keys = '\n'.join(self.requested_keys)
+    results = re.findall(pattern, all_keys)
+    results = sorted(set(results))
+    return results
+    
     
   def reloadDetails(self):
     pairs = self.details.Details.split(';')
@@ -85,18 +200,26 @@ class Style(Observable):
     self.items = {key.strip():value.strip() for key, value in test}
     self.set(self.items)
     
-  def findApplicableStyles(self, stereotype):
+  def setItem(self, role, stereotype, value):
+    self.items['%s-%s'%(role, stereotype)] = value
+    all_items = [':'.join(p) for p in self.items.items()]
+    self.details.Details = ';\n'.join(sorted(all_items))
+    self.set(self.items)
+    
+  def findApplicableRoles(self, stereotype):
     pattern = '([A-Za-z0-9_\-]*)-%s-[A-Za-z0-9_]*'%stereotype
     all_keys = '\n'.join(self.items.keys())
     results = re.findall(pattern, all_keys)
-    return results
+    return list(set(results))
     
   def findItem(self, name, postfix):
+    # Final part must be the 'postfix'
+    if postfix and not name.endswith(postfix):
+      name = '-'.join([name, postfix])
+    self.requested_keys.add(name)
     # The name consists of parts separated by dashes.
     parts = name.split('-')
-    # Final part must be 'color'
-    if postfix and parts[-1] != postfix:
-      parts.append(postfix)
+
     while parts:
       # if a name is not present, try a less specific one.
       try_name = '-'.join(parts)
@@ -109,7 +232,7 @@ class Style(Observable):
   def getColor(self, name):
     color = self.findItem(name, 'color') or DEFAULT_COLOR
     return QtGui.QColor(color)
-  
+
   def getLineStyle(self, name):
     linestyle = self.findItem(name, 'line') or 'solid'
     return self.linestyles[linestyle]
@@ -119,18 +242,25 @@ class Style(Observable):
       
   def getBrush(self, name):
     # Get the gradient
-    col1 = self.findItem(name, 'color1')
-    if col1:
-      col2 = self.findItem(name, 'color2') or col1
+    is_gradient = getBool(self.findItem(name, 'is_gradient'))
+    col1 = self.findItem(name, 'color1') or DEFAULT_BACKGROUND
+    col2 = self.findItem(name, 'color2') or col1
+    color = self.findItem(name, 'background-color') or DEFAULT_BACKGROUND
+    alpha = self.findItem(name, 'alpha') or '1.0'
+    if is_gradient:
+
+      Gradient = QtGui.QLinearGradient(0, 0, 100, 100)
+      col1 = QtGui.QColor(col1)
+      col2 = QtGui.QColor(col2)
+      col1.setAlphaF(float(alpha))
+      col2.setAlphaF(float(alpha))
+      Gradient.setColorAt(0, col1)
+      Gradient.setColorAt(1, col2)
+      return QtGui.QBrush(Gradient)
     else:
-      color = self.findItem(name, 'background-color') or DEFAULT_BACKGROUND
-      return QtGui.QBrush(QtGui.QColor(color))
-      
-    Gradient = QtGui.QLinearGradient(0, 0, 100, 100)
-    Gradient.setColorAt(0, QtGui.QColor(col1))
-    Gradient.setColorAt(1, QtGui.QColor(col2))
-    return QtGui.QBrush(Gradient)
-    
+      col = QtGui.QColor(color)
+      col.setAlphaF(float(alpha))
+      return QtGui.QBrush(col)    
   
   def getPen(self, name):
     color = self.getColor(name)
@@ -138,24 +268,20 @@ class Style(Observable):
     width = self.getLineWidth(name)
     return QtGui.QPen(color, width, style, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
   
+  def getVAlign(self, name):
+    align = self.findItem(name, 'valign') or 'center'
+    return self.valignopts[align.lower()]
+            
+  def getHAlign(self, name):
+    align = self.findItem(name, 'halign') or 'center'
+    return self.halignopts[align.lower()]
+  
   def getFont(self, name):
     ''' Font details are given in a space-separated list, e.g. "Arial bold 14pt"
     '''
     font = self.findItem(name, 'font') or DEFAULT_FONT
-    fname = 'arial'
-    size = 12
-    italic = False
-    weight = 1
-    for pt in [f.strip().lower() for f in font.split()]:
-      if pt == 'bold':
-        weight = 3
-      elif pt == 'italic':
-        italic = True
-      elif pt.endswith('pt'):
-        size = int(pt[:-2])
-      else:
-        fname = pt
-    return QtGui.QFont(fname, size, weight, italic) 
+    return getFont(font)
+  
 
   
   def getArrow(self, name, arrow_type):
@@ -183,14 +309,24 @@ class Style(Observable):
 def createDefaultStyle(session):
   with model.sessionScope(session):
     style = model.Style(Name='Default', Details = '''
-      background-color:white; 
+      background-color:white;
       font:Arial 12pt;
+      halign:center;
+      valign:center;
+      is_gradient:True;
       color:#00529c;
       color1:white;
       color2:#00529c;
+      text-is_gradient:False;
+      functionpoint-is_gradient:False;
+      functionpoint-alpha:1.0;
+      connection-text-alpha:1.0;
+      annotation-color2:#ffef5d;
+      annotation-text-alpha:0.0;
       width:3;
       archblock-width:1;
-      archblock-offset:[10,5];
+      archblock-offset:[0,0];
+      archblock-text-alpha:0.0;
       functionpoint-end:[[0,0], [-5, 5], [0, 0], [-5, -5], [0,0]];
       arrow-functionpoint-offset:[-10,10];
       type1-archblock-color2:white;

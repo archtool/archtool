@@ -6,72 +6,109 @@ Created on Oct 6, 2013
 Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
+
+# TODO: Add change handlers for the style checkbox, combo boxes & line edits.
+
 from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, event
 from datetime import datetime, timedelta
 from statechange import StateChangeEditor, StateChangeView
-from gui.design import PlannedItemForm, XRefEditorForm, StyleEditForm
+from gui.design import PlannedItemForm, XRefEditorForm, StyleEditForm, ENCODING
 import model
-from styles import Style
+from styles import (Style, StyleTypes, getBool, getItemType,
+                    getFont)
+from util import Const
+
+
+
+CODEC = QtCore.QTextCodec.codecForName(model.ENCODING)
+
+def toUnicode(qstr):
+  ''' Convert a QT string to unicode
+  :rtype : unicode
+  '''
+  return unicode(CODEC.fromUnicode(qstr), model.ENCODING)
+
 
 
 class StyleEditor(StyleEditForm[1]):
+  class Level(Const):
+    Global = 1
+    Stereotype = 2
+    Role = 3
+    
   def __init__(self):
     self.allow_role_updates = False
+    self.stylable = None
+    self.stylesheet = None
+    self.editor = None
+    
     StyleEditForm[1].__init__(self)
     self.ui = StyleEditForm[0]()
     self.ui.setupUi(self)
+
     self.ui.edtStyles.textChanged.connect(self.onTextChanged)
     self.ui.edtStyles.focusOutEvent = self.onEditFocusLost
     self.ui.actionSave.triggered.connect(self.onEditFocusLost)
-    self.ui.cmbStyle.currentIndexChanged.connect(self.onRoleChanged)
+    self.ui.cmbRole.currentIndexChanged.connect(self.onRoleChanged)
+    self.ui.cmbDetails.currentIndexChanged.connect(self.onStyleItemChanged)
+    for btn in [self.ui.btnGlobal, self.ui.btnStereotype, self.ui.btnRole]:
+      btn.clicked.connect(self.onStyleItemChanged)
+    
     self.stylesheet_changed = False
     Style.current_style.subscribe(self.onStylesheetChanged)
     Style.current_object.subscribe(self.onStylableChanged)
     self.allow_role_updates = True
   def onStylesheetChanged(self, styles):
     self.allow_role_updates = False
+    self.stylesheet = styles
+    self.stylesheet.subscribe(self.onStyleItemChanged)
     try:
       self.ui.edtStyles.setPlainText(styles.details.Details)
-      self.ui.cmbStyle.clear()
+      self.ui.cmbRole.clear()
     finally:
       self.allow_role_updates = True
   def onStylableChanged(self, stylable):
+    self.stylable = None
     self.allow_role_updates = False
     try:
-      self.ui.cmbStyle.clear()
+      self.ui.cmbRole.clear()
+      self.ui.lblStereotype.setText('')
       if not stylable:
         return
       item = stylable[0]
+      self.stylable = item
       # Search for a role, either in this item or its parents.
-      while True:
-        if hasattr(item, 'ROLE'):
-          stereotype = item.ROLE
-          break
-        if item.parent():
-          item = item.parent()
-          continue
+      stereotype = item.stereotype
+      if not stereotype:
         return  # No ROLE defined, no more parents.
-      roles = Style.current_style.get().findApplicableStyles(stereotype)
+      self.ui.lblStereotype.setText(stereotype)
+      roles = Style.current_style.get().findApplicableRoles(stereotype)
       roles.insert(0, '<default>')
       roles = sorted(roles)
-      self.ui.cmbStyle.addItems(roles)
+      self.ui.cmbRole.addItems(roles)
       current_role = item.role
       if current_role and current_role in roles:
-        self.ui.cmbStyle.setCurrentIndex(roles.index(current_role))
+        self.ui.cmbRole.setCurrentIndex(roles.index(current_role))
       else:
-        self.ui.cmbStyle.setCurrentIndex(0)
+        self.ui.cmbRole.setCurrentIndex(0)
+        
+      self.ui.cmbDetails.clear()
+      self.ui.cmbDetails.addItems(self.stylesheet.requestedItems(stereotype))
+        
+      self.onStyleItemChanged(None)
     finally:
       self.allow_role_updates = True
       
   def onTextChanged(self):
     self.stylesheet_changed = True
+    
   def onEditFocusLost(self, event):
     ''' Called when the user has stopped editing the stylesheet.
         Overloads edtStyles.focusOutEvent. 
     '''
     if self.stylesheet_changed:
-      stylesheet = Style.current_style.get()
+      stylesheet = self.stylesheet
       if stylesheet:
         stylesheet.details.Details = str(self.ui.edtStyles.toPlainText())
         stylesheet.reloadDetails()
@@ -81,9 +118,131 @@ class StyleEditor(StyleEditForm[1]):
       return
     objs = Style.current_object.get()
     if objs:
-      txt = str(self.ui.cmbStyle.currentText())
+      txt = str(self.ui.cmbRole.currentText())
       for obj in objs:
         obj.setRole(txt)
+    self.onStyleItemChanged(None)
+        
+  def getLevel(self):
+    if self.ui.btnGlobal.isChecked():
+      return self.Level.Global
+    if self.ui.btnStereotype.isChecked():
+      return self.Level.Stereotype
+    if self.ui.btnRole.isChecked():
+      return self.Level.Role
+        
+  def onStyleItemChanged(self, _):
+    if not self.allow_role_updates:
+      return
+    if not self.stylable:
+      return
+    
+    self.ui.edtStyles.setPlainText(self.stylesheet.details.Details)
+    
+    if self.editor:
+      self.ui.editorLayout.removeWidget(self.editor)
+      self.editor.close()
+      self.editor = None
+    
+    while self.ui.editorLayout.count() > 0:
+      it = self.ui.editorLayout.takeAt(0)
+      it.widget.close()
+    
+    self.editor = self.widgetFactory()
+    if self.editor:
+      self.ui.editorLayout.addWidget(self.editor)
+    
+  def getCurrent(self):
+    item = str(self.ui.cmbDetails.currentText())
+    t = getItemType(item)
+    full_role = self.stylable.full_role if self.stylable.role else self.stylable.stereotype
+    role = {self.Level.Global:'',
+            self.Level.Stereotype:self.stylable.stereotype,
+            self.Level.Role:full_role}[self.getLevel()]
+    current = self.stylesheet.findItem(role, item)
+    return item, role, current, t
+
+    
+  def editColor(self):
+    item, role, current, _ = self.getCurrent()
+    color = QtGui.QColorDialog.getColor(QtGui.QColor(current), self)
+    if not color.isValid():
+      return
+    r, g, b, _ = color.getRgb()
+    self.stylesheet.setItem(role, item, '#%02x%02x%02x'%(r, g, b))
+    
+  def editFont(self):
+    item, role, current, _ = self.getCurrent()
+    font = getFont(current)
+    new_font, ok = QtGui.QFontDialog.getFont(font, self)
+    if not ok:
+      return
+    font_str = '%s %spt'%(new_font.family(), new_font.pointSize())
+    if new_font.italic():
+      font_str += ' italic'
+    if new_font.bold():
+      font_str += ' bold'
+    if new_font.underline():
+      font_str += ' underline'
+    if new_font.strikeOut():
+      font_str += ' strikeout'
+    
+    self.stylesheet.setItem(role, item, font_str)
+    
+    
+  def acceptComboUpdate(self, _):
+    item, role, _, _ = self.getCurrent()
+    new_value = str(self.editor.currentText())
+    self.stylesheet.setItem(role, item, new_value)
+    
+  
+  def acceptLineEditUpdate(self):
+    item, role, _, _ = self.getCurrent()
+    new_value = str(self.editor.text())
+    self.stylesheet.setItem(role, item, new_value)
+    
+  def acceptCheckboxUpdate(self, _):
+    item, role, _, _ = self.getCurrent()
+    new_value = 'yes' if self.editor.isChecked() else 'no'
+    self.stylesheet.setItem(role, item, new_value)
+    
+  def widgetFactory(self):
+    item, _, current, t = self.getCurrent()
+    t = getItemType(item)
+    if t == StyleTypes.COLOR:
+      w = QtGui.QToolButton(self)
+      w.setStyleSheet('background-color:%s'%current)
+      w.clicked.connect(self.editColor)
+      return w
+    
+    elif t == StyleTypes.BOOL:
+      w = QtGui.QCheckBox(self)
+      w.setChecked(getBool(current))
+      w.stateChanged.connect(self.acceptCheckboxUpdate)
+      return w
+    
+    elif t == StyleTypes.FONT:
+      w = QtGui.QPushButton(current, self)
+      w.clicked.connect(self.editFont)
+      return w
+    
+    elif t in [StyleTypes.LINESTYLE, StyleTypes.HALIGN, StyleTypes.VALIGN]:
+      w = QtGui.QComboBox(self)
+      opts = {StyleTypes.LINESTYLE:Style.linestyles.keys(), 
+              StyleTypes.HALIGN:Style.halignopts.keys(), 
+              StyleTypes.VALIGN:Style.valignopts.keys()}[t]
+      w.addItems(opts)
+      w.setCurrentIndex(opts.index(current))
+      w.currentIndexChanged.connect(self.acceptComboUpdate)
+      return w
+    
+    elif t in [StyleTypes.FLOAT, StyleTypes.ARROW, StyleTypes.XYCOOD]:
+      default = {StyleTypes.FLOAT:'0.0', StyleTypes.ARROW:'[[0,0]]',
+                 StyleTypes.XYCOOD:'[0.0, 0.0]'}[t]
+      current = current if current else default
+      w = QtGui.QLineEdit(current, self)
+      w.returnPressed.connect(self.acceptLineEditUpdate)
+      return w
 
 
 class XRefEditor(XRefEditorForm[1]):
@@ -218,19 +377,8 @@ class DetailsViewer(QtGui.QWidget):
     self.parent = parent
     self.details = details
     self.session = session
-    cols = details.getColumns().values()
-    names = []
-    columns = []
-    for c in cols:
-      if c.primary_key:
-        continue
-      if len(c.foreign_keys) > 0:
-        continue
-      if c.name == 'ItemType':
-        continue
-      names.append(c.name)
-      columns.append(c)
     
+    names, columns = details.editableColumnDetails()
     self.names = names
     self.columns = columns
     edits = []
@@ -300,14 +448,14 @@ class DetailsViewer(QtGui.QWidget):
     elif isinstance(type_, Text):
       widget = QtGui.QPlainTextEdit(self)
       widget.setFixedHeight(200)
-      widget.getValue = lambda : str(widget.toPlainText()).decode('cp1252')
+      widget.getValue = lambda : toUnicode(widget.toPlainText())
       self.bindCallback(widget.textChanged, widget, column.name)
       if value:
         widget.setPlainText(value)
     elif isinstance(type_, String) or isinstance(type_, model.WorkingWeek):
       # A working week does its own converting: just feed it a string.
       widget = QtGui.QLineEdit(self)
-      widget.getValue = lambda : str(widget.text()).decode('cp1252')
+      widget.getValue = lambda : toUnicode(widget.text())
       self.bindCallback(widget.textEdited, widget, column.name)
       if value:
         widget.setText(value)

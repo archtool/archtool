@@ -8,7 +8,7 @@ This program is released under the conditions of the GNU General Public License.
 '''
 
 from PyQt4 import QtGui, QtCore
-from model import PlaneableStatus, REQUIREMENTS_STATES, ManDay
+from model import PlaneableStatus, REQUIREMENTS_STATES, ManDay, ENCODING
 from gui.design import StatusEditorForm
 from gui.design import StatusViewForm
 
@@ -55,7 +55,7 @@ class StateChangeEditor(StatusEditorForm[1]):
       if value.TimeRemaining:
         self.ui.edtTimeRemaining.setText(str(value.TimeRemaining))
   def getDetails(self, details):
-    details.Description=str(self.ui.edtDescription.toPlainText()).decode('cp1252')
+    details.Description=str(self.ui.edtDescription.toPlainText()).decode(ENCODING)
     details.Status=str(self.ui.cmbStatus.currentText())
     details.TimeRemaining=ManDay.fromString(str(self.ui.edtTimeRemaining.text()))
     

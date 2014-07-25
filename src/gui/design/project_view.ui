@@ -28,7 +28,7 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout">
           <item>
-           <widget class="QTreeWidget" name="treeProjects">
+           <widget class="ModelItemTree" name="treeProjects">
             <property name="contextMenuPolicy">
              <enum>Qt::ActionsContextMenu</enum>
             </property>
@@ -97,8 +97,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>641</width>
-          <height>387</height>
+          <width>718</width>
+          <height>396</height>
          </rect>
         </property>
        </widget>
@@ -112,8 +112,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>641</width>
-          <height>401</height>
+          <width>718</width>
+          <height>396</height>
          </rect>
         </property>
        </widget>
@@ -123,6 +123,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ModelItemTree</class>
+   <extends>QTreeWidget</extends>
+   <header>gui/design/modelitemtree.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

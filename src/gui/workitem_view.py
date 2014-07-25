@@ -36,8 +36,8 @@ class WorkitemView(ViewerWithDetailsBase):
                self.ui.grpPrio.layout(),
                self.ui.grpStatus.layout()]
     elements = [model.PlaneableItem.getItemTypeNames(),
-                model.PRIORITIES,
-                model.REQUIREMENTS_STATES]
+                model.PRIORITIES.itervalues(),
+                model.REQUIREMENTS_STATES.itervalues()]
     for layout, texts in zip(layouts, elements):
       for txt in texts:
         btn = QtGui.QRadioButton(txt, parent=self)

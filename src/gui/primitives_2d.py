@@ -72,7 +72,7 @@ def extractSvgStyle(item):
       
     details['fill'] = str(fill_color)
   
-  if isinstance(item, QtGui.QGraphicsSimpleTextItem):
+  if isinstance(item, QtGui.QGraphicsSimpleTextItem) or isinstance(item, QtGui.QGraphicsTextItem):
     f = item.font()
     details['font-family'] = str(f.family())
     if f.pointSize() >= 0:
@@ -110,6 +110,7 @@ class Arrow(QtGui.QGraphicsPolygonItem, StyledItem):
 class Line(QtGui.QGraphicsLineItem, StyledItem):
   def __init__(self, x1, y1, x2, y2, parent, style, role):
     QtGui.QGraphicsLineItem.__init__(self, x1, y1, x2, y2, parent)
+    self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
     self.__start = self.__end = None
     StyledItem.__init__(self, style, role)
 
@@ -127,6 +128,7 @@ class Line(QtGui.QGraphicsLineItem, StyledItem):
       self.__start = Arrow(self, self.style, self.role, ArrowTypes.START)
       self.__start.setPos(self.line().p1())
       self.__start.rotate(360 - self.line().angle())
+      self.__start.applyStyle()
     if self.__end:
       if has_end:
         self.__end.applyStyle()
@@ -134,9 +136,10 @@ class Line(QtGui.QGraphicsLineItem, StyledItem):
         self.scene().removeItem(self.__end)
         self.__end = None
     elif has_end:
-      self.__end = Arrow(self, self.style, self.role, ArrowTypes.END)
+      self.__end = Arrow(self, self.style, self.full_role, ArrowTypes.END)
       self.__end.setPos(self.line().p2())
       self.__end.rotate(self.line().angle())
+      self.__end.applyStyle()
   def exportSvg(self, flags=0):
     tmplt = string.Template('''<g $style transform="translate($x,$y) rotate($angle)">
       <line x1="$x1" y1="$y1" x2="$x2" y2="$y2" $style />
@@ -152,14 +155,57 @@ class Line(QtGui.QGraphicsLineItem, StyledItem):
     result = tmplt.substitute(locals())
     return result
     
-class Text(QtGui.QGraphicsSimpleTextItem, StyledItem):
-  def __init__(self, txt, style, role, parent=None):
-    QtGui.QGraphicsSimpleTextItem.__init__(self, txt, parent=parent)
+class Text(QtGui.QGraphicsRectItem, StyledItem):
+  ROLE = 'text'
+  NO_PEN = QtGui.QPen(QtCore.Qt.NoPen)
+  
+  def __init__(self, txt, style, role, parent=None, apply=True):
+    QtGui.QGraphicsRectItem.__init__(self, parent=parent)
+    self.text = QtGui.QGraphicsTextItem(txt, parent=self)
     self.style, self.role = style, role
-    StyledItem.__init__(self, style, role, apply=False)
-    Text.applyStyle(self)
+    StyledItem.__init__(self, style, role, apply=parent is None and apply)
+    
+  def setText(self, text):
+    if text is None:
+      text = ''
+    self.text.setPlainText(text)
+    
+  def setPos(self, pos, y=None):
+    ''' Overload QGraphicsItem.setPos; also moves the background. '''
+    halign = self.style.getHAlign(self.full_role)
+    valign = self.style.getVAlign(self.full_role)
+
+    if isinstance(self.parentItem(), Block):
+      # Use the parent rectangle to determine shape
+      margin = self.style.getFloat('%s-margin'%self.full_role, 0)
+      margin += self.style.getLineWidth(self.full_role)/2.0
+      prect = self.parentItem().rect()
+      rect = QtCore.QRectF(0, 0, prect.width()-2*margin, 
+                           prect.height()-2*margin,)
+      self.text.setTextWidth(rect.width())
+      self.setRect(rect)
+      QtGui.QGraphicsRectItem.setPos(self, margin, margin)
+    else:
+      rect = self.boundingRect()
+      qt = QtCore.Qt
+      dx = {qt.AlignLeft:0, qt.AlignHCenter:-rect.width()/2, qt.AlignRight:-rect.width()}[halign]
+      dy = {qt.AlignTop:0,  qt.AlignVCenter:-rect.height()/2, qt.AlignBottom:-rect.height()}[valign]
+      if y is None:
+        x = pos.x() + dx
+        y = pos.y() + dy
+      else:
+        x = pos + dx
+        y += dy
+      QtGui.QGraphicsRectItem.setPos(self, x, y)
+      self.setRect(self.text.boundingRect())
+    
   def applyStyle(self):
-    self.setFont(self.style.getFont(self.full_role))
+    self.text.setFont(self.style.getFont(self.full_role))
+    self.setBrush(self.style.getBrush(self.full_role))
+    self.setPen(self.NO_PEN)
+    rect = self.text.boundingRect()
+    self.setRect(rect)
+
   def exportSvg(self, flags=0):
     # SVG text position (0,0) is the text baseline;
     # PyQT text position (0,0) is the top left corner.
@@ -173,15 +219,15 @@ class Text(QtGui.QGraphicsSimpleTextItem, StyledItem):
     # Determine the height of the text
     # SVG now has a 'em' unit, but it is not yet widely supported.
     # Thus we use the 'pt' unit to adjust the baseline of the text.
-    f = self.font()
+    f = self.text.font()
     if f.pointSize() >= 0:
       size = str(f.pointSizeF())+'pt'
     else:
       size = str(f.pixelSize())
 
     tmplt = string.Template('<text x="$x" y="$y" dy="$size" $style>$txt</text>')
-    style = extractSvgStyle(self)
-    txt = str(self.text())
+    style = extractSvgStyle(self.text)
+    txt = str(self.text.toPlainText())
     return tmplt.substitute(style=style, txt=txt, x=x, y=y, size=size)
 
 
@@ -223,20 +269,40 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
     QtGui.QGraphicsRectItem.__init__(self, 0, 0, details.width, details.height)
     self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
     self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
-    self.text = None
+    self.connections = []
     StyledItem.__init__(self, style, role)
-    if text:
-      self.text = Text(text, style, self.full_role, self)
+    if text is None:
+      text = ''
+    self.text = Text(text, style, self.full_role, self)
     if resizable:
       self.corner = ResizeHandle(self)
       self.corner.setPos(QtCore.QPointF(details.width, details.height))
+    self.applyStyle()
+      
+  def addConnection(self, c):
+    ''' Called when a connection is added to this block.
+    '''
+    if not c in self.connections:
+      self.connections.append(c)
     
   def applyStyle(self):
     self.setPen(self.style.getPen(self.full_role))
     self.setBrush(self.style.getBrush(self.full_role))
+    self.adjustText()
+  
+  def adjustText(self):
     if self.text:
       self.text.applyStyle()
-      self.text.setPos(self.style.getOffset(self.full_role, default=[10, 1]))
+      self.text.setPos(0, 0)
+      
+  def updatePos(self):
+    ''' Called when position of the item has changed.
+        Change the position in the database accordingly.
+    '''
+    self.details.x = self.x()
+    self.details.y = self.y()
+    for c in self.connections:
+      c.updatePos()
     
   def mouseReleaseEvent(self, event):
     QtGui.QGraphicsRectItem.mouseReleaseEvent(self, event)
@@ -256,9 +322,10 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
     self.details.height = rect.height()
 
     self.scene().session.commit()
+    self.adjustText()
   
   def fpPos(self):
-    return self.x(), self.y() - self.rect().height()
+    return self.scenePos().x(), self.scenePos().y() - self.rect().height()
   
   def exportSvg(self, flags=0):
     tmplt = '''<g  transform="translate($x, $y)" >
@@ -266,7 +333,6 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
                  $txt
                </g>'''
     d = self.details.toDict()
-    d.update(self.block_details.toDict())
     d['style'] = extractSvgStyle(self)
     txt = self.text.exportSvg()
     return string.Template(tmplt).substitute(d, txt=txt)

@@ -11,6 +11,7 @@ import os
 import os.path
 import sys
 from PyQt4.uic import loadUiType
+from model import ENCODING
 
 d = os.path.dirname(__file__)
 
@@ -25,3 +26,5 @@ PlannedItemForm      = loadUiType('%s/planneditem_selector.ui'%d)
 XRefEditorForm       = loadUiType('%s/xref_editor.ui'%d)
 WorkitemViewForm     = loadUiType('%s/work_item_view.ui'%d)
 StyleEditForm        = loadUiType('%s/style_editor.ui'%d)
+
+

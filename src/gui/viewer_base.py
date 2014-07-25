@@ -7,7 +7,6 @@ Created on Feb 7, 2014
 from PyQt4 import QtGui, QtCore
 from details_editor import DetailsViewer
 import model
-from util import mkMenu
 
 class ViewerBase(QtGui.QWidget):
   def __init__(self, parent, decorator):
@@ -78,122 +77,6 @@ def createTreeItem(details):
                     QtCore.Qt.ItemIsEnabled))
   item.details = details
   return item
-
-def makeModelItemTree(tree, model_class, parent):
-  ''' Turn a normal TreeWidget into a viewer for model items.
-  '''
-  # Create wrapper functions for event handlers
-  def addHandler(checked=False):
-    items = tree.selectedItems()
-    if len(items) == 1:
-      # Not a top-level item: try to find the ID of the item.
-      parent_item = items[0].details.Id
-    else:
-      parent_item = None
-      
-    details = model_class(Name='new item',
-                          Parent=parent_item)
-    with model.sessionScope(parent.getSession()) as session:
-      session.add(details)
-    # As the session is closed, the new item is added to this tree.
-    # Cause the item to be selected.
-    parent.onTreeItemAdded(details)
-    
-      
-  def deleteHandler(checked=False):
-    session = parent.getSession()
-    MB = QtGui.QMessageBox
-    items = tree.selectedItems()
-    if len(items) == 0:
-      return
-    reply = MB.question(parent, 'Weet u het zeker?',
-                               'De geselecteerde items verwijderen?',
-                               MB.Yes, MB.No)
-    if reply != MB.Yes:
-      return
-    
-    for item in items:
-      # Check the item has no children
-      if item.childCount() > 0:
-        MB.critical(parent, 'Sorry', "Het item heeft kinderen", MB.Ok)
-        return
-      parent_item = item.parent()
-      if parent_item:
-        index = parent_item.indexOfChild(item)
-        parent_item.takeChild(index)
-      else:
-        index = tree.indexOfTopLevelItem(item)
-        tree.takeTopLevelItem(index)
-      
-      if isinstance(item.details, model.ArchitectureBlock):
-        # check if there are connections or views of this block.
-        if session.query(model.BlockRepresentation).\
-                        filter(model.BlockRepresentation.Block==item.details.Id).count() != 0:
-          reply = MB.question(parent, 'Weet u het zeker?',
-                                     'Het blok wordt gebruikt in views. Toch verwijderen?',
-                                     MB.Yes, MB.No)
-          if reply != MB.Yes:
-            return
-        
-      session.delete(item.details)
-    try:
-      session.commit()
-    except:
-      session.rollback()
-      raise
-    
-  # Install the handlers as menu items
-  actions = [('Add', addHandler, {}), ('Delete', deleteHandler, {})]
-  mkMenu(actions, parent, tree)
-
-  # Cause items to be deselected when clicking in empty space.
-  def createHandler(widget):
-    def myPress(ev):
-      widget.clearSelection()
-      QtGui.QTreeWidget.mousePressEvent(widget, ev)
-  tree.mousePressEvent = createHandler(tree)
-  
-  def dropEvent(event):
-    ''' Replaces the dropEvent handler for the tree widgets.
-    '''
-    # Check that the drop is from within the widget.
-    if event.source() != tree:
-      event.ignore()
-      return
-    # Find out which item is dropped on.
-    item = tree.itemAt(event.pos())
-    # Check it is not dropped on itself
-    if item in tree.selectedItems():
-      event.ignore()
-      return
-    # Change the action from IGNORE to MOVE
-    event.setDropAction(QtCore.Qt.MoveAction)
-    # Get the current list of children
-    children = None
-    if item:
-      children = [item.child(i) for i in range(item.childCount())]
-    # Do the drop
-    result = QtGui.QTreeWidget.dropEvent(tree, event)
-    # Find out which item was dropped on, and administrate the changes.
-    with model.sessionScope(parent.getSession()):
-      if item:
-        new_children = [item.child(i) for i in range(item.childCount())]
-        new_children = [ch for ch in new_children if ch not in children]
-        parent_item = item.details.Id
-        for ch in new_children:
-          ch.details.Parent = parent_item
-      else:
-        # The dragged item has become a top-level item.
-        # Find out which item it was from the mime data.
-        details = parent.drop2Details(event)
-        details.Parent = None
-
-  # Override the dropEvent handler.
-  tree.dropEvent = dropEvent
-  
-  # Cause the parent to be informed when details are changed.
-  tree.itemChanged.connect(parent.onItemChanged)
-
 
 
 class ViewerWithTreeBase(ViewerWithDetailsBase):

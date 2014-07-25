@@ -89,114 +89,6 @@ Both ends of the connection can be mapped to a block in the use case, defining e
 55,Nieuw blok in Use Case niet in tree,14,"Een nieuw blok dat in een Use Case wordt aangemaakt, komt er niet bij in de tree met Blocks",Must,requirement
 56,Change connection start or end,19,Let the change the start or end block of a connection.,Must,requirement
 
-fptoview
-Id,View,FunctionPoint,Order,Xoffset,Yoffset
-1,3,4,0,18.0,5.0
-2,3,5,2,22.0,25.0
-3,3,6,1,7.0,-10.0
-4,3,7,3,-3.0,-19.0
-5,3,8,4,13.0,1.0
-6,3,9,5,-11.0,101.0
-7,46,47,0,-56.75,8.5
-8,46,48,2,-17.0,2.0
-9,46,49,1,0.0,0.0
-10,46,50,3,-28.0,-7.0
-
-colorpalette
-Id,Color
-1,#ffffff
-2,Cornflower Blue
-3,#00529c
-4,#f2f2f2
-5,#838383
-
-functionpoint
-Id,Connection,Block,isResponse
-4,2,,1
-5,3,,1
-6,2,,
-7,2,,
-8,3,,1
-9,2,,1
-47,3,,
-48,4,,
-49,,5,
-50,4,,1
-
-worker
-Id,Name
-1,Evert
-
-blockrepresentation
-Id,Block,View,x,y,height,width,Order,Color,Font,IsMultiple
-1,1,1,-240.0,-310.0,473.0,570.0,0,4,,
-2,2,1,13.0,220.0,30.0,100.0,1,2,,
-3,3,1,16.0,106.0,30.0,100.0,2,2,,
-4,4,3,-209.0,-568.0,30.0,100.0,0,2,,
-5,3,3,-196.0,-227.0,30.0,100.0,1,2,,
-6,5,3,-231.0,-395.0,33.0,154.0,2,2,,
-7,6,1,-195.0,-189.0,122.0,253.0,4,2,,
-8,7,1,94.0,-184.0,31.0,135.0,5,2,,
-9,8,1,-166.0,-158.0,30.0,102.0,6,3,,
-10,9,1,-210.0,-225.0,141.0,470.0,3,1,,
-11,3,46,-569.0,-143.0,30.0,100.0,0,2,,
-12,5,46,-289.0,-144.0,32.0,159.0,1,2,,
-13,10,46,38.0,-139.0,30.0,100.0,2,2,,
-
-hiddenconnection
-Id,View,Connection
-
-architectureblock
-Id,Name,Description,Parent
-1,Archtool,,
-2,Database,,
-3,model,,
-4,Gebruiker,,
-5,Architecture View,,
-6,Architecture View,,
-7,Planning View,,
-8,2d viewer,,
-9,Viewers,,
-10,TreeView,,
-
-dbaseversion
-Id,Version
-1,2
-
-project
-Id,FirstWeek,LastWeek
-10,,
-11,,
-12,,
-
-connection
-Id,Start,End,Description
-1,2,3,
-2,4,5,
-3,3,5,
-4,5,10,
-
-style
-Id,Name,Details
-
-connectionrepresentation
-Id,Connection,style_role
-
-planeablexref
-A,B
-2,3
-34,33
-35,33
-37,33
-
-planeablestatus
-Id,Planeable,Description,TimeStamp,Status,TimeRemaining,TimeSpent,AssignedTo
-1,2,Zie usecase,2014-01-21 20:43:06.553000,Open,1.0,,
-2,2,Toch iets lastiger dan gedacht...,2014-01-21 20:43:46.728000,Open,3.0,,
-3,43,,2014-01-22 20:45:55.546000,Done,0.0,,
-4,23,,2014-01-22 21:45:23.103000,Done,0.0,,
-5,20,,2014-01-22 22:33:04.021000,Done,0.0,,
-
 requirement
 Id,Type
 2,Functional
@@ -239,11 +131,134 @@ Id,Type
 55,Functional
 56,Functional
 
+functionpoint
+Id,Connection,Block,isResponse
+4,2,,1
+5,3,,1
+6,2,,
+7,2,,
+8,3,,1
+9,2,,1
+47,3,,
+48,4,,
+49,,5,
+50,4,,1
+
+architectureblock
+Id,Name,Description,Parent
+1,Archtool,,
+2,Database,,
+3,model,,
+4,Gebruiker,,
+5,Architecture View,,
+6,Architecture View,,
+7,Planning View,,
+8,2d viewer,,
+9,Viewers,,
+10,TreeView,,
+
+style
+Id,Name,Details
+
+planeablestatus
+Id,Planeable,Description,TimeStamp,Status,TimeRemaining,TimeSpent,AssignedTo
+1,2,Zie usecase,2014-01-21 20:43:06.553000,Open,1.0,,
+2,2,Toch iets lastiger dan gedacht...,2014-01-21 20:43:46.728000,Open,3.0,,
+3,43,,2014-01-22 20:45:55.546000,Done,0.0,,
+4,23,,2014-01-22 21:45:23.103000,Done,0.0,,
+5,20,,2014-01-22 22:33:04.021000,Done,0.0,,
+
+hiddenconnection
+Id,View,Connection
+
+blockconnection
+Id,Start,End,Name,Description,Role
+
+colorpalette
+Id,Color
+1,#ffffff
+2,Cornflower Blue
+3,#00529c
+4,#f2f2f2
+5,#838383
+
+worker
+Id,Name
+1,Evert
+
+fptoview
+Id,View,FunctionPoint,Order,Xoffset,Yoffset,style_role
+1,3,4,0,18.0,5.0,
+2,3,5,2,22.0,25.0,
+3,3,6,1,7.0,-10.0,
+4,3,7,3,-3.0,-19.0,
+5,3,8,4,13.0,1.0,
+6,3,9,5,-11.0,101.0,
+7,46,47,0,-56.75,8.5,
+8,46,48,2,-17.0,2.0,
+9,46,49,1,0.0,0.0,
+10,46,50,3,-28.0,-7.0,
+
+planeablexref
+A,B
+,
+,
+,
+,
+
+annotation
+Id,AnchorPoint,x,y,height,width,Description
+
+changelog
+Id,RecordType,RecordId,ChangeType,TimeStamp,Details
+
+fprepresentation
+Id,FunctionPoint,AnchorPoint,Xoffset,Yoffset
+
+blockrepresentation
+Id,Block,View,x,y,height,width,Order,Font,IsMultiple,style_role
+1,1,1,-240.0,-310.0,473.0,570.0,0,,,
+2,2,1,13.0,220.0,30.0,100.0,1,,,
+3,3,1,16.0,106.0,30.0,100.0,2,,,
+4,4,3,-209.0,-568.0,30.0,100.0,0,,,
+5,3,3,-196.0,-227.0,30.0,100.0,1,,,
+6,5,3,-231.0,-395.0,33.0,154.0,2,,,
+7,6,1,-195.0,-189.0,122.0,253.0,4,,,
+8,7,1,94.0,-184.0,31.0,135.0,5,,,
+9,8,1,-166.0,-158.0,30.0,102.0,6,,,
+10,9,1,-210.0,-225.0,141.0,470.0,3,,,
+11,3,46,-569.0,-143.0,30.0,100.0,0,,,
+12,5,46,-289.0,-144.0,32.0,159.0,1,,,
+13,10,46,38.0,-139.0,30.0,100.0,2,,,
+
+dbaseversion
+Id,Version
+1,3
+
+project
+Id,FirstWeek,LastWeek
+10,,
+11,,
+12,,
+
+connection
+Id,Start,End,Description
+1,2,3,
+2,4,5,
+3,3,5,
+4,5,10,
+
+connectionrepresentation
+Id,Connection,style_role
+
+anchor
+Id,View,style_role,Order,AnchorType
+
 view
-Id,Refinement
-1,
-3,
-46,
+Id,Refinement,style
+1,,
+3,,
+46,,
 
 plannedeffort
 Id,Worker,Project,Week,Hours
