@@ -20,19 +20,17 @@ from styles import Styles, Style
 
 
 # TODO: Allow addition of a child within view
-# TODO: Ensure parents are below children
-# TODO: Allow area select
 # TODO: Allow copy - paste of blocks between views.
-# TODO: Maak robuust voor meerdere instanties van het zelfde blok.
 # TODO: Verwijderen van geselecteerde elementen met Delete knop.
-# TODO: Add annotations (squares regions with a comment attached).
-# TODO: Gebruik maken van de ConnectionRepresentation.
+# TODO: Separate a functionpoint sequence number from its Z-order.
+# TODO: Support re-ordering multiple items.
+# TODO: children are contained by and on top of parents.
 
 # FIXME: When dropping a new block or selecting a menu item, deselect the current items.
 # FIXME: delete block in view leaves block outline on screen
 # FIXME: rename architecture block is not shown in open viewer.
 # FIXME: Zorg dat bij het aanmaken van iets nieuws, dit meteen geselecteerd is.
-
+# FIXME: Editing a line style throws an exception.
 MIME_TYPE = 'application/x-qabstractitemmodeldatalist'
 
 BLOCK_WIDTH  = 100
@@ -184,6 +182,8 @@ def getDetails(item, dont_raise=False):
       
 
 class MyScene(QtGui.QGraphicsScene):
+  SELECT_PEN = QtGui.QPen()
+  SELECT_PEN.setStyle(QtCore.Qt.DashLine)
   def __init__(self, details, drop2Details, session):
     '''
     drop2Details: a callback function that finds the details
@@ -234,15 +234,18 @@ class MyScene(QtGui.QGraphicsScene):
     
     self.processActions(all_details)
     self.fpviews = {}   # model.FpRepresentation : FunctionPoint
+    self.last_leftclick_pos = None
+    self.select_rect = None
     
     for fpview, fpdetails in all_details:        
       self.addAction(fpview, fpdetails)
-      
+
+
     sql.event.listen(model.FunctionPoint, 'after_update', self.onFpUpdate)
     sql.event.listen(model.FpRepresentation, 'after_update', self.onFp2UseCaseUpdate)
     sql.event.listen(model.Annotation, 'after_update', self.onAnnotationUpdate)
     
-    self.sortBlocks(blocks)
+    self.sortItems()
     
   def close(self):
     ''' Called when the TwoDView closes. '''
@@ -263,10 +266,11 @@ class MyScene(QtGui.QGraphicsScene):
     self.all_details = sorted(self.all_details, key=lambda x:x[0].Order)
     self.processActions(self.all_details)
     
-  def sortBlocks(self, blocks):
-    for count, b in enumerate(blocks):
-      graphic = self.block_items[b.Id]
-      graphic.setZValue(count)
+  def sortItems(self):
+    for item in self.anchors.values():
+      order = item.details.Order
+      order = order if order is not None else 0.0
+      item.setZValue(order)
 
   @staticmethod
   def processActions(all_details):
@@ -305,6 +309,7 @@ class MyScene(QtGui.QGraphicsScene):
     item = FunctionPoint(fpview, fp, anchor_item, self.styles)
     self.fpviews[fpview] = item
     self.addItem(item)
+    self.anchors[fpview.Id] = item
 
   def dragEnterEvent(self, event):
     if event.mimeData().hasFormat(MIME_TYPE):
@@ -363,26 +368,75 @@ class MyScene(QtGui.QGraphicsScene):
     self.anchors[connection_repr.Id] = item
     self.connections[connection_repr.Id] = connection_repr
     self.connection_items[connection_repr.Id] = item
+
+  def mousePressEvent(self, event):
+    ''' Record the position of the most recent mouse click, for area select.
+    '''
+    if event.button() == QtCore.Qt.LeftButton:
+      self.last_leftclick_pos = event.scenePos()
+    else:
+      self.last_leftclick_pos = None
+    return QtGui.QGraphicsScene.mousePressEvent(self, event)
+
+  def mouseReleaseEvent(self, event):
+    ''' Handle a possible area select
+    '''
+    if event.button() == QtCore.Qt.LeftButton:
+      if self.select_rect is not None:
+        # Do an area select
+        area = QtGui.QPainterPath()
+        area.addRect(self.select_rect.boundingRect())
+        self.setSelectionArea(area)
+        # Delete the selection rectangle
+        self.removeItem(self.select_rect)
+        self.select_rect = None
+
+    self.last_leftclick_pos = None
+
+    return QtGui.QGraphicsScene.mouseReleaseEvent(self, event)
+
     
   def mouseMoveEvent(self, event):
     QtGui.QGraphicsScene.mouseMoveEvent(self, event)
-    
-    # Move the derived items when dragging
-    if event.buttons() != QtCore.Qt.LeftButton:
-      return
-    
+
     items = self.selectedItems()
 
     if len(items) > 0:
+      # Move the derived items when dragging
+      if event.buttons() != QtCore.Qt.LeftButton:
+        return
       # Update the details without committing the changes
       for it in items:
         # Only update the model: the positions of the graphics item were already changed.
+        if not hasattr(it, 'updatePos'):
+          # Don't update positions of items that do not support that, like lines.
+          continue
         it.updatePos()
         
       # Move function points as well.
       for d, it in self.fpviews.iteritems():
         if not it in items:
           it.updatePos()
+
+    if len(items) == 0:
+      if self.last_leftclick_pos is None:
+        self.last_leftclick_pos = event.scenePos()
+      # Draw the box for region select.
+      if event.buttons() != QtCore.Qt.LeftButton:
+        return
+
+      if self.select_rect is None:
+        # Create a rectangle for showing the region being selected
+        self.select_rect = QtGui.QGraphicsRectItem(scene = self)
+        self.select_rect.setPen(self.SELECT_PEN)
+
+      # Update the position of the selection rectangle
+      x = min(event.scenePos().x(), self.last_leftclick_pos.x())
+      y = min(event.scenePos().y(), self.last_leftclick_pos.y())
+      width = abs(event.scenePos().x() - self.last_leftclick_pos.x())
+      height = abs(event.scenePos().y() - self.last_leftclick_pos.y())
+      self.select_rect.setRect(x, y, width, height)
+
         
         
   def onFpUpdate(self, mapper, connection, target):
@@ -428,7 +482,9 @@ class MyScene(QtGui.QGraphicsScene):
 
     connections = [a for a in self.anchors.values() if isinstance(a, Connection)]
     annotations = [a for a in self.anchors.values() if isinstance(a, AnnotationItem)]
-    gradients = extractSvgGradients(self.styles, BlockItem.ROLE)
+    gradients = '\n'.join([extractSvgGradients(self.styles, t) for t in [BlockItem.ROLE,
+                                                                         AnnotationItem.ROLE]])
+    gradients += extractSvgGradients(self.styles, AnnotationItem.ROLE)
     blocks = '\n'.join([b.exportSvg() for b in self.block_items.values()])
     fps    = '\n'.join([fp.exportSvg() for fp in self.fpviews.values()])
     lines  = '\n'.join([c.exportSvg() for c in connections])
@@ -459,6 +515,12 @@ class TwoDView(QtGui.QGraphicsView):
   ''' The TwoDView renders the MyScene, showing the architecture view.
   '''
   selectedItemChanged = QtCore.pyqtSignal(object)
+
+  MOVE_UP     = 1
+  MOVE_DOWN   = 2
+  MOVE_TOP    = 3
+  MOVE_BOTTOM = 4
+
   def __init__(self, details, drop2Details, session):
     scene = MyScene(details, drop2Details, session)
     QtGui.QGraphicsView.__init__(self, scene)
@@ -474,8 +536,14 @@ class TwoDView(QtGui.QGraphicsView):
                                ('Nieuwe Annotatie', self.onAddAnnotation),
                                ('Copieer naar Nieuw View', self.onCopyToUseCase),
                                ('Exporteer als SVG', self.exportSvg)], self)
-    self.menu_action = mkMenu([('Eerder', self.onAdvance),
-                    ('Later', self.onRetard),
+    up = lambda _:self.onChangeItemOrder(self.MOVE_UP)
+    down = lambda _:self.onChangeItemOrder(self.MOVE_DOWN)
+    top = lambda _:self.onChangeItemOrder(self.MOVE_TOP)
+    bottom = lambda _:self.onChangeItemOrder(self.MOVE_BOTTOM)
+    self.menu_action = mkMenu([('Move Up', up),
+                              ('Move Down', down),
+                              ('Move Top', top),
+                              ('Move Bottom', bottom),
                     ('---', None),
                     ('Detailleer Actie', self.onRefineAction),
                     ('Verwijder Actie', self.onDeleteItem)], self)
@@ -484,6 +552,7 @@ class TwoDView(QtGui.QGraphicsView):
     self.last_rmouse_click = None
     self.session = session
     self.scene.selectionChanged.connect(self.onSelectionChanged)
+    self.selection_order = []
     
   def close(self):
     ''' Overload of the QWidget close function. '''
@@ -497,6 +566,7 @@ class TwoDView(QtGui.QGraphicsView):
     print 'Mouses release at', event.pos()
     if event.button() == QtCore.Qt.RightButton:
       self.contextMenuEvent(event)
+      event.accept()
     else:
       # Forward left-click mouse events.
       QtGui.QGraphicsView.mouseReleaseEvent(self, event)
@@ -533,13 +603,13 @@ class TwoDView(QtGui.QGraphicsView):
     elif isinstance(details, model.ConnectionRepresentation):
       # Create the menu for a connection
       connection = details.theConnection
-      definition = self.menuActionDetails(connection, [('Verbergen', self.onHideConnection),
-                                                    ('---', None),
-                                                    ('Verwijder Verbinding', self.onDeleteItem)])
+      definition = self.menuActionDetails(connection, [('Verwijder Verbinding', self.onDeleteItem)])
       menu = mkMenu(definition, self)
     elif isinstance(details, model.FpRepresentation):
       # Use the action menu
       menu = self.menu_action
+    elif isinstance(details, model.Annotation):
+      return
     else:
       # It must be an architecture block.
       # If two blocks are selected, allow them to be connected.
@@ -547,8 +617,14 @@ class TwoDView(QtGui.QGraphicsView):
         definition = [('Verbind blokken', self.onConnect)]
       else:
         block = self.scene.block_details[details.Id]
-        definition = self.menuActionDetails(block, [('Move Up', self.onRetard),
-                                                    ('Move Down', self.onAdvance),
+        up = lambda _:self.onChangeItemOrder(self.MOVE_UP)
+        down = lambda _:self.onChangeItemOrder(self.MOVE_DOWN)
+        top = lambda _:self.onChangeItemOrder(self.MOVE_TOP)
+        bottom = lambda _:self.onChangeItemOrder(self.MOVE_BOTTOM)
+        definition = self.menuActionDetails(block, [('Move Up', up),
+                                                    ('Move Down', down),
+                                                    ('Move Top', top),
+                                                    ('Move Bottom', bottom),
                                                     ('---', None),
                                                     ('Verwijder Blok', self.onDeleteItem)])
       menu = mkMenu(definition, self)
@@ -561,7 +637,7 @@ class TwoDView(QtGui.QGraphicsView):
     if len(items) != 2:
       return
     
-    source, target = [getDetails(i)[0].Block for i in items]
+    source, target = [getDetails(i)[0].Block for i in self.selection_order]
     # Find the connection object, or create it if it does not yet exist.
     # This connection is between Architecture Blocks, not their representations.
     with model.sessionScope(self.session) as session:
@@ -627,6 +703,45 @@ class TwoDView(QtGui.QGraphicsView):
     self.session.add(details)
     self.session.commit()
     self.scene.addAnnotation(details)
+
+
+  def deleteItems(self, items):
+    ''' Delete a set of items
+    '''
+    to_remove = [] # A list of all graphic items to remove.
+    # Use a scoped session to ensure the consistency of the database.
+    with model.sessionScope(self.session) as session:
+      for item in items:
+        to_remove.append(item)
+        # When deleting a block, remove the connections as well.
+        # Deleting a block means only the representation is removed from the view,
+        # so remove only the line, leave the connection in the model.
+        details = item.details
+        if isinstance(details, model.BlockRepresentation):
+          block_id = details.Id
+          for con in self.scene.connections.values():
+            if con.Start == block_id or con.End == block_id:
+              to_remove.append(self.scene.connection_items[con.Id])
+        elif isinstance(details, model.ConnectionRepresentation):
+          session.delete(details)
+          # When deleting connections, check that there are no functionpoints on it.
+          nr_fps = self.session.query(sql.func.count(model.FunctionPoint.Id)).\
+                          filter(model.FunctionPoint.Connection==details.Id).one()[0]
+          if nr_fps > 0:
+            raise RuntimeError('Can not delete connection: has function points!')
+
+        # Also check for annotations anchored on the item!
+        session.delete(details)
+    # No errors: actually delete the items from the drawing.
+    for it in to_remove:
+      self.scene.removeItem(it)
+
+
+  def onDelete(self):
+    ''' Delete the items that are currently selected.
+    '''
+    items = [getDetails(i)[1] for i in self.scene.selectedItems()]
+    self.deleteItems(items)
     
     
   def onDeleteItem(self):
@@ -636,57 +751,9 @@ class TwoDView(QtGui.QGraphicsView):
     item = self.itemAt(self.last_rmouse_click)
     details, item = getDetails(item)
     to_remove = [item]
-    # Use a scoped session to ensure the consistency of the database.
-    with model.sessionScope(self.session) as session:
-      # When deleting a block, remove the connections as well.
-      # Deleting a block means only the representation is removed from the view,
-      # so remove only the line, leave the connection in the model.
-      if isinstance(details, model.BlockRepresentation):
-        block_id = details.Block
-        for con in self.scene.connections.values():
-          if con.Start == block_id or con.End == block_id:
-            to_remove.append(self.scene.connection_items[con.Id])
-      elif isinstance(details, model.Connection):
-        session.delete(details)
-        # When deleting connections, check that there are no functionpoints on it.
-        nr_fps = self.session.query(sql.func.count(model.FunctionPoint.Id)).\
-                        filter(model.FunctionPoint.Connection==details.Id).one()[0]
-        if nr_fps > 0:
-          raise RuntimeError('Can not delete connection: has function points!')
-      session.delete(details)
-    for it in to_remove:
-      self.scene.removeItem(it)
-      
-  def onHideConnection(self):
-    ''' Hide a connection. '''
-    item = self.itemAt(self.last_rmouse_click)
-    connection, item = getDetails(item)
-    if not isinstance(connection, model.Connection):
-      return
-    
-    # Check if there are any actions on this connection in this view
-    actions = self.session.query(model.FpRepresentation, model.FunctionPoint.Connection).\
-                   filter(model.FpRepresentation.View==self.details.Id).\
-                   filter(model.FunctionPoint.Connection.Id==connection.Id).all()
-    if len(actions) > 0:
-      # Ask the user if he is sure.
-      MB = QtGui.QMessageBox
-      reply = MB.question(self, 'Weet u het zeker?',
-                                 'De verbinding heeft acties in deze view. Toch verbergen?',
-                                 MB.Yes, MB.No)
-      if reply != MB.Yes:
-        return
+    self.deleteItems(to_remove)
 
-    # Start a transaction
-    with model.sessionScope(self.session) as session:
-      # Add the 'Hide' record.
-      session.add(model.HiddenConnection(View=self.details.Id, Connection=connection.Id))
-      # Delete any fp2uc records (leave the functionpoints!)
-      for a in actions:
-        session.delete(a)
-      # Delete the connection item.
-      self.scene.removeItem(item)
-    
+
   def onNewAction(self):
     ''' Create a new action and add it to either a connection or a block. '''
     text, ok = QtGui.QInputDialog.getText(self, 'Nieuwe Actie',
@@ -719,39 +786,44 @@ class TwoDView(QtGui.QGraphicsView):
     _, item = getDetails(self.itemAt(self.last_rmouse_click))
     self.scene.addAction(fp2uc, fp, item)
     
-  def onAdvance(self, triggered, retard=False):
-    ''' Called to move either a block or an action forward. '''
+  def onChangeItemOrder(self, direction):
+    ''' Called to move a drawing item in the Z direction. This function supports
+        moving to top, bottom, up and down.
+    '''
     item, _ = getDetails(self.itemAt(self.last_rmouse_click))
-    cls = item.__class__
-    items = self.session.query(cls).\
-                               filter(cls.View==item.View).\
-                               order_by(cls.Order).all()
+    #print 'Original item order:', item.Order, item.Id
+    A = model.Anchor
+    # The Order determines the Z location. Zero is the bottom.
+    items = self.session.query(A).\
+                               filter(A.View==item.View).\
+                               order_by(A.Order).all()
     # Find out where this item is
     index = items.index(item)
-    if not retard:
-      # Check if it is already the first item
+    # Check if the item can be moved
+    if direction in [self.MOVE_DOWN, self.MOVE_BOTTOM]:
       if index == 0:
         return
-      # Swap them
+    elif index == len(items)-1:
+      return
+
+    # Perform the actual move
+    if direction == self.MOVE_DOWN:
       items[index], items[index-1] = items[index-1], items[index]
-    else:
-      # Check if it already is the final item
-      if index == len(items)-1:
-        return
-      # Swap the relevant items
+    elif direction == self.MOVE_UP:
       items[index], items[index+1] = items[index+1], items[index]
+    elif direction == self.MOVE_BOTTOM:
+      items.pop(index)
+      items.insert(0, item)
+    elif direction == self.MOVE_TOP:
+      items.pop(index)
+      items.append(item)
+
     # Normalize the orders
     for count, it in enumerate(items):
       it.Order = count
+    # Commit them to the database and diagram.
     self.session.commit()
-    if cls == model.FpRepresentation:
-      self.scene.sortFunctionPoints()
-    else:
-      self.scene.sortBlocks(items)
-      
-  def onRetard(self, triggered):
-    ''' Called to move either a block or an action backwards. '''
-    self.onAdvance(triggered, retard=True)
+    self.scene.sortItems()
 
   def normalizeActions(self):
     ''' Cause the order field for the actions in the view to be normalised.'''
@@ -792,6 +864,13 @@ class TwoDView(QtGui.QGraphicsView):
         details = self.session.query(model.FunctionPoint).\
                        filter(model.FunctionPoint.Id == details.FunctionPoint).one()
       self.selectedItemChanged.emit(details)
+      self.selection_order = items
+    elif len(items) == 0:
+      self.selection_order = []
+    elif len(items) >= 2:
+      for i in items:
+        if i not in self.selection_order:
+          self.selection_order.append(i)
     Style.current_style.set(self.scene.styles)
     Style.current_object.set(items)
 

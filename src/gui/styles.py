@@ -8,7 +8,8 @@ This program is released under the conditions of the GNU General Public License.
 '''
 
 # TODO: Font names containing spaces are not handled properly.
-
+# TODO: Add a UML profile to the default styles.
+# TODO: Allow style export & import. Use that to initialise the database
 
 import re
 import model

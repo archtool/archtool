@@ -34,7 +34,7 @@ def extractSvgGradients(style, stereotype):
   re_exp = '^\s*(.*)-%s-color[12]:'%stereotype
   roles = re.findall(re_exp, style.details.Details, re.MULTILINE)
   roles = set(roles)    # Remove duplicates
-  roles.add('<default>')
+  roles.add(stereotype)
   
   # For each role, add a gradient definition
   gradients = []
@@ -67,11 +67,15 @@ def extractSvgStyle(item):
     if fill_style in [QtCore.Qt.LinearGradientPattern, QtCore.Qt.RadialGradientPattern]:
       role = item.role
       if not role:
+        role = item.ROLE
+      if not role:
         role = '<default>'
       fill_color = 'url(#%s)'%escape(role)
-      
+    else:
+      details['opacity'] = str(brush.color().alphaF())
+
     details['fill'] = str(fill_color)
-  
+
   if isinstance(item, QtGui.QGraphicsSimpleTextItem) or isinstance(item, QtGui.QGraphicsTextItem):
     f = item.font()
     details['font-family'] = str(f.family())
@@ -82,7 +86,6 @@ def extractSvgStyle(item):
   
   style = ';'.join([':'.join(d) for d in details.items()])
   return 'style="%s;"'%style
-
 
 
 class Arrow(QtGui.QGraphicsPolygonItem, StyledItem):
@@ -225,10 +228,17 @@ class Text(QtGui.QGraphicsRectItem, StyledItem):
     else:
       size = str(f.pixelSize())
 
-    tmplt = string.Template('<text x="$x" y="$y" dy="$size" $style>$txt</text>')
+    tmplt = '''<g  transform="translate($x, $y)">
+                   <rect width="$width" height="$height" $background />
+                   <text dy="$size" $style>$txt</text>
+               </g>'''
     style = extractSvgStyle(self.text)
+    background = extractSvgStyle(self)
+    rect = self.rect()
+    width = rect.width()
+    height = rect.height()
     txt = str(self.text.toPlainText())
-    return tmplt.substitute(style=style, txt=txt, x=x, y=y, size=size)
+    return string.Template(tmplt).substitute(locals())
 
 
 class ResizeHandle(QtGui.QGraphicsPolygonItem):

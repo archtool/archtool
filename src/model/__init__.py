@@ -539,6 +539,24 @@ class View(PlaneableItem):   #pylint:disable=W0232
   }
 
 
+
+
+class Bug(PlaneableItem):
+  ''' A Bug is reported by a non-programmer, and then examined by a programmer.
+
+  '''
+  short_type = 'bug'
+
+  # Override the Id inherited from Base
+  Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
+  Type = Column(Enum(*REQ_TYPES.values()), default=REQ_TYPES.FUNCTIONAL)
+  ReportedBy    = Column(ForeignKey('worker.Id'))
+
+  __mapper_args__ = {
+      'polymorphic_identity':'requirement'
+  }
+
+
 ###############################################################################
 ## Graphical Representation
 class Style(Base):
@@ -560,7 +578,7 @@ class Anchor(Base):   #pylint:disable=W0232
   '''
   View       = Column(Integer, ForeignKey('view.Id', ondelete='CASCADE'))
   style_role = Column(String)
-  Order      = Column(Integer)
+  Order      = Column(Integer)    # Zero means the item is at the top.
   AnchorType = Column(String(50))
 
   __mapper_args__ = {
