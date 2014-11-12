@@ -309,7 +309,11 @@ class Style(Observable):
 
 def createDefaultStyle(session):
   with model.sessionScope(session):
-    style = model.Style(Name='Default', Details = '''
+    default = session.query(model.Style).filter(model.Style.Name=='Default').first()
+    if not default:
+      default = model.Style(Name='Default')
+      session.add(default)
+    default.Details = '''
       background-color:white;
       font:Arial 12pt;
       halign:center;
@@ -321,6 +325,8 @@ def createDefaultStyle(session):
       text-is_gradient:False;
       functionpoint-is_gradient:False;
       functionpoint-alpha:1.0;
+      functionpoint-end:[[0,0], [-5, 5], [0, 0], [-5, -5], [0,0]];
+      arrow-functionpoint-offset:[-10,10];
       connection-text-alpha:1.0;
       annotation-color2:#ffef5d;
       annotation-text-alpha:0.0;
@@ -328,16 +334,18 @@ def createDefaultStyle(session):
       archblock-width:1;
       archblock-offset:[0,0];
       archblock-text-alpha:0.0;
-      functionpoint-end:[[0,0], [-5, 5], [0, 0], [-5, -5], [0,0]];
-      arrow-functionpoint-offset:[-10,10];
-      type1-archblock-color2:white;
-      type2-archblock-color2:#f2f2f2;
+      white-archblock-color2:white;
+      dark-archblock-color2:#f2f2f2;
       type3-archblock-color2:#838383;
-      type4-archblock-color2:cornflower blue
-    ''')
-    # TODO: Store the default style in the database
-    #session.add(style)
-    return style
+      time-archblock-color2:#ffc0cb;
+      description-archblock-color2:#add8e6;
+      party-archblock-color2:#90ee90;
+      role-archblock-color2:#ffff80;
+      inheritance-connection-end:[[0,0], [-10,10], [-10,-10], [0,0]];
+      aggregation-connection-start:[[0,0], [-10,-10], [-20,0], [-10,10], [0,0]];
+      association-connection-end:[[0,0],[-10,10],[0,0],[-10,-10],[0,0]];
+    '''
+    return default
 
   
   

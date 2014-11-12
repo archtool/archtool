@@ -54,7 +54,7 @@ def loadCsv(fname='dump.csv'):
 
 
 
-def export(engine, fname='dump.csv'):
+def export(fname, engine):
   meta = MetaData()
   meta.reflect(bind=engine)
   f = file(fname, 'w')
@@ -151,69 +151,78 @@ def importData(data, db):
   tables = {tab.__tablename__:tab for tab in model.Base.getTables()}
   # Switch off the foreign keys for now
   model.check_fkeys = False
-  engine = model.create_engine(db)
+  engine = model.create_engine(db, echo=True)
   model.changeEngine(engine)
   # Clean the database
   model.cleanDatabase()
   try:
     session = model.SessionFactory()
-    v = int(data['dbaseversion'][0]['Version'])
-    if v < 6:
-      upgradeToVersion6(data)
-    del data['dbaseversion']    # Remove the old database version number
-    # Add the current database version
-    session.add(model.DbaseVersion())
+    with model.sessionScope(session) as session:
+      # In PostgreSQL, ensure the foreign keys are only checked at the commit, not before.
+      if db.startswith('postgresql'):
+        session.execute('SET CONSTRAINTS ALL DEFERRED')
 
-    # Treat the planeable and anchor items differently: these are polymorphic tables.
-    # The base tables are not added directly but through their child tables, using the ORM
-    poly_items = {}  # Store the contents held by the polymorphic tables. These are needed later..
-    poly_bases = {}  # Find the base for a specific table.
-    for poly_table in ['planeableitem', 'anchor']:
-      poly_items[poly_table] = {r['Id']:r for r in data[poly_table]}
-      children = set([r['ItemType'] for r in data[poly_table]])
-      for c in children:
-        poly_bases[c] = poly_table
-      # Do not add the table directly, so remove it from the list.
-      del data[poly_table]
+      v = int(data['dbaseversion'][0]['Version'])
+      if v < 6:
+        upgradeToVersion6(data)
+      del data['dbaseversion']    # Remove the old database version number
+      # Add the current database version
+      session.add(model.DbaseVersion())
 
-    for name, records in data.items():
-      if not records:
-        continue
-      # Start of a new table.
-      name = table_renames.get(name, name)
-      if name in table_ignore:
-        # Skip this table.
-        continue
-      if name not in tables:
-        table = model.Base.metadata.tables[name]
-      else:
-        table = tables[name]
-      base_class = poly_bases.get(name, None)
-      
-      # Determine which fields are no longer used
-      fields = records[0].keys()
-      exclude = [f for f in fields if not hasattr(table, f)]
-      for d in records:
-        print 'Table:', name, 'data:', d
-        # Exclude fields that have been removed from the database.
-        if exclude:
-          for e in exclude:
-            del d[e]
-        if base_class:
-          # Add in the data stored in the polymorphic base table
-          d.update(poly_items[base_class][d['Id']])
-        
-        # Add the record to the database
+      # Treat the planeable and anchor items differently: these are polymorphic tables.
+      # The base tables are not added directly but through their child tables, using the ORM
+      poly_items = {}  # Store the contents held by the polymorphic tables. These are needed later..
+      poly_bases = {}  # Find the base for a specific table.
+      for poly_table, poly_column in [('planeableitem', 'ItemType'), ('anchor', 'AnchorType')]:
+        poly_items[poly_table] = {r['Id']:r for r in data[poly_table]}
+        children = set([r[poly_column] for r in data[poly_table]])
+        for c in children:
+          poly_bases[c] = poly_table
+        # Do not add the table directly, so remove it from the list.
+        del data[poly_table]
+
+      for n1, n2 in table_renames.items():
+        if n1 in data:
+          data[n2] = data[n1]
+
+      for table, name in [(t, t.__tablename__) for t in model.order] + \
+                  [(model.Base.metadata.tables['planeablexref'], 'planeablexref')]:
+        records = data.get(name, [])
+        if not records:
+          continue
+        # Start of a new table.
+        if name in table_ignore:
+          # Skip this table.
+          continue
         if name not in tables:
-          # This class needs raw SQL to create.
-          ins = table.insert().values(**d)
-          session.execute(ins)
+          table = [name]
         else:
-          el = table(**d)
-          session.add(el)
-          
-      # Commit the table
-      session.commit()
+          table = tables[name]
+        base_class = poly_bases.get(name, None)
+
+        # Determine which fields are no longer used
+        fields = records[0].keys()
+        exclude = [f for f in fields if not hasattr(table, f)]
+        for d in records:
+          print 'Table:', name, 'data:', d
+          # Exclude fields that have been removed from the database.
+          if exclude:
+            for e in exclude:
+              del d[e]
+          if base_class:
+            # Add in the data stored in the polymorphic base table
+            d.update(poly_items[base_class][d['Id']])
+
+          # Add the record to the database
+          if name not in tables:
+            # This class needs raw SQL to create.
+            if d:
+              ins = table.insert().values(**d)
+              session.execute(ins)
+          else:
+            el = table(**d)
+            session.add(el)
+
     
   finally:
     model.the_engine = None

@@ -96,7 +96,8 @@ class Arrow(QtGui.QGraphicsPolygonItem, StyledItem):
     StyledItem.__init__(self, style, role)
   def applyStyle(self):
     points = self.style.getArrow(self.full_role, self.arrow_type)
-    self.setPolygon(points)
+    if points:
+      self.setPolygon(points)
     self.setPen(self.style.getPen(self.full_role))
   def exportSvg(self, flags=0):
     color = self.pen().color().name()
@@ -117,6 +118,19 @@ class Line(QtGui.QGraphicsLineItem, StyledItem):
     self.__start = self.__end = None
     StyledItem.__init__(self, style, role)
 
+  def setLine(self, *args):
+    ''' Overloads the QGraphicsLineItem.setLine function '''
+    # Call the base function
+    QtGui.QGraphicsLineItem.setLine(self, *args)
+    # Determine the separate coordinates if a line struct was passed
+    # Also move the start and end arrows
+    if self.__start:
+      self.__start.setPos(self.line().p1())
+      self.__start.setRotation(180 - self.line().angle())
+    if self.__end:
+      self.__end.setPos(self.line().p2())
+      self.__end.setRotation(-self.line().angle())
+
   def applyStyle(self):
     self.setPen(self.style.getPen(self.full_role))
     has_start = self.style.getArrow(self.full_role, ArrowTypes.START)
@@ -128,9 +142,9 @@ class Line(QtGui.QGraphicsLineItem, StyledItem):
         self.scene().removeItem(self.__start)
         self.__start = None
     elif has_start:
-      self.__start = Arrow(self, self.style, self.role, ArrowTypes.START)
+      self.__start = Arrow(self, self.style, self.full_role, ArrowTypes.START)
       self.__start.setPos(self.line().p1())
-      self.__start.rotate(360 - self.line().angle())
+      self.__start.setRotation(180 - self.line().angle())
       self.__start.applyStyle()
     if self.__end:
       if has_end:
@@ -141,7 +155,7 @@ class Line(QtGui.QGraphicsLineItem, StyledItem):
     elif has_end:
       self.__end = Arrow(self, self.style, self.full_role, ArrowTypes.END)
       self.__end.setPos(self.line().p2())
-      self.__end.rotate(self.line().angle())
+      self.__end.setRotation(-self.line().angle())
       self.__end.applyStyle()
   def exportSvg(self, flags=0):
     tmplt = string.Template('''<g $style transform="translate($x,$y) rotate($angle)">
@@ -189,7 +203,7 @@ class Text(QtGui.QGraphicsRectItem, StyledItem):
       self.setRect(rect)
       QtGui.QGraphicsRectItem.setPos(self, margin, margin)
     else:
-      rect = self.boundingRect()
+      rect = self.text.boundingRect()
       qt = QtCore.Qt
       dx = {qt.AlignLeft:0, qt.AlignHCenter:-rect.width()/2, qt.AlignRight:-rect.width()}[halign]
       dy = {qt.AlignTop:0,  qt.AlignVCenter:-rect.height()/2, qt.AlignBottom:-rect.height()}[valign]

@@ -1,6 +1,5 @@
 ''' Unit tests from directly within QT
 '''
-import model
 
 __author__ = 'ehwaal'
 
@@ -11,13 +10,17 @@ import sys
 import traceback
 import threading
 import time
+import shutil
 
 from PyQt4.QtTest import QTest
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 from threading import Thread
 import run
+import model
 from model import config
+from gui.view_2d import BlockItem, Connection
+from gui.statechange import StateChangeEditor
 
 sys.path.append('../src')
 
@@ -151,9 +154,7 @@ class Test(unittest.TestCase):
     cw = self.form.centralwidget
     self.assertIsInstance(cw, run.ArchitectureView)
     # Get the window that is shown inside the current TAB window
-    tw = cw.ui.tabWidget.currentWidget()
-    self.assertTrue(cw.ui.treeRequirements.isVisibleTo(tw))
-    self.assertFalse(cw.ui.treeUseCases.isVisibleTo(tw))
+    cw.ui.tabWidget.setCurrentWidget(cw.ui.treeRequirements)
 
     QTest.qWait(100)
 
@@ -205,9 +206,14 @@ class Test(unittest.TestCase):
     self.assertEqual(r[1].Name, name2)
     self.assertEqual(r[0].Name, name)
 
-    # Try to drag the child item away from the first requirement.
+    # Add a status change.
+    self.postGuiFunc(StateChangeEditor.add, cw.details_viewer, r[1], self.form.session)
+    while True:
+      QTest.qWait(100)
 
-    # Add a cross-reference to a Use Case.
+    # TODO: Try to drag the child item away from the first requirement.
+
+    # TODO: Add a cross-reference to a Use Case.
 
 
   def testUseCaseDrawing(self):
@@ -239,7 +245,7 @@ class Test(unittest.TestCase):
     scene = editor.scene
     for b in scene.anchors.values():
       b.setSelected(True)
-    # FIXME: Test if the option to connect blocks is shown in the context menu.
+    # TODO: Test if the option to connect blocks is shown in the context menu.
     self.postGuiFunc(editor.onConnect)
     QTest.qWait(100)
     self.assertEqual(session.query(model.BlockConnection).count(), 1)
@@ -253,7 +259,8 @@ class Test(unittest.TestCase):
     QTest.qWait(100)
     self.assertEqual(session.query(model.FunctionPoint).count(), 1)
 
-    editor.last_rmouse_click = QtCore.QPoint(250, 192)
+    # Add an Action to the connection
+    editor.last_rmouse_click = QtCore.QPoint(245, 190)
     self.postGuiFunc(editor.onNewAction)
     self.answer('Actie 2')
     QTest.qWait(100)
@@ -300,17 +307,93 @@ class Test(unittest.TestCase):
     # Pause to show the result
     while True:
       QTest.qWait(200)
+      break
     pass # For breakpoint
 
     # Delete the actions
-    # TODO: Delete the Annotation
-    # Delete the connection
+    scene.clearSelection()
+    for a in scene.fpviews.values():
+      a.setSelected(True)
+    self.postGuiFunc(editor.onDelete)
+    QTest.qWait(100)
+    self.assertEqual(session.query(model.FpRepresentation).count(), 0)
+
+    # Delete the Annotation
+    self.postGuiFunc(scene.clearSelection)
+    editor.last_rmouse_click = QtCore.QPoint(120, 253)
+    self.postGuiFunc(editor.onDeleteItem)
+    QTest.qWait(100)
+    self.assertEqual(session.query(model.Annotation).count(), 0)
+
     # Delete the blocks
-    # Check the representations are deleted from the database
+    scene.clearSelection()
+    for a in scene.items():
+      if isinstance(a, BlockItem):
+        a.setSelected(True)
+    self.postGuiFunc(editor.onDelete)
+    QTest.qWait(100)
+    self.assertEqual(session.query(model.BlockRepresentation).count(), 0)
+    # All the connections must have been deleted as well.
+    self.assertEqual(session.query(model.ConnectionRepresentation).count(), 0)
+    self.assertEqual(len([i for i in scene.items() if isinstance(i, Connection)]), 0)
 
   def testExistingUseCase(self):
     ''' Test whether an existing Use case can be shown and exported to SVG properly.
+        Also tests moving objects up and down (Z-order).
     '''
+    # Copy the test_base database to a new location.
+    BASE_DB = 'test_base.db'
+    NEW_DB = 'test_new.db'
+    if os.path.exists(NEW_DB):
+      os.remove(NEW_DB)
+    shutil.copy(BASE_DB, NEW_DB)
+
+    # Open the database
+    self.form.onNew(NEW_DB)
+
+    # Open all the Use Cases.
+    session = model.SessionFactory()
+    for details in session.query(model.View).all():
+      self.form.centralwidget.openView(details)
+
+    QTest.qWait(100)
+
+    # Ensure the 'Overview' view is on top.
+    overview = session.query(model.View).filter(model.View.Name=='Overview').one()
+    self.form.centralwidget.openView(overview)
+
+    editor = self.form.centralwidget.ui.tabGraphicViews.currentWidget()
+    scene = editor.scene
+
+    # Move the 'Archtool' block to the back.
+    editor.last_rmouse_click = QtCore.QPoint(255, 116)
+    self.postGuiFunc(editor.onChangeItemOrder, editor.MOVE_TOP)
+    QTest.qWait(100)
+    rep = session.query(model.Anchor).filter(model.Anchor.Id==10).one()
+    self.assertEqual(rep.Order, 7)
+
+    editor.last_rmouse_click = QtCore.QPoint(255, 116)
+    self.postGuiFunc(editor.onChangeItemOrder, editor.MOVE_DOWN)
+    QTest.qWait(100)
+    session.refresh(rep)
+    self.assertEqual(rep.Order, 6)
+
+    editor.last_rmouse_click = QtCore.QPoint(255, 116)
+    self.postGuiFunc(editor.onChangeItemOrder, editor.MOVE_UP)
+    QTest.qWait(100)
+    session.refresh(rep)
+    self.assertEqual(rep.Order, 7)
+
+    editor.last_rmouse_click = QtCore.QPoint(255, 116)
+    self.postGuiFunc(editor.onChangeItemOrder, editor.MOVE_BOTTOM)
+    QTest.qWait(100)
+    session.refresh(rep)
+    self.assertEqual(rep.Order, 0)
+
+    # Pause to show the result
+    if False:
+      while True:
+        QTest.qWait(100)
 
 
 if __name__ == "__main__":

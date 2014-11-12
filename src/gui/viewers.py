@@ -11,18 +11,21 @@ from PyQt4 import QtCore, QtGui
 from design import ArchitectureViewForm, ProjectViewForm
 import model
 from util import mkMenu
-from view_2d import TwoDView, MIME_TYPE
+from view_2d import TwoDView, MIME_TYPE, getDetails
 from details_editor import EffortOverview, WorkerOverview, StyleEditor
 from req_export import exportRequirementQuestions, exportRequirementsOverview
 from viewer_base import ViewerWithTreeBase
 import sqlalchemy
 from sqlalchemy import event
 import logging
+from styles import Style
+from controller import Controller
 
 
 # TODO: move the makeModelItemTree to a MyTree, and promote the relevant widgets.
 
 
+theController = Controller.get()
   
   
 ###############################################################################
@@ -118,6 +121,8 @@ class ArchitectureView(ViewerWithTreeBase):
 
   def __init__(self, parent):
     ViewerWithTreeBase.__init__(self, parent, ArchitectureViewForm[0])
+
+    self.current_stereotype = ''
     
     # Make the context menus for the tree widgets.
     tree_models = {self.ui.treeBlocks:model.ArchitectureBlock,
@@ -131,10 +136,15 @@ class ArchitectureView(ViewerWithTreeBase):
     self.ui.treeUseCases.itemDoubleClicked.connect(self.onView)
             
     self.ui.tabGraphicViews.tabCloseRequested.connect(self.onTabCloseRequested)
+    self.ui.tabGraphicViews.currentChanged.connect(self.onTabChanged)
+
+    self.ui.cmbRole.activated.connect(self.onRoleChanged)
     
     self.ui.btnShowStyles.clicked.connect(self.onShowStyles)
     self.stateWindow = StyleEditor()
     self.stateWindow.hide()
+
+    self.ui.chkFunctionFP.stateChanged.connect(lambda i: theController.setFpAsCall(bool(i)))
     
         
     # Add database hooks to properly update when items are added.
@@ -142,6 +152,7 @@ class ArchitectureView(ViewerWithTreeBase):
       event.listen(cls, 'after_update', self.onDetailUpdate)
       event.listen(cls, 'after_insert', self.onDetailInsert)
       #FIXME: also handle deletes.
+    self.hasEvents = True
       
       
   def close(self):
@@ -154,7 +165,8 @@ class ArchitectureView(ViewerWithTreeBase):
       except sqlalchemy.exc.InvalidRequestError:
         # No event handlers were found: ignore.
         pass
-      
+    self.hasEvents = False
+
     ViewerWithTreeBase.close(self)
     
 
@@ -183,12 +195,12 @@ class ArchitectureView(ViewerWithTreeBase):
 
   def open(self, session):
     ViewerWithTreeBase.open(self, session)
-    
-    # Populate the requirements table
-    if False:
-      requirements = self.session.query(model.Requirement).all()
-      for req in requirements:
-        self.addTableElement(req)
+    self.stateWindow.session = session
+
+    # Create the drop-down list for stylesheets
+    stylesheets = self.session.query(model.Style.Name).all()
+    stylesheets = [s[0] for s in stylesheets]
+    self.ui.cmbRole.clear()
         
   def onShowStyles(self):      
     self.stateWindow.show()
@@ -200,11 +212,6 @@ class ArchitectureView(ViewerWithTreeBase):
       # Ensure the changes are committed.
       with model.sessionScope(self.session):
         pass
-
-  def onItemSelectionChanged(self, details):
-    ''' Called when the current selection in a 2D view changes.
-    '''
-    self.openDetailsViewer(details)
 
   def onView(self, item):
     ''' Called when the user double-clicks on a View.
@@ -218,23 +225,75 @@ class ArchitectureView(ViewerWithTreeBase):
         Used as a slot for QT Signals.
     '''
     # Check if this view is already open.
+    widget = None
     for i in range(self.ui.tabGraphicViews.count()):
       view = self.ui.tabGraphicViews.widget(i)
       if view.details == details:
         # The view is already shown: bring it to the front.
         self.ui.tabGraphicViews.setCurrentIndex(i)
-        return
-    # Add a new tab
-    viewer = TwoDView(details, self.drop2Details, self.session)
-    self.ui.tabGraphicViews.addTab(viewer, details.Name)
-    self.ui.tabGraphicViews.setCurrentWidget(viewer)
-    viewer.selectedItemChanged.connect(self.onItemSelectionChanged)
+        widget = view
 
-    
+    if widget is None:
+      # Add a new tab
+      viewer = TwoDView(details, self.drop2Details, self.session)
+      self.ui.tabGraphicViews.addTab(viewer, details.Name)
+      self.ui.tabGraphicViews.setCurrentWidget(viewer)
+      viewer.selectedItemChanged.connect(self.onItemSelectionChanged)
+
   def onTabCloseRequested(self, index):
     widget = self.ui.tabGraphicViews.widget(index)
     self.ui.tabGraphicViews.removeTab(index)
     widget.close()
+
+  def onTabChanged(self, index):
+    self.updateRole()
+
+  def onRoleChanged(self, _):
+    # If the index is 0, the roles are not changed.
+    if self.ui.cmbRole.currentIndex() == 0:
+      return
+    objs = Style.current_object.get()
+    if objs:
+      txt = str(self.ui.cmbRole.currentText())
+      for obj in objs:
+        obj.setRole(txt)
+
+  def onItemSelectionChanged(self, details):
+    ''' Overload of the function inherited from the viewer base.
+    '''
+    ViewerWithTreeBase.onItemSelectionChanged(self, details)
+    self.updateRole()
+
+  def updateRole(self):
+    widget = self.ui.tabGraphicViews.currentWidget()
+    if widget is None:
+      return
+    items = widget.scene.selectedItems()
+    # Check if all items are of the same stereotype
+    stereotypes = set()
+    current_roles = set()
+    for i in items:
+      _, item = getDetails(i)
+      stereotypes.add(item.ROLE)
+      current_roles.add(item.role)
+    if len(stereotypes) != 1:
+      return
+
+    stereotype = stereotypes.pop()
+    if stereotype != self.current_stereotype:
+      self.stereotype = stereotype
+      # Fill the list of available roles
+      self.ui.cmbRole.clear()
+      roles = widget.scene.styles.findApplicableRoles(stereotype)
+      # Add the default and empty role
+      roles = ['--', '<default>'] + roles
+      self.ui.cmbRole.addItems(roles)
+      # If all items have the same role, select it
+      if len(current_roles) == 1:
+        role = current_roles.pop()
+        index = 1 if not role else self.ui.cmbRole.findText(role)
+        self.ui.cmbRole.setCurrentIndex(index)
+
     
   def filterRequirementsTree(self, prios, states):
     for item in self.detail_items[self.ui.treeRequirements].values():
@@ -361,3 +420,16 @@ class ArchitectureView(ViewerWithTreeBase):
     
     self.detail_items[widget][details.Id] = new_item
 
+  def onStyleSheetChanged(self, index):
+    ''' Called when the user selects a new style sheet for the current view.
+    '''
+    return
+    # TODO: Re-implement
+    # Get the ID of the style referred to
+    name = str(self.ui.cmbStyleSheet.currentText())
+    id = self.session.query(model.Style.Id).filter(model.Style.Name==name).one()[0]
+    # Set the stylesheet in the current View
+    view = self.ui.tabGraphicViews.currentWidget()
+    if view:
+      details = view.details
+      details.style = id

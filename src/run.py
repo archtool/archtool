@@ -8,20 +8,27 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 
+import sys
+import re
+import os.path
+import logging
+import traceback
+
 from functools import partial
+
 from PyQt4 import QtCore, QtGui
 from gui.design import MainWindowForm
 from gui.viewers import ArchitectureView, PlanningView
 from gui.workitem_view import WorkitemView
 from gui.styles import Styles
+from gui.details_editor import CsvImportEditor
 from req_export import exportRequirementQuestions, exportRequirementsOverview
-from export import export, upgradeDatabase
+from export import export, importData, loadCsv
 from export.req_document import exportRequirementsDocument
-import sys
 import model
-from model import config
-import os.path
-import logging
+from model import config, SQLITE_URL_PREFIX
+from model.update import updateDatabase
+from controller import Controller
 
 
 # FIXME: Bij het openen van een file of het maken van een nieuwe, de recent files aanpassen.
@@ -40,8 +47,25 @@ import logging
 # TODO: Grote workitems moeten kunnen worden toebedeeld aan meerdere mensen, en hun time-remaining schattingen samengevoegd.
 # TODO: Export SRS documents as Word format.
 # TODO: Edit the configuration...
+# TODO: Voor een Use Case het tekening type selecteren.
+# TODO: De style van een lijn instellen.
+# TODO: Implement support for attachements
 
-SQLITE_URL_PREFIX = 'sqlite:///'
+
+
+
+
+def reportError(msg):
+  def decorate(func):
+    def doIt(*args, **kwds):
+      try:
+        return func(*args, **kwds)
+      except:
+        traceback.print_exc()
+        QtGui.QMessageBox.critical(None, 'An error occurred', msg)
+    return doIt
+  return decorate
+
 
 
 class ArchitectureTool(MainWindowForm[1]):
@@ -67,7 +91,8 @@ class ArchitectureTool(MainWindowForm[1]):
                          (self.ui.actionExport_as_CSV, self.exportCsv),
                          (self.ui.actionNew_from_CSV, self.newFromCsv),
                          (self.ui.actionWork_Items, self.onWorkItemView),
-                         (self.ui.actionRequirements_Document, self.onRequirementsDocument)
+                         (self.ui.actionRequirements_Document, self.onRequirementsDocument),
+                         (self.ui.actionOpen_Database, self.onOpenDatabase)
                          ]:
       action.triggered.connect(func)
 
@@ -76,8 +101,10 @@ class ArchitectureTool(MainWindowForm[1]):
     for f in recent:
       a = QtGui.QAction(os.path.basename(f), self)
       a.triggered.connect(partial(self.open, url=f))
+      # Mask any passwords
+      f_nopasswd = re.sub(':[^/]+?@', ':***@', f)
       # TODO: make this a tool tip, not a status tip.
-      a.setStatusTip(f)
+      a.setStatusTip(f_nopasswd)
       self.ui.menuRecent_Files.addAction(a)
 
     # Open the most recent file
@@ -98,6 +125,16 @@ class ArchitectureTool(MainWindowForm[1]):
     self.session.add(model.DbaseVersion())
     self.session.commit()
 
+  def onOpenDatabase(self):
+    ''' Open a remote database instead of a local file.
+    '''
+    url = QtGui.QInputDialog.getText(self, 'Open a database', 'Url:')
+    if not url[1]:
+      return
+
+    url = str(url[0])
+    self.open(url=url)
+
   def onOpen(self):
     ''' Open an existing database.
     No check for outstanding changes necessary: all changes are
@@ -109,7 +146,9 @@ class ArchitectureTool(MainWindowForm[1]):
       return
     
     self.open(url=SQLITE_URL_PREFIX+fname)
-    
+
+
+  @reportError('Could not open the database.\n\nSee output for more details')
   def open(self, triggered=False, url=None, new=False):
     ''' Actually open a specific database.
         Called after the user has selected a database.
@@ -125,6 +164,8 @@ class ArchitectureTool(MainWindowForm[1]):
 
     model.changeEngine(model.create_engine(url))
     self.session = model.SessionFactory()
+    Controller.setSession(self.session)
+
     # Check the version, if it exists
     versions = self.session.query(model.DbaseVersion).all()
     if len(versions) > 0:
@@ -139,7 +180,7 @@ class ArchitectureTool(MainWindowForm[1]):
           self.centralwidget.clean()
           return
         # User wants to convert the model.
-        upgradeDatabase(url)
+        updateDatabase(model.the_engine)
         self.open(url=url)
         return
     
@@ -193,18 +234,23 @@ class ArchitectureTool(MainWindowForm[1]):
   def newFromCsv(self):
     ''' Create a new database from a CSV file exported earlier.
     '''
-    csvname = str(QtGui.QFileDialog.getOpenFileName(self, "Open an architecture model", 
-                                                  '.', "*.db"))
-    if csvname == '':
+    diag = CsvImportEditor(self)
+    result = diag.exec_()
+    if result != QtGui.QDialog.Accepted:
       return
-    fname = str(QtGui.QFileDialog.getSaveFileName(self, "Naar welke database wordt geschreven?", 
-                                                  '.', "*.db"))
-    if fname == '':
+
+    url = diag.burp()
+    csvname = diag.csv_file
+    if not(csvname and url):
       return
+
+    model.createDatabase(url)
+
     # Import and create the database
-    importCsv(csvname, fname)
+    data = loadCsv(csvname)
+    importData(data, url)
     # Open the database
-    self.open(url=SQLITE_URL_PREFIX+fname)
+    self.open(url=url)
     
   def onRequirementsDocument(self):
     ''' Called when the user wants to generate a requirements document. 

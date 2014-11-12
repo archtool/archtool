@@ -19,11 +19,11 @@ from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.sql import func
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
+from model.history import Versioned
 from datetime import datetime
 from collections import OrderedDict
-import export
 
-VERSION = 7
+VERSION = 8
 
 
 # Determine which encoding to use when interacting with files
@@ -33,8 +33,11 @@ ENCODING = 'cp1252' if 'win' in sys.platform else 'utf-8'
 
 
 # TODO: Implement an undo method
+# TODO: Implement a TestCase: a specialized view where FPreps are edited in a table,
+#       with a precondition for the View, and an expected result for the FP.
 
 
+SQLITE_URL_PREFIX = 'sqlite:///'
 
 
 class Const(object):
@@ -340,20 +343,18 @@ class DbaseVersion(Base):   #pylint:disable=W0232
 
 ###############################################################################
 ## Structural model
-class ArchitectureBlock(Base):   #pylint:disable=W0232
+class ArchitectureBlock(Base, Versioned):   #pylint:disable=W0232
   ''' A building block of the architecture.
   
   A hierarchy is supported where a block contains smaller, child, blocks.
   '''
   Name = Column(String)
   Description = Column(Text)
-  Parent = Column(Integer, ForeignKey('architectureblock.Id'))
+  Parent = Column(Integer, ForeignKey('architectureblock.Id', deferrable=True))
   Children = relationship('ArchitectureBlock', passive_deletes=True)
-  FunctionPoints = relationship("FunctionPoint", passive_deletes=True)
-  Representations = relationship("BlockRepresentation", backref='block_obj',
-                                 passive_deletes=True)
 
-class BlockConnection(Base):   #pylint:disable=W0232
+
+class BlockConnection(Base, Versioned):   #pylint:disable=W0232
   ''' The Architecture Blocks are inter-connected.
   
   The connections are directional so the direction of FP's can be
@@ -363,8 +364,9 @@ class BlockConnection(Base):   #pylint:disable=W0232
   End            = Column(Integer, ForeignKey('architectureblock.Id', ondelete='CASCADE'))
   Name           = Column(String)
   Description    = Column(Text)
-  Role           = Column(String, default='')
-  FunctionPoints = relationship("FunctionPoint", passive_deletes=True)
+
+  theEnd        = relationship(ArchitectureBlock, uselist=False, foreign_keys=[End])
+  theStart      = relationship(ArchitectureBlock, uselist=False, foreign_keys=[Start])
 
 
 # Define an n-to-m mapper class between planeable items
@@ -375,19 +377,19 @@ planeablexref = Table('planeablexref', Base.metadata,
 
 ###############################################################################
 ## Behavioural model, based on 'planable items' (requirements, usecases, etc).
-class PlaneableItem(Base):   #pylint:disable=W0232
+class PlaneableItem(Base, Versioned):   #pylint:disable=W0232
   ''' Base table for anything that can be planned, such as requirements, 
       function points and projects.
   '''
   short_type = ''
   Name        = Column(String)
   # All plannable items can be broken down into other planeable items
-  Parent      = Column(Integer, ForeignKey('planeableitem.Id'))
+  Parent      = Column(Integer, ForeignKey('planeableitem.Id', deferrable=True))
   Description = Column(Text)
-  StateChanges = relationship('PlaneableStatus', order_by='PlaneableStatus.TimeStamp.desc()')
+  #StateChanges = relationship('PlaneableStatus', order_by='PlaneableStatus.TimeStamp.desc()')
   Children    = relationship('PlaneableItem', order_by='PlaneableItem.Name') 
   ParentItem  = relationship('PlaneableItem', remote_side='PlaneableItem.Id')
-  Priority    = Column(Enum(*PRIORITIES.values()), default=PRIORITIES.MUST)
+  Priority    = Column(Enum(*PRIORITIES.values(), name='PRIORITIES'), default=PRIORITIES.MUST)
   ItemType    = Column(String(50))
   AItems      = relationship('PlaneableItem', primaryjoin='planeablexref.c.A==PlaneableItem.Id',
                              secondary=planeablexref, secondaryjoin='planeablexref.c.B==PlaneableItem.Id')
@@ -451,15 +453,18 @@ class PlaneableItem(Base):   #pylint:disable=W0232
     parents.reverse()
     return parents
     
-class PlaneableStatus(Base):
+class PlaneableStatus(Base, Versioned):
   ''' Status for a planeable item. '''
   Planeable     = Column(Integer, ForeignKey('planeableitem.Id', ondelete='CASCADE'), default=None)
   Description   = Column(Text)
   TimeStamp     = Column(DateTime, default=datetime.now)
-  Status        = Column(Enum(*REQUIREMENTS_STATES.values()))
+  Status        = Column(Enum(*REQUIREMENTS_STATES.values(), name='REQ_STATES'))
   TimeRemaining = Column(ManDay, default=0.0)
   TimeSpent     = Column(ManDay)
   AssignedTo    = Column(ForeignKey('worker.Id'))
+
+  theItem  = relationship('PlaneableItem',
+                backref=backref('StateChanges', order_by='PlaneableStatus.TimeStamp.desc()'))
 
   def __init__(self, **kwds):
     if 'TimeStamp' in kwds and isinstance(kwds['TimeStamp'], basestring):
@@ -503,6 +508,11 @@ class FunctionPoint(PlaneableItem):   #pylint:disable=W0232
   isResponse = Column(Boolean)
 #  Representations = relationship("fptousecase",
 #                                 backref=backref("functionpoint", cascade="delete"))
+
+  theConnection = relationship('BlockConnection', uselist=False, backref='FunctionPoints')
+  theBlock      = relationship('ArchitectureBlock', backref='FunctionPoints',
+                               uselist=False)
+
   __mapper_args__ = {
       'polymorphic_identity':'functionpoint',
       #'inherit_condition': (Id == PlaneableItem.Id)
@@ -516,49 +526,13 @@ class Requirement(PlaneableItem):   #pylint:disable=W0232
   
   # Override the Id inherited from Base
   Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
-  Type = Column(Enum(*REQ_TYPES.values()), default=REQ_TYPES.FUNCTIONAL)
+  Type = Column(Enum(*REQ_TYPES.values(), name='REQ_TYPES'), default=REQ_TYPES.FUNCTIONAL)
   
   __mapper_args__ = {
       'polymorphic_identity':'requirement'
   }
 
 
-class View(PlaneableItem):   #pylint:disable=W0232
-  ''' A 'view' on the architecture, showing certain blocks and interconnection.
-  A view combines static elements (blocks) and dynamic elements (function points / actions).
-  Due to the functional elements, a view can be planned for implementation.
-  '''
-  short_type = 'view'
-
-  # Override the Id inherited from Base
-  Id = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
-  Refinement = Column(Integer, ForeignKey('functionpoint.Id', ondelete='CASCADE'), nullable=True)
-  style      = Column(Integer, ForeignKey('style.Id'), nullable=True)
-  __mapper_args__ = {
-      'polymorphic_identity':'view'
-  }
-
-
-
-
-class Bug(PlaneableItem):
-  ''' A Bug is reported by a non-programmer, and then examined by a programmer.
-
-  '''
-  short_type = 'bug'
-
-  # Override the Id inherited from Base
-  Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
-  Type = Column(Enum(*REQ_TYPES.values()), default=REQ_TYPES.FUNCTIONAL)
-  ReportedBy    = Column(ForeignKey('worker.Id'))
-
-  __mapper_args__ = {
-      'polymorphic_identity':'requirement'
-  }
-
-
-###############################################################################
-## Graphical Representation
 class Style(Base):
   ''' Stores styling details in a semicolon-separated string.
       Style items include:
@@ -572,7 +546,26 @@ class Style(Base):
   Details = Column(Text)
 
 
-class Anchor(Base):   #pylint:disable=W0232
+class View(PlaneableItem):   #pylint:disable=W0232
+  ''' A 'view' on the architecture, showing certain blocks and interconnection.
+  A view combines static elements (blocks) and dynamic elements (function points / actions).
+  Due to the functional elements, a view can be planned for implementation.
+  '''
+  short_type = 'view'
+
+  # Override the Id inherited from Base
+  Id = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
+  Refinement = Column(Integer, ForeignKey('functionpoint.Id', ondelete='CASCADE'), nullable=True)
+  style      = Column(Integer, ForeignKey('style.Id'), nullable=True)
+
+  __mapper_args__ = {
+      'polymorphic_identity':'view'
+  }
+
+
+###############################################################################
+## Graphical Representation
+class Anchor(Base, Versioned):   #pylint:disable=W0232
   ''' Base table for anything that can be planned, such as requirements, 
       function points and projects.
   '''
@@ -580,6 +573,8 @@ class Anchor(Base):   #pylint:disable=W0232
   style_role = Column(String)
   Order      = Column(Integer)    # Zero means the item is at the top.
   AnchorType = Column(String(50))
+
+  theView = relationship('View', uselist=False)
 
   __mapper_args__ = {
       'polymorphic_identity':'anchor',
@@ -601,7 +596,10 @@ class BlockRepresentation(Anchor):   #pylint:disable=W0232
   width  = Column(Float)
   IsMultiple = Column(Boolean)
 
-  theBlock = relationship(ArchitectureBlock)
+  theBlock      = relationship('ArchitectureBlock', backref='Representations',
+                               uselist=False)
+
+  # theBlock defined as back reference
   
   __mapper_args__ = {
       'polymorphic_identity':'blockrepresentation',
@@ -615,8 +613,11 @@ class ConnectionRepresentation(Anchor):
   Connection = Column(Integer, ForeignKey('blockconnection.Id', ondelete='CASCADE'), nullable=False)
   Start      = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
   End        = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
-  theConnection = relationship(BlockConnection)
-  
+
+  theConnection = relationship(BlockConnection, uselist=False)
+  theEnd        = relationship(BlockRepresentation, uselist=False, foreign_keys=[End])
+  theStart      = relationship(BlockRepresentation, uselist=False, foreign_keys=[Start])
+
   __mapper_args__ = {
       'polymorphic_identity':'connectionrepresentation',
       'inherit_condition': (Id == Anchor.Id)
@@ -637,6 +638,10 @@ class FpRepresentation(Anchor):   #pylint:disable=W0232
   AnchorPoint   = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
   Xoffset = Column(Float, default=0.0)
   Yoffset = Column(Float, default=0.0)
+  SequenceNr = Column(Integer)
+
+  theFp = relationship('FunctionPoint', uselist=False)
+  theAnchor = relationship(Anchor, uselist = False, foreign_keys=[AnchorPoint])
   
   __mapper_args__ = {
       'polymorphic_identity':'fprepresentation',
@@ -655,7 +660,9 @@ class Annotation(Anchor):
   height      = Column(Float)
   width       = Column(Float)
   Description = Column(Text)
-  
+
+  theAnchor = relationship(Anchor, uselist = False, foreign_keys=[AnchorPoint])
+
   __mapper_args__ = {
       'polymorphic_identity':'annotation',
       'inherit_condition': (Id == Anchor.Id)
@@ -670,11 +677,11 @@ class Annotation(Anchor):
 ###############################################################################
 ## Project Planning
 
-class Worker(Base):   #pylint:disable=W0232
+class Worker(Base, Versioned):   #pylint:disable=W0232
   ''' Stores details for a worker on this project. '''
   Name = Column(String)
 
-class Project(PlaneableItem):   #pylint:disable=W0232
+class Project(PlaneableItem, Versioned):   #pylint:disable=W0232
   ''' A project is something a worker can be assigned to. '''
   short_type = 'prj'
   
@@ -683,19 +690,37 @@ class Project(PlaneableItem):   #pylint:disable=W0232
   FirstWeek = Column(WorkingWeek)
   LastWeek  = Column(WorkingWeek)
   
-  Effort = relationship('PlannedEffort', passive_deletes=True)
-  
   __mapper_args__ = {
       'polymorphic_identity':'project'
   }
 
 
-class PlannedEffort(Base):   #pylint:disable=W0232
+class PlannedEffort(Base, Versioned):   #pylint:disable=W0232
   ''' Plan the amount of time a worker can work on a project '''  
   Worker  = Column(Integer, ForeignKey('worker.Id', ondelete='CASCADE'))
   Project = Column(Integer, ForeignKey('project.Id', ondelete='CASCADE'))
   Week    = Column(WorkingWeek)  # If null: default effort for worker on project
   Hours   = Column(Float)
+
+  theProject = relationship('Project', backref='Effort')
+
+
+
+class Bug(PlaneableItem):
+  ''' A Bug is reported by a non-programmer, and then examined by a programmer.
+
+  '''
+  short_type = 'bug'
+
+  # Override the Id inherited from Base
+  Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
+  Type = Column(Enum(*REQ_TYPES.values(), name='REQ_TYPES'), default=REQ_TYPES.FUNCTIONAL)
+  ReportedBy    = Column(ForeignKey('worker.Id'))
+
+  __mapper_args__ = {
+      'polymorphic_identity':'bug'
+  }
+
 
 
 
@@ -705,29 +730,37 @@ class ChangeLog(Base):
   ''' Keep track of all changes in the model '''
   RecordType = Column(String)
   RecordId   = Column(String)
-  ChangeType = Column(Enum(*CHANGE_TYPE.values()))
+  ChangeType = Column(Enum(*CHANGE_TYPE.values(), name='CHANGE_TYPES'))
   TimeStamp  = Column(DateTime, default=datetime.now)
   Details    = Column(Text)
 
 
 
 ###############################################################################
+## Record Order
+
+order = [ArchitectureBlock, BlockConnection, Style, Worker] + PlaneableItem.__subclasses__() + \
+        [PlaneableStatus, PlannedEffort, ChangeLog] + Anchor.__subclasses__()
+
+###############################################################################
 ## Database connections
 the_engine = None
 SessionFactory = None
 check_fkeys = True
+the_url = None
 
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-  cursor = dbapi_connection.cursor()
-  if check_fkeys:
-    cursor.execute("PRAGMA foreign_keys=ON")
-  else:
-    cursor.execute("PRAGMA foreign_keys=OFF")
-  cursor.close()
+  if the_url and the_url.startswith('sqlite'):
+    cursor = dbapi_connection.cursor()
+    if check_fkeys:
+      cursor.execute("PRAGMA foreign_keys=ON")
+    else:
+      cursor.execute("PRAGMA foreign_keys=OFF")
+    cursor.close()
   
-  connection_record.connection.create_function('reqnr', 1, reqnr.doIt)
+    connection_record.connection.create_function('reqnr', 1, reqnr.doIt)
 
 
 def fnameFromUrl(url):
@@ -746,6 +779,12 @@ def changeEngine(new_engine, create=True):
   SessionFactory = sessionmaker(bind=new_engine)
   if create:
     Base.metadata.create_all(new_engine)
+    session = SessionFactory()
+    ver = session.query(DbaseVersion).all()
+    if not ver:
+      # The database is empty. Initiallise it.
+      session.add(DbaseVersion())
+      session.commit()
   
 def clearEngine():
   global the_engine, SessionFactory
@@ -754,6 +793,8 @@ def clearEngine():
     SessionFactory = None
     
 def open(url):
+  global the_url
+  the_url = url
   engine = create_engine(url)
   changeEngine(engine, False)
     
@@ -762,11 +803,33 @@ def cleanDatabase():
   Base.metadata.drop_all(the_engine)
   Base.metadata.create_all(the_engine)
 
+
+def createDatabase(url):
+  ''' Create a new database from the URL
+  '''
+  parts = urlparse(url)
+  if parts[0].startswith('postgresql'):
+    url_admin = '%s://%s/postgres'%(parts.scheme, parts.netloc)
+    engine = create_engine(url_admin)
+  else:
+    raise RuntimeError('Scheme %s not supported'%parts.scheme)
+
+  conn = engine.connect()
+  # Close the current transaction
+  conn.execute("commit")
+  # Create the new database
+  db = parts.path.strip('/')
+  conn.execute("create database %s"%db)
+  conn.close()
+  print 'Created database %s'%db
+
+
 def connectSession(url):
   ''' Connect to a database and return a session '''
   engine = create_engine(url)
   changeEngine(engine)
   return SessionFactory()
+
 
 @contextmanager
 def sessionScope(session):
@@ -778,3 +841,7 @@ def sessionScope(session):
     session.rollback()
     raise
 
+def currentScheme():
+  if the_url:
+    return urlparse(the_url).scheme
+  return ''

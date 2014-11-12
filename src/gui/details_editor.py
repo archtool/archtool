@@ -13,10 +13,10 @@ from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, event
 from datetime import datetime, timedelta
 from statechange import StateChangeEditor, StateChangeView
-from gui.design import PlannedItemForm, XRefEditorForm, StyleEditForm, ENCODING
+from gui.design import (PlannedItemForm, XRefEditorForm, StyleEditForm, CsvImportForm)
 import model
 from styles import (Style, StyleTypes, getBool, getItemType,
-                    getFont)
+                    getFont, createDefaultStyle)
 from util import Const
 
 
@@ -31,6 +31,41 @@ def toUnicode(qstr):
 
 
 
+class CsvImportEditor(CsvImportForm[1]):
+  def __init__(self, parent):
+    CsvImportForm[1].__init__(self, parent)
+    self.ui = CsvImportForm[0]()
+    self.ui.setupUi(self)
+
+    # Default we work with SQLite files, hide the proper Database fields.
+    for w in [self.ui.edtDb, self.ui.lblDb]:
+      w.hide()
+
+    # Link the file open buttons.
+    self.ui.btnDbFile.clicked.connect(self.onOpenSqliteFile)
+    self.ui.btnCsvFile.clicked.connect(self.onOpenCsvFile)
+
+  def burp(self):
+    if self.ui.rbtnSqlite.isChecked():
+      return model.SQLITE_URL_PREFIX+str(self.ui.edtDbFile.text())
+    return str(self.ui.edtDb.text())
+
+  @property
+  def csv_file(self):
+    return str(self.ui.edtCsvFile.text())
+
+  def onOpenSqliteFile(self):
+    fname = str(QtGui.QFileDialog.getSaveFileName(self, "Open an architecture model",
+                                                  '.', "*.db"))
+    if fname:
+      self.ui.edtDbFile.setText(fname)
+
+  def onOpenCsvFile(self):
+    fname = str(QtGui.QFileDialog.getOpenFileName(self, "Select CSV File to import",
+                                                  '.', "*.csv"))
+    if fname:
+      self.ui.edtCsvFile.setText(fname)
+
 class StyleEditor(StyleEditForm[1]):
   class Level(Const):
     Global = 1
@@ -42,11 +77,13 @@ class StyleEditor(StyleEditForm[1]):
     self.stylable = None
     self.stylesheet = None
     self.editor = None
-    
+    self.session = None   # To be set by the owner
+
     StyleEditForm[1].__init__(self)
     self.ui = StyleEditForm[0]()
     self.ui.setupUi(self)
 
+    self.ui.btnFactoryDefaults.clicked.connect(self.onResetToDefaults)
     self.ui.edtStyles.textChanged.connect(self.onTextChanged)
     self.ui.edtStyles.focusOutEvent = self.onEditFocusLost
     self.ui.actionSave.triggered.connect(self.onEditFocusLost)
@@ -232,7 +269,8 @@ class StyleEditor(StyleEditForm[1]):
               StyleTypes.HALIGN:Style.halignopts.keys(), 
               StyleTypes.VALIGN:Style.valignopts.keys()}[t]
       w.addItems(opts)
-      w.setCurrentIndex(opts.index(current))
+      if current:
+        w.setCurrentIndex(opts.index(current))
       w.currentIndexChanged.connect(self.acceptComboUpdate)
       return w
     
@@ -243,6 +281,19 @@ class StyleEditor(StyleEditForm[1]):
       w = QtGui.QLineEdit(current, self)
       w.returnPressed.connect(self.acceptLineEditUpdate)
       return w
+
+
+  def onResetToDefaults(self, triggered=False):
+    ''' Called when the user clicks on the button 'Reset to Factory Defaults'
+    '''
+    # Check if the user did not press the button by accident
+    q = QtGui.QMessageBox.question(self, 'Reset Styles', 'You are about to reset your styles to '
+                'the factory defaults. Are you sure?',
+                buttons=QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel,
+                defaultButton=QtGui.QMessageBox.Cancel)
+    if q != QtGui.QMessageBox.Ok:
+      return
+    createDefaultStyle(self.session)
 
 
 class XRefEditor(XRefEditorForm[1]):
@@ -261,11 +312,14 @@ class XRefEditor(XRefEditorForm[1]):
 
     for w, refs in [(self.ui.lstAItems, details.AItems),
                        (self.ui.lstBItems, details.BItems)]:
-      for ref in refs:
-        name = '.'.join([r.Name for r in ref.getParents()])
-        name = ':'.join([ref.short_type, name])
-        item = QtGui.QListWidgetItem(name, w)
-        item.details = ref
+      if len(refs) == 0:
+        w.hide()
+      else:
+        for ref in refs:
+          name = '.'.join([r.Name for r in ref.getParents()])
+          name = ':'.join([ref.short_type, name])
+          item = QtGui.QListWidgetItem(name, w)
+          item.details = ref
       
     if isinstance(details, model.View):
       self.ui.btnCreate.hide()
@@ -404,7 +458,7 @@ class DetailsViewer(QtGui.QWidget):
       
       # Add a list of 'State Changes', and allow state changes to be added.
       for state in details.StateChanges:
-        w = StateChangeView(self, state, read_only)
+        w = StateChangeView(self, state)
         self.vertical_layout.addWidget(w)
       if not read_only:
         b = QtGui.QPushButton('Add State Change', self)
@@ -483,7 +537,7 @@ class DetailsViewer(QtGui.QWidget):
       return
 
     # Add the new status update.
-    w = StateChangeView(self, target)
+    w = StateChangeView(self, target, self.session)
     self.vertical_layout.insertWidget(2, w)
 
   def setFocusOnName(self):

@@ -105,6 +105,16 @@
        </property>
       </widget>
      </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="btnFactoryDefaults">
+       <property name="styleSheet">
+        <string notr="true">font-size:9pt</string>
+       </property>
+       <property name="text">
+        <string>To Factory Defaults</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>

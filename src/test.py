@@ -22,7 +22,7 @@ class Test(unittest.TestCase):
 
   def setUp(self):
     # Do the tests on a temporary database
-    self.org_engine = model.engine
+    self.org_engine = model.the_engine
     self.engine = model.create_engine('sqlite:///:memory:', echo=True)
     model.changeEngine(self.engine)
 
@@ -37,44 +37,46 @@ class Test(unittest.TestCase):
     
     # Add some architecture blocks and a View
     with model.sessionScope(session) as s:
-      s.add(model.ArchitectureBlock(Name='blok1'))
-      s.add(model.ArchitectureBlock(Name='blok2'))
-      s.add(model.View(Name='view1'))
-    # Add a connection
-    with model.sessionScope(session) as s:
-      s.add(model.Connection(Start=1, End=2))
-    # Add function points
-    with model.sessionScope(session) as s:
-      s.add(model.FunctionPoint(Connection=1, Name='fp1'))
-      s.add(model.FunctionPoint(Block=1, Name='fp2'))
-    # Add elements to the view
-    with model.sessionScope(session) as s:
-      s.add(model.BlockRepresentation(Block=1, View=1))
-      s.add(model.BlockRepresentation(Block=1, View=1))
-      s.add(model.BlockRepresentation(Block=2, View=1))
-      s.add(model.FpToUseCase(UseCase=1, FunctionPoint=1))
-      s.add(model.FpToUseCase(UseCase=1, FunctionPoint=2))
-        
-    assert session.query(model.FpToUseCase.Id).count() == 2
+      b1 = model.ArchitectureBlock(Name='blok1')
+      b2 = model.ArchitectureBlock(Name='blok2')
+      v1 = model.View(Name='view1')
+      # Add a connection
+      c1 = model.BlockConnection(theStart=b1, theEnd=b2)
+
+      # Add function points
+      fp1 = model.FunctionPoint(theConnection=c1, Name='fp1')
+      fp2 = model.FunctionPoint(theBlock=b1, Name='fp2')
+
+      # Add elements to the view
+      br1 = model.BlockRepresentation(theBlock=b1, theView=v1)
+      s.add(model.BlockRepresentation(theBlock=b1, theView=v1))
+      br2 = model.BlockRepresentation(theBlock=b2, theView=v1)
+      fpr1 = model.FpRepresentation(theView=v1, theFp=fp1, theAnchor=br1)
+      fpr2 = model.FpRepresentation(theView=v1, theFp=fp2, theAnchor=br2)
+      s.add(fpr1)
+      s.add(fpr2)
+
+
+    assert session.query(model.FpRepresentation.Id).count() == 2
     assert session.query(model.BlockRepresentation.Id).count() == 3
     
-    block1 = session.query(model.ArchitectureBlock).get(1)
+    block1 = session.query(model.ArchitectureBlock).get(b1.Id)
     assert len(block1.Representations) == 2
     
     # Delete Block two; check everything is deleted correctly
     with model.sessionScope(session) as s:
-      s.query(model.ArchitectureBlock).filter(model.ArchitectureBlock.Id==2).delete()
+      s.query(model.ArchitectureBlock).filter(model.ArchitectureBlock.Id==b2.Id).delete()
     assert session.query(model.ArchitectureBlock.Id).count() == 1
     self.assertEqual(session.query(model.BlockRepresentation.Id).count(), 2)
-    self.assertEqual(session.query(model.Connection.Id).count(), 0)
-    self.assertEqual(session.query(model.FpToUseCase.Id).count(), 1)
+    self.assertEqual(session.query(model.BlockConnection.Id).count(), 0)
+    self.assertEqual(session.query(model.FpRepresentation.Id).count(), 1)
     
     # Delete the View
-    fp2uc = session.query(model.FpToUseCase).get(2)
+    fp2uc = session.query(model.FpRepresentation).get(fpr2.Id)
     with model.sessionScope(session) as s:
       s.query(model.View).filter(model.View.Id==1).delete()
     self.assertEqual(session.query(model.BlockRepresentation.Id).count(), 0)
-    self.assertEqual(session.query(model.FpToUseCase.Id).count(), 0)
+    self.assertEqual(session.query(model.FpRepresentation.Id).count(), 0)
     
     # Check that accessing ORM objects that have been deleted raises errors.
     try:

@@ -122,3 +122,8 @@ class ViewerWithTreeBase(ViewerWithDetailsBase):
     self.details_viewer.setFocusOnName()
 
 
+  def onItemSelectionChanged(self, details):
+    ''' Called when the current selection in a 2D view changes.
+    '''
+    self.openDetailsViewer(details)
+

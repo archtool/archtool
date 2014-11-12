@@ -39,6 +39,7 @@
     </widget>
     <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
+    <addaction name="actionOpen_Database"/>
     <addaction name="actionSave"/>
     <addaction name="separator"/>
     <addaction name="menuRecent_Files"/>
@@ -113,6 +114,11 @@
   <action name="actionWork_Items">
    <property name="text">
     <string>Work Items</string>
+   </property>
+  </action>
+  <action name="actionOpen_Database">
+   <property name="text">
+    <string>Open Database</string>
    </property>
   </action>
  </widget>

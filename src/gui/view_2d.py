@@ -17,24 +17,24 @@ import sqlalchemy as sql
 from primitives_2d import Block, Text, Line, NO_POS, extractSvgGradients
 from connector import Connection
 from styles import Styles, Style
+from controller import Controller, cmnds
 
 
-# TODO: Allow addition of a child within view
 # TODO: Allow copy - paste of blocks between views.
-# TODO: Verwijderen van geselecteerde elementen met Delete knop.
 # TODO: Separate a functionpoint sequence number from its Z-order.
 # TODO: Support re-ordering multiple items.
 # TODO: children are contained by and on top of parents.
+# TODO: Have two types of view: one where actions shown on a link are from the connection (Architecture),
+#       and one where the actions shown on a link are from an object (UML).
 
 # FIXME: When dropping a new block or selecting a menu item, deselect the current items.
 # FIXME: delete block in view leaves block outline on screen
 # FIXME: rename architecture block is not shown in open viewer.
 # FIXME: Zorg dat bij het aanmaken van iets nieuws, dit meteen geselecteerd is.
-# FIXME: Editing a line style throws an exception.
+
 MIME_TYPE = 'application/x-qabstractitemmodeldatalist'
 
-BLOCK_WIDTH  = 100
-BLOCK_HEIGHT = 30
+theController = Controller.get()
 
 
 class NoDetailsFound(Exception):
@@ -59,6 +59,31 @@ class BlockItem(Block):
     self.details.style_role = role
     Block.setRole(self, role)
     self.applyStyle()
+  def menuFactory(self, view):
+    ''' Factory function for creating a right-click menu.
+
+    :param view: The view where the right-click menu is requested.
+    :return: An instance of QtGui.QMenu
+    '''
+    details = self.block_details
+    def bind(n):
+      ''' Utility: bind a menu action trigger to the right function '''
+      return lambda: view.addExistingAction(n, details.Id)
+
+    definition = list(view.standard_menu_def)
+    # Add the dynamic menu items
+    nr_items = len(view.scene.selectedItems())
+    if nr_items in [0, 1]:
+      definition += [('Create New Child Block', view.onAddChildBlock),
+                     ('New Action', view.onNewAction),
+                     ('---', None)]
+      for fp in details.FunctionPoints:
+        definition.append((fp.Name, bind(fp.Id)))
+    if nr_items == 2:
+      definition = [('Connect blocks', view.onConnect)]
+
+    return mkMenu(definition, view)
+
 
 class AnnotationItem(Block):
   ''' Representation of an annotation. '''
@@ -75,12 +100,23 @@ class AnnotationItem(Block):
     self.details.style_role = role
     Block.setRole(self, role)
     self.applyStyle()
-    
+  def menuFactory(self, view):
+    ''' Factory function for creating a right-click menu.
+
+    :param view: The view where the right-click menu is requested.
+    :return: An instance of QtGui.QMenu
+    '''
+    details = self.details
+    return mkMenu(view.standard_menu_def, view)
+
     
 class FunctionPoint(Text):
   ROLE = 'functionpoint'
   def __init__(self, details, fp, anchor, style):
-    text = '%s: %s'%(details.Order, fp.Name)
+    if details.SequenceNr:
+      text = '%s: %s'%(details.SequenceNr, fp.Name)
+    else:
+      text = fp.Name
     role = details.style_role
     self.anchor = anchor
     self.details = details
@@ -139,7 +175,10 @@ class FunctionPoint(Text):
     
   def updatePos(self):
     p = self.parentItem()
-    text = '%s: %s'%(self.details.Order, self.fp.Name)
+    if self.details.SequenceNr:
+      text = '%s: %s'%(self.details.SequenceNr, self.fp.Name)
+    else:
+      text = self.fp.Name
     self.setText(text)
     x, y = self.anchorPos()
     x += self.details.Xoffset
@@ -169,6 +208,14 @@ class FunctionPoint(Text):
       self.details.Xoffset += np.x() - p.x()
       self.details.Yoffset += np.y() - p.y()
 
+  def menuFactory(self, view):
+    ''' Factory function for creating a right-click menu.
+
+    :param view: The view where the right-click menu is requested.
+    :return: An instance of QtGui.QMenu
+    '''
+    definition = list(view.standard_menu_def)
+    return mkMenu(definition, view)
 
 
 def getDetails(item, dont_raise=False):
@@ -205,39 +252,32 @@ class MyScene(QtGui.QGraphicsScene):
     self.styles = Styles.style_sheet.getStyle(details.style)
     self.styles.subscribe(lambda _: self.applyStyle())
     
-    # Add the existing blocks and connections
+    # Add the existing blocks
+    blocks, annotations, connections, actions = theController.getViewElements(self.details)
     self.anchors = {}    # Anchor.Id : Item tuples
     self.block_details = {} # ArchBlock.Id : ArchBlock
     self.block_items = {}   # ArchBlock.Id : BlockItem
-    q = self.session.query(model.BlockRepresentation).order_by(model.BlockRepresentation.Order)
-    blocks = q.filter(model.BlockRepresentation.View == details.Id).all()
+
     for block in blocks:
       self.anchors[block.Id] = block
       self.addBlock(block, add_connections=False)
-      
-    q = self.session.query(model.Annotation).order_by(model.Annotation.Order)
-    annotations = q.filter(model.Annotation.View == details.Id).all()
+
+    # Add the existing annotations
     for a in annotations:
       self.addAnnotation(a)
     
-    # Add connections that are relevant for this view.
-    q = self.session.query(model.ConnectionRepresentation).\
-      filter(model.ConnectionRepresentation.View==details.Id)
-    for connection in q:
+    # Add existing connections
+    for connection in connections:
+      self.anchors[connection.Id] = connection
       self.addConnection(connection)
-#
-    # self.fp_details is sorted by 'order'.
-    all_details = self.session.query(model.FpRepresentation, model.FunctionPoint).\
-                     filter(model.FpRepresentation.View==self.details.Id).\
-                     filter(model.FunctionPoint.Id == model.FpRepresentation.FunctionPoint).\
-                     order_by(model.FpRepresentation.Order.asc()).all()
-    
-    self.processActions(all_details)
+
+    # Add the actions
+    self.processActions(actions)
     self.fpviews = {}   # model.FpRepresentation : FunctionPoint
     self.last_leftclick_pos = None
     self.select_rect = None
     
-    for fpview, fpdetails in all_details:        
+    for fpview, fpdetails in actions:
       self.addAction(fpview, fpdetails)
 
 
@@ -321,21 +361,12 @@ class MyScene(QtGui.QGraphicsScene):
   
   def dropEvent(self, event):
     details = self.drop2Details(event)
-    print 'got:', details
 
     coods = event.scenePos()
-    
-    if isinstance(details, model.ArchitectureBlock):
-      new_details = model.BlockRepresentation(Block=details.Id,
-                                              View = self.details.Id,
-                                              x = coods.x(),
-                                              y = coods.y(),
-                                              height = BLOCK_HEIGHT,
-                                              width = BLOCK_WIDTH,
-                                              Order = len(self.anchors))
-      self.session.add(new_details)
-      self.session.commit()
-      
+    order = len(self.anchors)
+    new_details = theController.execute(cmnds.AddBlockRepresentation(details, self.details.Id,
+                                               coods, order))
+    if new_details:
       self.addBlock(new_details)
     
   def addBlock(self, rep_details, add_connections=True):
@@ -438,7 +469,6 @@ class MyScene(QtGui.QGraphicsScene):
       self.select_rect.setRect(x, y, width, height)
 
         
-        
   def onFpUpdate(self, mapper, connection, target):
     # Check if the detail is being shown
     if target not in self.known_fps:
@@ -532,21 +562,20 @@ class TwoDView(QtGui.QGraphicsView):
     #self.addAction(a)
     #a.triggered.connect(self.onAddBlock)
     # TODO: Implement copy to use case
-    self.menu_noitem = mkMenu([('Nieuw Blok', self.onAddBlock),
-                               ('Nieuwe Annotatie', self.onAddAnnotation),
+    self.menu_noitem = mkMenu([('New Block', self.onAddBlock),
+                               ('New Annotation', self.onAddAnnotation),
                                ('Copieer naar Nieuw View', self.onCopyToUseCase),
-                               ('Exporteer als SVG', self.exportSvg)], self)
+                               ('Export as SVG', self.exportSvg)], self)
     up = lambda _:self.onChangeItemOrder(self.MOVE_UP)
     down = lambda _:self.onChangeItemOrder(self.MOVE_DOWN)
     top = lambda _:self.onChangeItemOrder(self.MOVE_TOP)
     bottom = lambda _:self.onChangeItemOrder(self.MOVE_BOTTOM)
-    self.menu_action = mkMenu([('Move Up', up),
+    self.standard_menu_def = [('Move Up', up),
                               ('Move Down', down),
                               ('Move Top', top),
                               ('Move Bottom', bottom),
-                    ('---', None),
-                    ('Detailleer Actie', self.onRefineAction),
-                    ('Verwijder Actie', self.onDeleteItem)], self)
+                              ('---', None),
+                              ('Delete', self.onDeleteItem)]
     self.scene = scene
     self.details = details
     self.last_rmouse_click = None
@@ -570,64 +599,26 @@ class TwoDView(QtGui.QGraphicsView):
     else:
       # Forward left-click mouse events.
       QtGui.QGraphicsView.mouseReleaseEvent(self, event)
-      
-  def menuActionDetails(self, details, definition=None):
-    ''' Construct the details for a right-click menu that
-    allows the addition of function points.
-    '''
-    if definition is None:
-      definition = []
 
-    definition += [('Nieuwe Actie', self.onNewAction),
-                  ('---', None)]
-    def bind(n):
-      ''' Utility: bind a menu action trigger to the right function '''
-      return lambda: self.addExistingAction(n, details.Id)
-    #for fp in details.FunctionPoints:
-    for fp in details.FunctionPoints:
-      definition.append((fp.Name, bind(fp.Id)))
-    return definition
-  
+  @staticmethod
+  def mkMenu(*args):
+    return mkMenu(*args)
+
   def contextMenuEvent(self, event):
     ''' Called when the context menu is requested in the view.
         The function checks what the mouse was pointing at when the menu
         was requested, so the right menu can be shown.
     '''
     self.last_rmouse_click = event.pos()
+    print 'right-click at:', self.last_rmouse_click
     item = self.itemAt(event.pos())
-    details, _ = getDetails(item, dont_raise=True)
+    details, item = getDetails(item, dont_raise=True)
     #print item.details, item.details.Name
     menu = None
     if item is None:
       menu = self.menu_noitem
-    elif isinstance(details, model.ConnectionRepresentation):
-      # Create the menu for a connection
-      connection = details.theConnection
-      definition = self.menuActionDetails(connection, [('Verwijder Verbinding', self.onDeleteItem)])
-      menu = mkMenu(definition, self)
-    elif isinstance(details, model.FpRepresentation):
-      # Use the action menu
-      menu = self.menu_action
-    elif isinstance(details, model.Annotation):
-      return
     else:
-      # It must be an architecture block.
-      # If two blocks are selected, allow them to be connected.
-      if len(self.scene.selectedItems()) == 2:
-        definition = [('Verbind blokken', self.onConnect)]
-      else:
-        block = self.scene.block_details[details.Id]
-        up = lambda _:self.onChangeItemOrder(self.MOVE_UP)
-        down = lambda _:self.onChangeItemOrder(self.MOVE_DOWN)
-        top = lambda _:self.onChangeItemOrder(self.MOVE_TOP)
-        bottom = lambda _:self.onChangeItemOrder(self.MOVE_BOTTOM)
-        definition = self.menuActionDetails(block, [('Move Up', up),
-                                                    ('Move Down', down),
-                                                    ('Move Top', top),
-                                                    ('Move Bottom', bottom),
-                                                    ('---', None),
-                                                    ('Verwijder Blok', self.onDeleteItem)])
-      menu = mkMenu(definition, self)
+      menu = item.menuFactory(self)
     menu.exec_(self.mapToGlobal(event.pos()))
     event.accept()
     
@@ -636,73 +627,86 @@ class TwoDView(QtGui.QGraphicsView):
     items = self.scene.selectedItems()
     if len(items) != 2:
       return
-    
-    source, target = [getDetails(i)[0].Block for i in self.selection_order]
-    # Find the connection object, or create it if it does not yet exist.
-    # This connection is between Architecture Blocks, not their representations.
-    with model.sessionScope(self.session) as session:
-      bc = model.BlockConnection
-      conns = session.query(bc).\
-                           filter(bc.Start.in_([source, target])).\
-                           filter(bc.End.in_([source, target])).all()
-      if conns:
-        connection = conns[0]
-      else:
-        connection = model.BlockConnection(Start=source, End=target)
-        session.add(connection)
-        # We need a valid primary key, so flush the session but do not commit.
-        session.flush()
 
-      # Add the representation of the connection, between two representations of blocks.
-      source, target = [getDetails(i)[0].Id for i in items]
-      details = model.ConnectionRepresentation(Connection=connection.Id,
-                                               Start=source,
-                                               End=target)
-      session.add(details)
-      # Flush the database so that all references are updated.
-      session.flush()
-      self.scene.addConnection(details)
-      self.scene.clearSelection()
+    source, target = [getDetails(i)[0] for i in self.selection_order]
+    details = theController.execute(cmnds.AddConnectionRepresentation(source, target,
+                                                                      self.details.Id))
+    self.scene.addConnection(details)
+    self.scene.clearSelection()
 
-  def onAddBlock(self, triggered):
+  def onAddBlock(self, triggered, parent=None):
     ''' Called to add a new block to the view. '''
-    text, ok = QtGui.QInputDialog.getText(self, 'Nieuw Blok',
-                                "Welke naam krijgt het blok?")
+    text, ok = QtGui.QInputDialog.getText(self, 'New Block',
+                                "Please specify the block name.")
     if not ok:
       return
     
     text = str(text)
-    block_details = model.ArchitectureBlock(Name=text, Parent=self.details.Parent)
-    self.session.add(block_details)
-    self.session.commit()
     pos = self.mapToScene(self.last_rmouse_click)
-    repr_details = model.BlockRepresentation(Block=block_details.Id, View=self.details.Id, 
-                                             x=pos.x(), y=pos.y(), 
-                                             Order = len(self.scene.anchors),
-                                             width=BLOCK_WIDTH, height=BLOCK_HEIGHT)
-    self.session.add(repr_details)
-    self.session.commit()
+    block_details = theController.execute(cmnds.AddNewBlock(text, parent))
+    repr_details = theController.execute(cmnds.AddBlockRepresentation(block_details,
+                                                                      self.details.Id,
+                                                                      pos,
+                                                                      len(self.scene.anchors)))
     self.scene.addBlock(repr_details)
+
+  def onAddChildBlock(self, triggered=False):
+    ''' Called to create a new child block.
+    '''
+    item = self.itemAt(self.last_rmouse_click)
+    parent, item = getDetails(item)
+    self.onAddBlock(False, parent=parent)
+
+
+  def onReverseConnection(self, triggered=False):
+    ''' Called when the user wants to reverse the direction of a connection.
+    '''
+    # Retrieve the ConnectionRepresentation
+    item = self.itemAt(self.last_rmouse_click)
+    details, item = getDetails(item)
+    details.Start, details.End = details.End, details.Start
+
+    # Redraw the connection
+    self.scene.removeItem(item)
+    self.scene.addConnection(details)
+
     
   def onAddAnnotation(self, triggered=False):
     ''' Called to add a new annotation to the view. '''
     pos = self.mapToScene(self.last_rmouse_click)
     item = self.itemAt(self.last_rmouse_click)
-    anchor = anchor_type = None
-    x, y = self.last_rmouse_click.x(), self.last_rmouse_click.y()
+    anchor_id = None
+    pos = self.mapToScene(self.last_rmouse_click)
+
     if item:
-      anchor = item.details.Id
-      anchor_type = item.details.__name__
-      x = y = 0.0
-    details = model.Annotation(View=self.details.Id,
-                                x=x, y=y,
-                                AnchorPoint=anchor,
-                                AnchorType=anchor_type,
-                                Order = len(self.scene.anchors),
-                                width=BLOCK_WIDTH, height=BLOCK_HEIGHT)
-    self.session.add(details)
-    self.session.commit()
+      anchor, item = getDetails(item)
+      anchor_id = anchor.Id
+      pos = QtCore.QPointF(0.0, 0.0)
+
+    details = theController.execute(cmnds.AddAnnotation(self.details.Id, pos, anchor_id,
+                                                        len(self.scene.anchors)))
     self.scene.addAnnotation(details)
+
+
+  def keyPressEvent(self, ev):
+    ''' Overload for the standard Widget key press event handler
+    '''
+    # Catch the 'delete' key
+    if ev.key() == QtCore.Qt.Key_Delete:
+      ev.accept()
+      # Check if anything is selected
+      if len(self.scene.selectedItems()) == 0:
+        return
+      # Ask the user if he wants to delete
+      q = QtGui.QMessageBox.question(self, 'Confirm Delete', 'Are you sure you want to delete the '
+              'current selected items?',
+              buttons=QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel,
+              defaultButton=QtGui.QMessageBox.Ok)
+      if q != QtGui.QMessageBox.Ok:
+        return
+      self.onDelete()
+      return
+    return QtGui.QGraphicsView.keyPressEvent(self, ev)
 
 
   def deleteItems(self, items):
@@ -764,27 +768,17 @@ class TwoDView(QtGui.QGraphicsView):
     # Create the new action ('Function Point')
     item = self.itemAt(self.last_rmouse_click)
     details, item = getDetails(item)
-    # Determine if adding an action to a block or to a connection.
-    if isinstance(details, model.ConnectionRepresentation):
-      fp = model.FunctionPoint(Name=str(text), Connection=details.Connection, Parent=None)
-    else:
-      fp = model.FunctionPoint(Name=str(text), Block=details.Block, Parent=None)
-    self.session.add(fp)
-    self.session.commit()
+    fp = theController.execute(cmnds.AddNewAction(details, str(text)))
     # Also create the link to the FP in the view.
     self.addExistingAction(fp.Id, details.Id)
     
   def addExistingAction(self, fp_id, anchor_id):
     ''' Show an already existing action in the current view. '''
-    order=self.session.query(sql.func.count(model.FpRepresentation.Id)).\
-                             filter(model.FpRepresentation.View==self.details.Id).one()[0]
-    fp = self.session.query(model.FunctionPoint).filter(model.FunctionPoint.Id==fp_id).one()
-    fp2uc = model.FpRepresentation(FunctionPoint=fp_id, View=self.details.Id, Order=order,
-                                   AnchorPoint=anchor_id)
-    self.session.add(fp2uc)
-    self.session.commit()
     _, item = getDetails(self.itemAt(self.last_rmouse_click))
-    self.scene.addAction(fp2uc, fp, item)
+    fprepr, fp = theController.execute(cmnds.AddExistingAction(self.details, fp_id, anchor_id))
+
+    # Cause the action to be shown in the View.
+    self.scene.addAction(fprepr, fp, item)
     
   def onChangeItemOrder(self, direction):
     ''' Called to move a drawing item in the Z direction. This function supports
@@ -863,6 +857,8 @@ class TwoDView(QtGui.QGraphicsView):
       elif details.__class__ == model.FpRepresentation:
         details = self.session.query(model.FunctionPoint).\
                        filter(model.FunctionPoint.Id == details.FunctionPoint).one()
+      elif details.__class__ == model.ConnectionRepresentation:
+        details = details.theConnection
       self.selectedItemChanged.emit(details)
       self.selection_order = items
     elif len(items) == 0:

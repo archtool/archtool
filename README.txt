@@ -5,9 +5,10 @@ Required python extensions:
 	* Sqlalchemy
 	* matplotlib (for creating charts & plots)
 	* docutils   (for generating documents)
+	* psycopg2   (for using PostgreSQL databases)
 
 Start the tool by running the file 'src/run.py'.
 
 
 Author: Evert van de Waal
-email:   evert.vandewaal@imtech.nl
+email:   evert.vandewaal@xs4all.nl

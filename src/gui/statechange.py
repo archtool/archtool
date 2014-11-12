@@ -8,17 +8,18 @@ This program is released under the conditions of the GNU General Public License.
 '''
 
 from PyQt4 import QtGui, QtCore
-from model import PlaneableStatus, REQUIREMENTS_STATES, ManDay, ENCODING
+from model import PlaneableStatus, REQUIREMENTS_STATES, ManDay, ENCODING, Worker
 from gui.design import StatusEditorForm
 from gui.design import StatusViewForm
 
 
 class StateChangeView(StatusViewForm[1]):
-  def __init__(self, parent, details, read_only=False):
+  def __init__(self, parent, details, session=None):
     QtGui.QWidget.__init__(self, parent)
     self.ui = StatusViewForm[0]()
     self.ui.setupUi(self)
     self.details = details
+    self.session = session
     
     msg = '%s:%s'%(details.Status, details.TimeStamp.strftime('%Y-%m-%d %H:%M:%S'))
     self.ui.grpBox.setTitle(msg)
@@ -27,7 +28,7 @@ class StateChangeView(StatusViewForm[1]):
     t = details.TimeRemaining if details.TimeRemaining else '-'
     self.ui.lblTime.setText('Schatting: %s'%t)
     self.ui.btnEdit.clicked.connect(self.edit)
-    if read_only:
+    if session is not None:
       self.ui.btnEdit.hide()
   def updateValues(self):
     self.ui.lblText.setText(self.details.Description)
@@ -35,7 +36,11 @@ class StateChangeView(StatusViewForm[1]):
     self.ui.grpBox.setTitle('%s:%s'%(self.details.Status, 
                            self.details.TimeStamp.strftime('%Y-%m-%d %H:%M:%S')))
   def edit(self):
-    diag = StateChangeEditor(self, self.details)
+    if self.session is None:
+      return
+    workers = self.session.query(Worker).all()
+    workers = [w[0] for w in workers]
+    diag = StateChangeEditor(self, workers, self.details)
     r = diag.exec_()
     if r == QtGui.QDialog.Accepted:
       diag.getDetails(self.details)
@@ -43,25 +48,31 @@ class StateChangeView(StatusViewForm[1]):
 
 
 class StateChangeEditor(StatusEditorForm[1]):
-  def __init__(self, parent_widget, value=None):
+  def __init__(self, parent_widget, workers, value=None):
     QtGui.QDialog.__init__(self, parent_widget)
     self.ui = StatusEditorForm[0]()
     self.ui.setupUi(self)
-    self.ui.cmbStatus.addItems(REQUIREMENTS_STATES)
+    self.ui.cmbStatus.addItems(REQUIREMENTS_STATES.values())
+    self.ui.cmbAssigned.addItems(workers)
     if value:
       if value.Description:
         self.ui.edtDescription.setPlainText(value.Description)
-      self.ui.cmbStatus.setCurrentIndex(REQUIREMENTS_STATES.index(value.Status))
+      self.ui.cmbStatus.setCurrentIndex(REQUIREMENTS_STATES.values().index(value.Status))
       if value.TimeRemaining:
         self.ui.edtTimeRemaining.setText(str(value.TimeRemaining))
+      if value.AssignedTo:
+        self.ui.cmbAssigned.setCurrenIndex(workers.index(value.AssignedTo))
   def getDetails(self, details):
     details.Description=str(self.ui.edtDescription.toPlainText()).decode(ENCODING)
     details.Status=str(self.ui.cmbStatus.currentText())
     details.TimeRemaining=ManDay.fromString(str(self.ui.edtTimeRemaining.text()))
+    details.AssignedTo=str(self.ui.cmbAssigned.currentText())
     
   @staticmethod
   def add(parent_widget, parent_details, session):
-    diag = StateChangeEditor(parent_widget)
+    workers = session.query(Worker).all()
+    workers = [w[0] for w in workers]
+    diag = StateChangeEditor(parent_widget, workers)
     r = diag.exec_()
     if r == QtGui.QDialog.Accepted:
       new = PlaneableStatus()

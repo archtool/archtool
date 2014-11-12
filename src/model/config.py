@@ -109,8 +109,8 @@ class ConfigManager(object):
     max_files = self.getConfig('nr_files_history')
     with self.transactionScope() as session:
       # Delete files that are too many
-      recent_files = list(session.query(FileHistory.Url).\
-                          order_by(FileHistory.TimeStamp.desc()))
+      recent_files = session.query(FileHistory).\
+                          order_by(FileHistory.TimeStamp.desc())
       for f in recent_files[max_files:]:
         session.delete(f)
 

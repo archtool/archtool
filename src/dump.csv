@@ -1,264 +1,349 @@
 planeableitem
 Id,Name,Parent,Description,Priority,ItemType
 1,Overview,,,Must,view
-2,Globaal zoeken naar items,13,"Bijvoorbeeld: vind alle plekken waar een bepaald functie punt gebruikt wordt.
-
-Deze functie moet getriggered kunnen worden vanuit het menu.",Must,requirement
-3,Zoeken,1,,Must,view
-4,Vraag om naam & type,,,Must,functionpoint
-5,vraag mogelijke completions,,,Must,functionpoint
-6,Toetsaanslag,,,Must,functionpoint
-7,Kies een item,,,Must,functionpoint
-8,Haal referenties op,,,Must,functionpoint
-9,Presenteer referenties,,,Must,functionpoint
-10,new item,,,Must,project
-11,new item,,,Must,project
-12,new item,,,Must,project
-13,Functionele Eisen,,,Must,requirement
-14,Bugs,,,Must,requirement
-15,Gebruikersinterface,13,,Must,requirement
-16,Exporteren,13,,Must,requirement
-17,Documenten Generatie,13,,Must,requirement
-18,Delete knop,19,"Bij drukken op de Delete knop wordt het huidige geselecteerde element gedelete.
-
-Wanneer meerdere items geselecteerd zijn wordt een pop-up getoond of de gebruiker deze inderdaad wil deleten.",Must,requirement
-19,Use Case Editor,15,,Must,requirement
-20,Meteen naar edit mode voor nieuwe items,36,"Wanneer een nieuw item wordt gemaakt moet je meteen de naam van dit ding kunnen intikken, zonder klikken.",Must,requirement
-22,Zoom functie,19,Met Ctrl-muiswiel moet het zoom niveau veranderd kunnen worden.,Must,requirement
-23,Bij deleten van een block blijft het omhulsel staan,14,,Must,requirement
-24,Optimalisaties,,,Must,requirement
-25,Ophalen van een hele boom kost veel tijd,24,"Tijdens laden van een database worden de hierarchien per blok geladen uit de database. Dit kost erg veel tijd.
-
-Als optimalisatie moeten alle blokken in 1 klap geladen worden uit de database, en vervolgens (in geheugen) in de juiste hierarchie gezet.",Must,requirement
-26,Project Status,17,In een project moet regelmatig,Must,requirement
-27,Werkverdeling View,15,,Must,requirement
-28,Model,13,,Must,requirement
-29,Verschillende typen kruisverwijzing,28,"De kruisverwijzing tussen planneableitems heeft nu alleen de velden arol & brol. Hier moet het veld 'type' bijkomen, waar je het soort verwijzing in kan zetten. 
-
-Het bewuste veld is een gewone string, geen enum, zodat er vrijheid is om nieuwe typen toe te voegen.
-
-Voorbeelden van typen verwijzing in de context van requirements zijn:
- * Depends on
- * Contradicts
- * Elaborates",Must,requirement
-30,Vragen / problemen,,,Must,requirement
-31,Link tussen design keuzes en non-func requirements,30,Hoe leg je vast dat een bepaalde design keuze is gemaakt omwille van een bepaald niet-functioneel requirement?,Must,requirement
-32,Configureren van xref typen,28,In de configuratie moet zijn vastgelegd welke typen kruisreferentie kunnen bestaan.,Must,requirement
-33,Integraal versie beheer,28,Alle wijzigingen worden bijgehouden in de database.,Must,requirement
-34,Globale Undo & Redo,28,,Must,requirement
-35,Delta Viewer,15,???,Must,requirement
-36,GUI afstemmen op workflow,15,,Must,requirement
-37,Opruimen van tussenstappen in model,24,"In de historie zullen veel tussenstappen komen, bijvoorbeeld een tekst die 5 keer is aangepast kort na elkaar.
-
-Het moet mogelijk zijn om deze tussenstappen op te ruimen, zodat er per item maar 1 wijziging is tussen twee 'tags' in de database.
-
-Het is nog onduidelijk wanneer dit moet worden gedaan.",Could,requirement
-38,Project Activiteiten,,,Must,requirement
-39,Inrichten centrale database,38,"Voor het uitvoeren van interne projecten moet er een centrale database komen waar archtool modellen in kunnen worden opgeslagen.
-
-Deze database moet voor iedere imtech-icter met een VPN verbinding bereikt kunnen worden.",Must,requirement
-40,Requirements document,17,,Must,requirement
-41,auto-numbering van requirements,40,,Must,requirement
-42,Exporteren van database naar CSV,16,"De totale database kan worden ge-exporteerd naar een CSV file.
-
-Er is al een functie die dit kan, deze moet nog worden geintegreerd in de gebruikersinterface (het File menu).",Must,requirement
-43,Openen recent deleted files,14,"Bij het openen van een 'Recent File' wordt niet gecontroleerd of het file nog bestaat. 
-
-Mocht het verplaatst of deleted zijn, dan maakt het tool in plaats van een foutmelding te geven, een nieuwe, lege database aan.",Must,requirement
-44,Nieuwe files niet aan recent files toegevoegd,14,"Bij het openen of aanmaken van een nieuw file wordt de lijst met recent files niet direct aangepast in het menu, wel in de database.",Must,requirement
-45,Region Select,19,"When clicking and dragging the mouse on empty space, a region select should be possible:
-
-A rectangle shows the region being selected as the mouse is dragged, and when the mouse is released all blocks in the region are selected.",Must,requirement
-46,Addition of a new item to a view,1,,Must,view
-47,onDetailInsert,,"This function is triggered by a database event when an Architecture Block, Use Case or Requirement is added to the database.",Must,functionpoint
-48,addItem,,"Actually, either the function addChild is called or the function addTopLevelItem.",Must,functionpoint
-49,addItem,,,Must,functionpoint
-50,setSelection,,,Must,functionpoint
-51,Lines not shown properly in overlapping blocks,14,,Must,requirement
-52,Hierarchy in blocks,19,"When adding blocks that are children of other blocks, these blocks must be constrained to the area of the parent block.
-
-Creating a block inside another block automatically makes it the child of the block.",Must,requirement
-53,Hierarchy in connections,19,"A connection can be linked to a use case view.
-
-This means that the connection is realised using functionality defined in a lower layer.
-
-Many connections can share the same use case.
-
-Both ends of the connection can be mapped to a block in the use case, defining e.g. the role of the block in the connection.",Must,requirement
-54,Remove deleted files from recent files list,14,"When starting the tool, it should check if all recent files still exist, and remove ones that do not exist anymore.",Must,requirement
-55,Nieuw blok in Use Case niet in tree,14,"Een nieuw blok dat in een Use Case wordt aangemaakt, komt er niet bij in de tree met Blocks",Must,requirement
-56,Change connection start or end,19,Let the change the start or end block of a connection.,Must,requirement
-
-requirement
-Id,Type
-2,Functional
-13,Functional
-14,Functional
-15,Functional
-16,Functional
-17,Functional
-18,Functional
-19,Functional
-20,Functional
-22,Functional
-23,Functional
-24,Functional
-25,Functional
-26,Functional
-27,Functional
-28,Functional
-29,Functional
-30,Functional
-31,Functional
-32,Functional
-33,Functional
-34,Functional
-35,Functional
-36,Functional
-37,Functional
-38,Functional
-39,Functional
-40,Functional
-41,Functional
-42,Functional
-43,Functional
-44,Functional
-45,Functional
-51,Functional
-52,Functional
-53,Functional
-54,Functional
-55,Functional
-56,Functional
-
-functionpoint
-Id,Connection,Block,isResponse
-4,2,,1
-5,3,,1
-6,2,,
-7,2,,
-8,3,,1
-9,2,,1
-47,3,,
-48,4,,
-49,,5,
-50,4,,1
-
-architectureblock
-Id,Name,Description,Parent
-1,Archtool,,
-2,Database,,
-3,model,,
-4,Gebruiker,,
-5,Architecture View,,
-6,Architecture View,,
-7,Planning View,,
-8,2d viewer,,
-9,Viewers,,
-10,TreeView,,
-
-style
-Id,Name,Details
-
-planeablestatus
-Id,Planeable,Description,TimeStamp,Status,TimeRemaining,TimeSpent,AssignedTo
-1,2,Zie usecase,2014-01-21 20:43:06.553000,Open,1.0,,
-2,2,Toch iets lastiger dan gedacht...,2014-01-21 20:43:46.728000,Open,3.0,,
-3,43,,2014-01-22 20:45:55.546000,Done,0.0,,
-4,23,,2014-01-22 21:45:23.103000,Done,0.0,,
-5,20,,2014-01-22 22:33:04.021000,Done,0.0,,
-
-hiddenconnection
-Id,View,Connection
-
-blockconnection
-Id,Start,End,Name,Description,Role
-
-colorpalette
-Id,Color
-1,#ffffff
-2,Cornflower Blue
-3,#00529c
-4,#f2f2f2
-5,#838383
-
-worker
-Id,Name
-1,Evert
-
-fptoview
-Id,View,FunctionPoint,Order,Xoffset,Yoffset,style_role
-1,3,4,0,18.0,5.0,
-2,3,5,2,22.0,25.0,
-3,3,6,1,7.0,-10.0,
-4,3,7,3,-3.0,-19.0,
-5,3,8,4,13.0,1.0,
-6,3,9,5,-11.0,101.0,
-7,46,47,0,-56.75,8.5,
-8,46,48,2,-17.0,2.0,
-9,46,49,1,0.0,0.0,
-10,46,50,3,-28.0,-7.0,
-
-planeablexref
-A,B
-,
-,
-,
-,
-
-annotation
-Id,AnchorPoint,x,y,height,width,Description
+2,State Machine Design,,,Must,view
+3,After 90 degrees,,,Must,functionpoint
+4,After 90 degrees,,,Must,functionpoint
+5,if stopHere,,,Must,functionpoint
+6,if Opening,,,Must,functionpoint
+7,if Blocked,,,Must,functionpoint
+8,Check Opening,,,Must,functionpoint
+9,Check Blocked,,,Must,functionpoint
+10,Logic Design,1,,Must,view
+11,I/O Design,1,,Must,view
+12,Simulator Design,1,,Must,view
+13,onPositionUpdate,,,Must,functionpoint
+14,onRotationComplete,,,Must,functionpoint
+15,addCallback,,,Must,functionpoint
 
 changelog
 Id,RecordType,RecordId,ChangeType,TimeStamp,Details
 
-fprepresentation
-Id,FunctionPoint,AnchorPoint,Xoffset,Yoffset
-
-blockrepresentation
-Id,Block,View,x,y,height,width,Order,Font,IsMultiple,style_role
-1,1,1,-240.0,-310.0,473.0,570.0,0,,,
-2,2,1,13.0,220.0,30.0,100.0,1,,,
-3,3,1,16.0,106.0,30.0,100.0,2,,,
-4,4,3,-209.0,-568.0,30.0,100.0,0,,,
-5,3,3,-196.0,-227.0,30.0,100.0,1,,,
-6,5,3,-231.0,-395.0,33.0,154.0,2,,,
-7,6,1,-195.0,-189.0,122.0,253.0,4,,,
-8,7,1,94.0,-184.0,31.0,135.0,5,,,
-9,8,1,-166.0,-158.0,30.0,102.0,6,,,
-10,9,1,-210.0,-225.0,141.0,470.0,3,,,
-11,3,46,-569.0,-143.0,30.0,100.0,0,,,
-12,5,46,-289.0,-144.0,32.0,159.0,1,,,
-13,10,46,38.0,-139.0,30.0,100.0,2,,,
+style
+Id,Name,Details
+1,Default,"aggregation-connection-color:#00529c;
+aggregation-connection-start:[[0,0], [-10,-10], [-20,0], [-10,10], [0,0]];
+annotation-color2:#ffef5d;
+annotation-text-alpha:0.0;
+annotation-width:1;
+archblock-offset:[0,0];
+archblock-text-alpha:0.0;
+archblock-width:1;
+arrow-functionpoint-offset:[-10,10];
+association-connection-end:[[0,0],[-10,10],[0,0],[-10,-10],[0,0]];
+background-color:white;
+color1:white;
+color2:#00529c;
+color:#00529c;
+connection-text-alpha:1.0;
+dark-archblock-color2:#f2f2f2;
+description-archblock-color2:#add8e6;
+font:Arial 12pt;
+functionpoint-alpha:1.0;
+functionpoint-end:[[0,0], [-5, 5], [0, 0], [-5, -5], [0,0]];
+functionpoint-is_gradient:False;
+halign:center;
+inheritance-connection-color:#00529c;
+inheritance-connection-end:[[0,0], [-10,10], [-10,-10], [0,0]];
+is_gradient:True;
+party-archblock-color2:#90ee90;
+role-archblock-color2:#ffff80;
+text-is_gradient:False;
+time-archblock-color2:#ffc0cb;
+type3-archblock-color2:#838383;
+valign:center;
+white-archblock-color2:white;
+width:3"
 
 dbaseversion
 Id,Version
-1,3
+1,7
+
+bug
+Id,Type,ReportedBy
+
+functionpoint
+Id,Connection,Block,isResponse
+6,17,,
+7,16,,
+8,20,,1
+9,20,,1
+13,32,,
+14,32,,
+15,29,,
+
+fprepresentation
+Id,FunctionPoint,AnchorPoint,Xoffset,Yoffset
+36,6,35,56.0,-14.0
+37,7,34,70.0,31.0
+41,8,40,68.0,-20.0
+42,9,40,79.0,-13.0
+74,13,73,-62.0,-32.00000000000006
+75,14,73,-78.0,-37.00000000000006
+76,15,67,89.5,-17.0
+
+blockrepresentation
+Id,Block,x,y,height,width,IsMultiple
+1,1,61.0,229.0,149.0,411.0,
+2,2,85.0,149.0,70.0,385.0,
+3,3,182.0,23.0,103.0,207.0,
+4,4,33.0,-5.0,404.0,468.0,
+5,5,115.0,170.0,30.0,100.0,
+6,6,236.0,170.0,30.0,100.0,
+7,7,349.0,168.0,30.0,100.0,
+8,8,148.0,254.0,47.0,95.0,
+11,9,98.0,333.0,26.0,84.0,
+12,10,215.0,329.0,30.0,100.0,
+15,11,353.0,331.0,30.0,100.0,
+16,12,360.0,251.0,48.0,79.0,
+21,13,231.0,48.0,48.0,86.0,
+22,14,-391.0,-471.0,26.0,75.0,
+24,16,-536.0,-313.0,31.0,105.0,
+25,17,-259.0,-314.0,27.0,110.0,
+26,18,-394.0,-378.0,26.0,83.0,
+31,19,-403.0,-257.0,30.0,100.0,
+44,22,-618.0,-254.0,29.0,123.0,
+45,23,-392.0,-248.0,28.0,116.0,
+47,24,-551.0,-358.0,30.0,100.0,
+48,25,-339.0,-394.0,27.0,111.0,
+49,26,-227.0,-355.0,30.0,100.0,
+50,27,-445.0,-397.0,30.0,100.0,
+57,28,-494.0,-165.0,30.0,62.0,
+58,29,-396.0,-163.0,27.0,78.0,
+59,30,-288.0,-161.0,29.0,89.0,
+60,32,-522.0,-289.0,180.0,363.0,
+61,31,-629.0,-457.0,337.0,540.0,
+62,34,-408.0,-260.0,30.0,100.0,
+66,31,-423.0,-395.0,30.0,124.0,
+68,35,-526.0,-57.0,34.0,197.0,
+72,35,-866.0,-260.0,30.0,188.0,
+
+worker
+Id,Name
+
+architectureblock
+Id,Name,Description,Parent
+1,Simulation,,21
+2,I/O,,21
+3,Logic,,21
+4,Main,,21
+5,Motors,,2
+6,Pos Sensor,,2
+7,Wall Sensor,,2
+8,Movement Integrator,,1
+9,Position,,1
+10,Orientation,,1
+11,Maze Map,,1
+12,Distance to Wall,,1
+13,State Machine,,3
+14,START,,13
+16,Turn Left 90,,13
+17,Turn Right 90,,13
+18,Forward,,13
+19,Turn 180,,13
+20,Classes Design,,
+21,Architecture,,
+22,StateMachine,"Concrete methods:
+
+  onNewDistance
+  onNewPosition
+  setNextState",31
+23,AbstractState,"Abstract methods:
+
+  onInit, onExit
+  onNewDistance
+  onNewPosition",31
+24,Turn Left 90,,23
+25,Turn Right 90,,23
+26,Forward,,23
+27,Turn180,,23
+28,Motor,,32
+29,Position,,32
+30,Distance,,32
+31,Logic Classes,,20
+32,I/O Classes,,20
+33,Simulator Design,,20
+34,I/O System,"API:
+
+  startTurnLeft(double degrees)
+  startTurnRight(double degrees)
+  startForward()
+
+  bool checkComplete()
+  bool checkOpening()
+  bool checkBlocked()
+",32
+35,SensorChangeCallback,,20
+
+annotation
+Id,AnchorPoint,x,y,height,width,Description
+55,,-259.0,-267.0,143.0,203.0,"Abstract methods:
+
+void onInit()
+void onExit()
+
+and those inherited from the Callback"
+71,,-311.0,-91.0,100.0,278.0,"Abstract functions:
+
+void onDistanceUpdate(int sensor_id);
+void onRotationComplete();"
+
+blockconnection
+Id,Start,End,Name,Description,Role
+1,4,1,,,
+2,5,8,,,
+3,6,8,,,
+4,8,9,,,
+5,8,10,,,
+6,12,11,,,
+7,12,10,,,
+8,12,9,,,
+9,7,12,,,
+14,14,18,,,
+15,18,16,,,
+16,18,19,,,
+17,18,17,,,
+18,13,5,,,
+19,13,6,,,
+20,13,7,,,
+21,23,22,,,
+22,27,23,,,
+23,23,26,,,
+24,25,23,,,
+25,24,23,,,
+26,34,28,,,
+27,29,34,,,
+28,30,34,,,
+29,31,34,,,
+30,23,35,,,
+31,22,35,,,
+32,34,35,,,
+
+connectionrepresentation
+Id,Connection,Start,End
+9,2,8,5
+10,3,6,8
+13,4,11,8
+14,5,12,8
+17,6,16,15
+18,7,12,16
+19,8,11,16
+20,9,7,16
+32,14,26,22
+33,15,26,24
+34,16,26,31
+35,17,26,25
+38,18,5,21
+39,19,6,21
+40,20,7,21
+46,21,44,45
+51,22,50,45
+52,23,49,45
+53,24,48,45
+54,25,47,45
+63,26,62,57
+64,27,62,58
+65,28,62,59
+67,29,66,62
+69,30,45,68
+70,31,44,68
+73,32,62,72
 
 project
 Id,FirstWeek,LastWeek
-10,,
-11,,
-12,,
 
-connection
-Id,Start,End,Description
-1,2,3,
-2,4,5,
-3,3,5,
-4,5,10,
+planeablestatus
+Id,Planeable,Description,TimeStamp,Status,TimeRemaining,TimeSpent,AssignedTo
 
-connectionrepresentation
-Id,Connection,style_role
+planeablexref
+A,B
 
 anchor
 Id,View,style_role,Order,AnchorType
+1,1,role,8,blockrepresentation
+2,1,role,12,blockrepresentation
+3,1,role,1,blockrepresentation
+4,1,description,0,blockrepresentation
+5,1,,25,blockrepresentation
+6,1,,22,blockrepresentation
+7,1,,23,blockrepresentation
+8,1,,24,blockrepresentation
+9,1,,16,connectionrepresentation
+10,1,,17,connectionrepresentation
+11,1,,20,blockrepresentation
+12,1,,21,blockrepresentation
+13,1,,18,connectionrepresentation
+14,1,,19,connectionrepresentation
+15,1,,15,blockrepresentation
+16,1,,14,blockrepresentation
+17,1,,9,connectionrepresentation
+18,1,,10,connectionrepresentation
+19,1,,11,connectionrepresentation
+20,1,,13,connectionrepresentation
+21,1,<default>,7,blockrepresentation
+22,2,,0,blockrepresentation
+24,2,,2,blockrepresentation
+25,2,,3,blockrepresentation
+26,2,,4,blockrepresentation
+27,2,,,connectionrepresentation
+28,2,,,connectionrepresentation
+29,2,,,connectionrepresentation
+30,2,,,connectionrepresentation
+31,2,,12,blockrepresentation
+32,2,,,connectionrepresentation
+33,2,,,connectionrepresentation
+34,2,,,connectionrepresentation
+35,2,,,connectionrepresentation
+36,2,,0,fprepresentation
+37,2,,1,fprepresentation
+38,1,,3,connectionrepresentation
+39,1,,4,connectionrepresentation
+40,1,,5,connectionrepresentation
+41,1,,6,fprepresentation
+42,1,,2,fprepresentation
+44,10,,6,blockrepresentation
+45,10,,7,blockrepresentation
+46,10,association,1,connectionrepresentation
+47,10,,8,blockrepresentation
+48,10,,9,blockrepresentation
+49,10,,10,blockrepresentation
+50,10,,11,blockrepresentation
+51,10,inheritance,2,connectionrepresentation
+52,10,inheritance,3,connectionrepresentation
+53,10,inheritance,4,connectionrepresentation
+54,10,inheritance,5,connectionrepresentation
+55,10,,12,
+57,11,,8,blockrepresentation
+58,11,<default>,11,blockrepresentation
+59,11,<default>,12,blockrepresentation
+60,11,white,0,blockrepresentation
+61,10,white,0,blockrepresentation
+62,11,,6,blockrepresentation
+63,11,aggregation,1,connectionrepresentation
+64,11,aggregation,2,connectionrepresentation
+65,11,aggregation,3,connectionrepresentation
+66,11,,13,blockrepresentation
+67,11,association,4,connectionrepresentation
+68,10,party,14,blockrepresentation
+69,10,inheritance,,connectionrepresentation
+70,10,inheritance,,connectionrepresentation
+71,10,,21,annotation
+72,11,party,14,blockrepresentation
+73,11,association,5,connectionrepresentation
+74,11,,7,fprepresentation
+75,11,,9,fprepresentation
+76,11,,10,fprepresentation
+
+requirement
+Id,Type
 
 view
 Id,Refinement,style
 1,,
-3,,
-46,,
+2,,
+10,,
+11,,
+12,,
 
 plannedeffort
 Id,Worker,Project,Week,Hours
