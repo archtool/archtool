@@ -5,11 +5,43 @@ Created on May 11, 2014
 '''
 
 
+from weakref import proxy
 
 from PyQt4 import QtGui, QtCore
 import model
+from sqlalchemy import or_, func
+from sqlalchemy.orm import subqueryload
 from gui.util import mkMenu
 
+
+
+class Finder(object):
+  def __init__(self, tree, edit, button):
+    self.tree = proxy(tree)
+    self.edit = edit
+    self.button = button
+    self.txt = ''
+    self.button.clicked.connect(self.onButton)
+
+  def onButton(self):
+    txt = str(self.edit.text())
+    self.txt = txt
+    if txt:
+      self.tree.applyFilter(txt)
+    else:
+      self.tree.populateTree()
+
+
+def createTreeItem(details):
+  item = QtGui.QTreeWidgetItem()
+  item.setText(0, details.Name)
+  item.setFlags(QtCore.Qt.ItemFlags(QtCore.Qt.ItemIsEditable +
+                    QtCore.Qt.ItemIsDragEnabled +
+                    QtCore.Qt.ItemIsDropEnabled +
+                    QtCore.Qt.ItemIsSelectable +
+                    QtCore.Qt.ItemIsEnabled))
+  item.details = details
+  return item
 
 
 class ModelItemTree(QtGui.QTreeWidget):
@@ -17,6 +49,10 @@ class ModelItemTree(QtGui.QTreeWidget):
     QtGui.QTreeWidget.__init__(self, *args, **kwds)
     self.model_class = None
     self.session_parent = None
+    self.filter = None
+    self.detail_items = {}
+  def setFinder(self, edit, button):
+    self.filter = Finder(self, edit, button)
   def setModelClass(self, cls, parent):
     self.model_class = cls
     self.session_parent = parent
@@ -130,5 +166,58 @@ class ModelItemTree(QtGui.QTreeWidget):
         details = self.session_parent.drop2Details(event)
         details.Parent = None
 
+  def populateTree(self):
+    self.clear()
+    self.detail_items = {}
+    cls = self.model_class
+    session = self.session_parent.session
+    root_items = session.query(cls).filter(cls.Parent==None).\
+                         options(subqueryload(cls.Children)).all()
 
+    def addChildren(parent_item):
+      # Add all children
+      for c in parent_item.details.Children:
+        item = createTreeItem(c)
+        self.detail_items[c.Id] = item
+        parent_item.addChild(item)
+        addChildren(item)
+
+    # Add the root items and their children
+    for r in root_items:
+      item = createTreeItem(r)
+      self.detail_items[r.Id] = item
+      self.addTopLevelItem(item)
+      addChildren(item)
+
+
+  def applyFilter(self, txt):
+    ''' Show only items that match the filter.
+    '''
+    # Find all elements that match the filter in either name or description.
+    # Stupid SQL wildcard requires me to try four different patterns.
+    session = self.session_parent.session
+    c = self.model_class
+    txt = txt.upper()
+    fltr1 = '%s'%txt
+    fltr2 = '%s%%'%txt
+    fltr3 = '%%%s'%txt
+    fltr4 = '%%%s%%'%txt
+
+    n = func.upper(c.Name)
+    d = func.upper(c.Description)
+    all = session.query(c).filter(or_(n.like(fltr1),
+                                      n.like(fltr2),
+                                      n.like(fltr3),
+                                      n.like(fltr4),
+                                      d.like(fltr1),
+                                      d.like(fltr2),
+                                      d.like(fltr3),
+                                      d.like(fltr4))).all()
+    # Make items to show these records, without the hierarchy
+    self.clear()
+    self.detail_items = {}
+    for rec in all:
+      item = createTreeItem(rec)
+      self.detail_items[rec.Id] = item
+      self.addTopLevelItem(item)
 

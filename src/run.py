@@ -162,7 +162,7 @@ class ArchitectureTool(MainWindowForm[1]):
     if self.centralwidget:
       self.centralwidget.close()
 
-    model.changeEngine(model.create_engine(url))
+    model.open(url)
     self.session = model.SessionFactory()
     Controller.setSession(self.session)
 

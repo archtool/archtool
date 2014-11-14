@@ -134,7 +134,11 @@ class ArchitectureView(ViewerWithTreeBase):
       widget.setModelClass(model_class, self)
       widget.itemClicked.connect(self.onTreeItemClicked)
     self.ui.treeUseCases.itemDoubleClicked.connect(self.onView)
-            
+
+    self.ui.treeRequirements.setFinder(self.ui.edtFindReq, self.ui.btnFindReq)
+    self.ui.treeBlocks.setFinder(self.ui.edtFindBlock, self.ui.btnFindBlock)
+    self.ui.treeUseCases.setFinder(self.ui.edtFindUseCase, self.ui.btnFindUseCase)
+
     self.ui.tabGraphicViews.tabCloseRequested.connect(self.onTabCloseRequested)
     self.ui.tabGraphicViews.currentChanged.connect(self.onTabChanged)
 
@@ -184,11 +188,6 @@ class ArchitectureView(ViewerWithTreeBase):
     while self.ui.tabGraphicViews.count() > 0:
       self.onTabCloseRequested(0)
       
-    # Clean up the internal object caches
-    self.detail_items = {self.ui.treeBlocks:{},
-                         self.ui.treeUseCases:{},
-                         self.ui.treeRequirements:{}} # ID, QTreeWidgetItem tuples
-    
     self.closeDetailsViewer()
 
 
@@ -296,7 +295,7 @@ class ArchitectureView(ViewerWithTreeBase):
 
     
   def filterRequirementsTree(self, prios, states):
-    for item in self.detail_items[self.ui.treeRequirements].values():
+    for item in self.ui.treeRequirements.detail_items.values():
       disable = False
       if item.details.Priority not in prios:
         disable = True
@@ -381,7 +380,7 @@ class ArchitectureView(ViewerWithTreeBase):
       logging.error('onDetailUpdate called for wrong target %r'%target)
       return
     
-    item = self.detail_items[widget].get(target.Id, None)
+    item = widget.detail_items.get(target.Id, None)
     if item is None:
       logging.error('Detail not shown in tree: %r'%target)
       return
@@ -408,8 +407,8 @@ class ArchitectureView(ViewerWithTreeBase):
                       QtCore.Qt.ItemIsSelectable + 
                       QtCore.Qt.ItemIsEnabled))
     new_item.details = details
-    if details.Parent:
-      parent = self.detail_items[widget][details.Parent]
+    parent = widget.detail_items[details.Parent] if details.Parent else None
+    if parent:
       parent.addChild(new_item)
     else:
       widget.addTopLevelItem(new_item)
@@ -418,7 +417,7 @@ class ArchitectureView(ViewerWithTreeBase):
       widget.setCurrentItem(new_item)
       widget.editItem(new_item)
     
-    self.detail_items[widget][details.Id] = new_item
+    widget.detail_items[details.Id] = new_item
 
   def onStyleSheetChanged(self, index):
     ''' Called when the user selects a new style sheet for the current view.

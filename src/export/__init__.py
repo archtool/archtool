@@ -10,7 +10,6 @@ This program is released under the conditions of the GNU General Public License.
 from sqlalchemy import Table, MetaData, Column, ForeignKey, Integer, String
 import model
 import csv
-from sqlalchemy.ext.declarative import declarative_base
 import shutil
 import os
 import traceback
@@ -222,6 +221,20 @@ def importData(data, db):
           else:
             el = table(**d)
             session.add(el)
+
+    if db.startswith('postgresql'):
+      # Only update the sequence for direct children from MyBase.
+      # This excludes all polymorphic derivatives (e.g. Requirement) that have no sequence.
+      for table in model.MyBase.__subclasses__()[0].__subclasses__():
+        name = table.__tablename__
+        # In PostgreSQL, the sequences are not updated automatically in this case...
+        if 'Id' in table.getFields():
+          # Fix the sequence number
+          seqname = '%s_Id_seq'%name
+          q = '''SELECT setval('"%s"', (SELECT MAX("Id") FROM %s))'''%(seqname, name)
+          conn = engine.connect()
+          conn.execute("commit")
+          conn.execute(q)
 
     
   finally:

@@ -36,7 +36,6 @@ class ViewerBase(QtGui.QWidget):
 class ViewerWithDetailsBase(ViewerBase):
   def __init__(self, *args):
     ViewerBase.__init__(self, *args)
-    self.detail_items = {}    
     self.details_viewer = None
 
   def openDetailsViewer(self, details, read_only=False):
@@ -67,18 +66,6 @@ class ViewerWithDetailsBase(ViewerBase):
 
 ###############################################################################
 ##
-def createTreeItem(details):
-  item = QtGui.QTreeWidgetItem()
-  item.setText(0, details.Name)
-  item.setFlags(QtCore.Qt.ItemFlags(QtCore.Qt.ItemIsEditable + 
-                    QtCore.Qt.ItemIsDragEnabled + 
-                    QtCore.Qt.ItemIsDropEnabled + 
-                    QtCore.Qt.ItemIsSelectable + 
-                    QtCore.Qt.ItemIsEnabled))
-  item.details = details
-  return item
-
-
 class ViewerWithTreeBase(ViewerWithDetailsBase):
   def __init__(self, *args):
     ViewerWithDetailsBase.__init__(self, *args)
@@ -88,24 +75,8 @@ class ViewerWithTreeBase(ViewerWithDetailsBase):
     ViewerWithDetailsBase.open(self, session)
     # Populate the tree lists.    
     for widget, cls in self.tree_models.iteritems():
-      root_items = self.session.query(cls).filter(cls.Parent==None).all()
-      self.populateTree(widget, root_items)
+      widget.populateTree()
 
-  def populateTree(self, widget, root_items):
-    def addChildren(parent_item):
-      # Add all children
-      for c in parent_item.details.Children:
-        item = createTreeItem(c)
-        self.detail_items.setdefault(widget, {})[c.Id] = item
-        parent_item.addChild(item)
-        addChildren(item)
-    # Add the root items and their children
-    for r in root_items:
-      item = createTreeItem(r)
-      self.detail_items.setdefault(widget, {})[r.Id] = item
-      widget.addTopLevelItem(item)
-      addChildren(item)
-      
   def onTreeItemClicked(self, item):
     ''' Called when the user clicks on an item in a tree view.
         Causes a details viewer to be opened for the tiems.

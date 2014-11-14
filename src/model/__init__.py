@@ -795,7 +795,7 @@ def clearEngine():
 def open(url):
   global the_url
   the_url = url
-  engine = create_engine(url)
+  engine = create_engine(url, echo=True)
   changeEngine(engine, False)
     
 def cleanDatabase():
@@ -822,6 +822,24 @@ def createDatabase(url):
   conn.execute("create database %s"%db)
   conn.close()
   print 'Created database %s'%db
+
+
+def dropDatabase(url):
+  parts = urlparse(url)
+  if parts[0].startswith('postgresql'):
+    url_admin = '%s://%s/postgres'%(parts.scheme, parts.netloc)
+    engine = create_engine(url_admin)
+  else:
+    raise RuntimeError('Scheme %s not supported'%parts.scheme)
+
+  conn = engine.connect()
+  # Close the current transaction
+  conn.execute("commit")
+  # Create the new database
+  db = parts.path.strip('/')
+  conn.execute("drop database %s"%db)
+  conn.close()
+  print 'Dropped database %s'%db
 
 
 def connectSession(url):
