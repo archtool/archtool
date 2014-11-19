@@ -23,7 +23,7 @@ from model.history import Versioned
 from datetime import datetime
 from collections import OrderedDict
 
-VERSION = 8
+VERSION = 9
 
 
 # Determine which encoding to use when interacting with files
@@ -264,9 +264,12 @@ class REQUIREMENTS_STATES(Const):
   DONE = 'Done'
   REJECTED = 'Rejected'
   DUPLICATE = 'Duplicate'
+  INPROGRESS = 'In Progress'
+  TESTING    = 'Testing'
 
 # Define a subset of states where the workitem is considered 'open'.
-OPEN_STATES = [REQUIREMENTS_STATES.OPEN, REQUIREMENTS_STATES.QUESTION]
+OPEN_STATES = [REQUIREMENTS_STATES.OPEN, REQUIREMENTS_STATES.QUESTION,
+               REQUIREMENTS_STATES.INPROGRESS, REQUIREMENTS_STATES.TESTING]
 
 
 class PRIORITIES(Const):
@@ -807,6 +810,8 @@ def cleanDatabase():
 def createDatabase(url):
   ''' Create a new database from the URL
   '''
+  global the_url
+  old_url = the_url
   parts = urlparse(url)
   if parts[0].startswith('postgresql'):
     url_admin = '%s://%s/postgres'%(parts.scheme, parts.netloc)
@@ -814,6 +819,7 @@ def createDatabase(url):
   else:
     raise RuntimeError('Scheme %s not supported'%parts.scheme)
 
+  the_url = url
   conn = engine.connect()
   # Close the current transaction
   conn.execute("commit")
@@ -822,7 +828,7 @@ def createDatabase(url):
   conn.execute("create database %s"%db)
   conn.close()
   print 'Created database %s'%db
-
+  the_url = old_url
 
 def dropDatabase(url):
   parts = urlparse(url)

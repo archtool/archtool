@@ -88,6 +88,48 @@ def extractSvgStyle(item):
   return 'style="%s;"'%style
 
 
+
+
+def wrapLine(line, font_metrics, width):
+  # Check if the line needs wrapping.
+  if font_metrics.width(line) <= width:
+    # The line fits.
+    return [line]
+
+  # The line is too long and needs to be wrapped.
+  lines = []
+  widths = [font_metrics.width(ch) for ch in line]
+  last_word_index = None
+  last_index = 0
+  part_width = 0
+  in_word = False
+  for i in range(len(widths)):
+    if line[i].isspace():
+      if in_word:
+        last_word_index = i
+        in_word = False
+    else:
+      in_word = True
+
+    part_width += widths[i]
+    if part_width > width:
+      if last_word_index is None:
+        # Single word does not fit into width; split at a character.
+        lines.append(line[last_index:i])
+        last_index = i
+      else:
+        lines.append(line[last_index:last_word_index])
+        last_index = last_word_index + 1
+      last_word_index = None
+      part_width = sum(widths[last_index:i+1])
+
+  if last_index is not None:
+    lines.append(line[last_index:])
+
+  return lines
+
+
+
 class Arrow(QtGui.QGraphicsPolygonItem, StyledItem):
   ''' The arrow that ends a line. The shape of the arrow is determined by the style '''
   def __init__(self, parent, style, role, arrow_type):
@@ -251,7 +293,18 @@ class Text(QtGui.QGraphicsRectItem, StyledItem):
     rect = self.rect()
     width = rect.width()
     height = rect.height()
-    txt = str(self.text.toPlainText())
+    doc = self.text.document()
+    print doc.textWidth(), width
+    lines = [doc.findBlockByNumber(i) for i in range(doc.blockCount())]
+    lines2 = []
+    fm = QtGui.QFontMetrics(f)
+    for l in lines:
+      lines2 += wrapLine(str(l.text()), fm, width)
+
+    lines = lines2
+    lines = [escape(l) for l in lines]
+    lines = ['<tspan x="0" dy="%s">%s</tspan>'%(size, l) for l in lines]
+    txt = ''.join(lines)
     return string.Template(tmplt).substitute(locals())
 
 

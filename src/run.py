@@ -32,24 +32,22 @@ from controller import Controller
 
 
 # FIXME: Bij het openen van een file of het maken van een nieuwe, de recent files aanpassen.
+# FIXME: Nieuwe rollen kunnen toevoegen in de style editor.
 
-# TODO: Annotaties kunnen invoegen in een Use Case.
 # TODO: Een view kunnen representeren als een Sequence Diagram ipv Collaboration Diagram.
 # TODO: Een Use Case droppen in een andere Use Case, dit wordt dan een blokje.
 # TODO: Dubbel-klik op een Use Case blokje opent deze use case.
-# TODO: Een verbinding tussen blokken kunnen verbergen, bv. passtimehandlr->displaycontentgen in BusDetectieOpEntryLus
 # TODO: Navigeren van acties naar views waarin deze voorkomt
-# TODO: De richting van een verbinding tussen blokken kunnen zien en omdraaien
 # TODO: De schatting van een (groep) Use Cases opvragen.
-# TODO: Versies toevoegen, met een timestamp voor elke substantiele wijziging (niet alleen visuele wijzigingen).
 # TODO: Diffs kunnen laten zien, en een document met alleen de wijzigingen kunnen genereren, of de
 #       wijzigingen gehighlight (vanaf een bepaalde datum / versie)
 # TODO: Grote workitems moeten kunnen worden toebedeeld aan meerdere mensen, en hun time-remaining schattingen samengevoegd.
 # TODO: Export SRS documents as Word format.
 # TODO: Edit the configuration...
 # TODO: Voor een Use Case het tekening type selecteren.
-# TODO: De style van een lijn instellen.
 # TODO: Implement support for attachements
+# TODO: Multi-user support (user logs in, username is added to the logs)
+# TODO: Undo is session-based (do not undo things done in another session).
 
 
 
@@ -117,13 +115,36 @@ class ArchitectureTool(MainWindowForm[1]):
                                                   '.', "*.db"))
     if fname == '':
       return
-    
+
     if self.centralwidget:
       self.centralwidget.clean()
     self.open(url=SQLITE_URL_PREFIX+fname, new=True)
     # Write the version number to the database
     self.session.add(model.DbaseVersion())
     self.session.commit()
+
+  def newFromCsv(self):
+    ''' Create a new database from a CSV file exported earlier.
+    '''
+    diag = CsvImportEditor(self)
+    result = diag.exec_()
+    if result != QtGui.QDialog.Accepted:
+      return
+
+    if self.centralwidget:
+      self.centralwidget.close()
+
+    url = diag.burp()
+    csvname = diag.csv_file
+    if not(csvname and url):
+      return
+
+    model.createDatabase(url)
+    # Import and create the database
+    data = loadCsv(csvname)
+    importData(data, url)
+    # Open the database
+    self.open(url=url)
 
   def onOpenDatabase(self):
     ''' Open a remote database instead of a local file.
@@ -180,7 +201,7 @@ class ArchitectureTool(MainWindowForm[1]):
           self.centralwidget.clean()
           return
         # User wants to convert the model.
-        updateDatabase(model.the_engine)
+        updateDatabase(model.the_engine, url)
         self.open(url=url)
         return
     
@@ -231,27 +252,6 @@ class ArchitectureTool(MainWindowForm[1]):
     # Then export the database
     export(fname, model.the_engine)
   
-  def newFromCsv(self):
-    ''' Create a new database from a CSV file exported earlier.
-    '''
-    diag = CsvImportEditor(self)
-    result = diag.exec_()
-    if result != QtGui.QDialog.Accepted:
-      return
-
-    url = diag.burp()
-    csvname = diag.csv_file
-    if not(csvname and url):
-      return
-
-    model.createDatabase(url)
-
-    # Import and create the database
-    data = loadCsv(csvname)
-    importData(data, url)
-    # Open the database
-    self.open(url=url)
-    
   def onRequirementsDocument(self):
     ''' Called when the user wants to generate a requirements document. 
         Requirements documents are generated from one top element, and include

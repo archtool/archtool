@@ -3,6 +3,7 @@ Update a database to be opened to the most recent version.
 '''
 
 from model import VERSION, sessionmaker, sessionScope
+import re
 
 __author__ = 'ehwaal'
 
@@ -13,11 +14,25 @@ class SQLUpdater(object):
       Can be subclassed in case specific updates are problematic for spefic RDMSes.
 
       Mainly raw SQL is used, because the database may not be compatible with the current model.
+
+      Conversion functions must have the name update<version>to<version>; these are
+      automatically detected.
   '''
   def __init__(self, engine):
     self.engine = engine
-    self.handlers = {6:self.update6to7,
-                     7:self.update7to8}
+    pttrn = re.compile('update([0-9])+to([0-9]+)')
+    self.handlers = {}
+
+    dicts = dict(self.__dict__)
+    for b in self.__class__.__mro__:
+      dicts.update(b.__dict__)
+
+    for name, func in dicts.items():
+      m = pttrn.match(name)
+      if m:
+        # Store the member function. We need to make it a bound function first.
+        self.handlers[int(m.groups()[0])] = func.__get__(self)
+
   def update(self):
     ''' Update the database.
     '''
@@ -56,13 +71,29 @@ class SQLUpdater(object):
   def update7to8(self):
     return 8, ['ALTER TABLE fprepresentation ADD COLUMN SequenceNr INTEGER;']
 
+  def update8to9(self):
+    # No update needed for SQLite.
+    return 9, []
 
-def updateDatabase(engine):
+
+
+class PostgresqlUpdated(SQLUpdater):
+  def update8to9(self):
+    # Assume that the version is 9.1 or higher...
+    return 9, ["ALTER TYPE REQ_STATUS ADD VALUE 'In Progress' AFTER 'Duplicate'",
+               "ALTER TYPE REQ_STATUS ADD VALUE 'Testing' AFTER 'In Progress'"]
+
+
+
+def updateDatabase(engine, url):
   '''
   Analyse a database to determine its version; if not the most recent, update the database to the
   newest version.
   :param engine: connection database.
   '''
-  updater = SQLUpdater(engine)
+  if url.startswith('postgresql:'):
+    updater = PostgresqlUpdated(engine)
+  else:
+    updater = SQLUpdater(engine)
   updater.update()
 

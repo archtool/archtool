@@ -23,7 +23,7 @@ class AddNewAction(object):
     # Determine if adding an action to a block or to a connection.
     if isinstance(self.details, model.ConnectionRepresentation):
       if ctrl.fp_as_call:
-        fp = model.FunctionPoint(Name=self.text, Block=self.details.End.Block, Parent=None)
+        fp = model.FunctionPoint(Name=self.text, Block=self.details.theEnd.Block, Parent=None)
       else:
         fp = model.FunctionPoint(Name=self.text, Connection=self.details.Connection, Parent=None)
     else:

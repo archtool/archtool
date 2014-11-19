@@ -53,7 +53,8 @@ class StateChangeEditor(StatusEditorForm[1]):
     self.ui = StatusEditorForm[0]()
     self.ui.setupUi(self)
     self.ui.cmbStatus.addItems(REQUIREMENTS_STATES.values())
-    self.ui.cmbAssigned.addItems(workers)
+    self.ui.cmbAssigned.addItems([w.Name for w in workers])
+    self.workers = workers
     if value:
       if value.Description:
         self.ui.edtDescription.setPlainText(value.Description)
@@ -66,12 +67,11 @@ class StateChangeEditor(StatusEditorForm[1]):
     details.Description=str(self.ui.edtDescription.toPlainText()).decode(ENCODING)
     details.Status=str(self.ui.cmbStatus.currentText())
     details.TimeRemaining=ManDay.fromString(str(self.ui.edtTimeRemaining.text()))
-    details.AssignedTo=str(self.ui.cmbAssigned.currentText())
+    details.AssignedTo=self.workers[self.ui.cmbAssigned.currentIndex()].Id
     
   @staticmethod
   def add(parent_widget, parent_details, session):
     workers = session.query(Worker).all()
-    workers = [w[0] for w in workers]
     diag = StateChangeEditor(parent_widget, workers)
     r = diag.exec_()
     if r == QtGui.QDialog.Accepted:

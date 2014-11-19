@@ -151,6 +151,8 @@ def importData(data, db):
   # Switch off the foreign keys for now
   model.check_fkeys = False
   engine = model.create_engine(db, echo=True)
+  old_url = model.the_url
+  model.the_url = db
   model.changeEngine(engine)
   # Clean the database
   model.cleanDatabase()
@@ -241,6 +243,7 @@ def importData(data, db):
     model.the_engine = None
     model.SessionFactory = None
     model.check_fkeys = True
+    model.the_url = old_url
 
 
 def upgradeDatabase(url):

@@ -64,7 +64,9 @@
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset theme="edit-find"/>
+             <iconset theme="edit-find">
+              <normaloff/>
+             </iconset>
             </property>
            </widget>
           </item>
@@ -136,7 +138,9 @@
                 <string>...</string>
                </property>
                <property name="icon">
-                <iconset theme="edit-find"/>
+                <iconset theme="edit-find">
+                 <normaloff/>
+                </iconset>
                </property>
               </widget>
              </item>
@@ -211,7 +215,9 @@
                <string>...</string>
               </property>
               <property name="icon">
-               <iconset theme="edit-find"/>
+               <iconset theme="edit-find">
+                <normaloff/>
+               </iconset>
               </property>
               <property name="toolButtonStyle">
                <enum>Qt::ToolButtonIconOnly</enum>
