@@ -16,6 +16,7 @@ import docx
 
 
 TABLE_COLUMNS = ["Id", "Description", "Priority"]
+COL_WIDTH     = [718, 7468, 814]
 
 ENCODING = 'utf-8'
 
@@ -108,48 +109,6 @@ class RstRenderer(object):
       f.write(html)
 
 
-
-class PyDocxRenderer(object):
-  def __init__(self):
-    self.out = docx.Document()
-
-  def __str__(self):
-    out = StringIO.StringIO()
-    self.out.save(out)
-    return out.getvalue()
-
-  def renderChapterHead(self, item, level=0):
-    name = item.Name.encode(ENCODING)
-    self.out.add_heading(name, level)
-    if item.Description:
-      self.out.add_paragraph(item.Description.encode(ENCODING))
-
-  def renderSectionHead(self, item):
-    self.renderChapterHead(item, 1)
-
-
-  def renderRequirementsTable(self, items):
-    table = self.out.add_table(rows=len(items), cols=len(TABLE_COLUMNS))
-    hdr_cells = table.rows[0].cells
-    for c, n in zip(hdr_cells, TABLE_COLUMNS):
-      c.text = n
-
-    for item in items:
-      row_cells = table.add_row().cells
-      values = [str(getattr(item, k)).encode(ENCODING).replace('\n', '\n       ') for k in TABLE_COLUMNS]
-      for c, t in zip(row_cells, values):
-        c.text = t
-
-    table.columns[0].width = 1
-    table.columns[1].width = 4
-
-  def write(self, fname):
-    if not fname.endswith('.docx'):
-      fname += '.docx'
-
-    self.out.save(fname)
-
-
 class DocxRenderer(object):
   def __init__(self):
     self.out = docx.Document()
@@ -157,7 +116,7 @@ class DocxRenderer(object):
   def __str__(self):
     out = StringIO.StringIO()
     self.out.save(out)
-    return out.getvalue()
+    return ''
 
   def renderChapterHead(self, item, level=0):
     name = item.Name.encode(ENCODING)
@@ -171,8 +130,9 @@ class DocxRenderer(object):
 
   def renderRequirementsTable(self, items):
     table = self.out.add_table(rows=len(items), cols=len(TABLE_COLUMNS))
+    table.autofit = True
     hdr_cells = table.rows[0].cells
-    for c, n in zip(hdr_cells, TABLE_COLUMNS):
+    for c, n, w in zip(hdr_cells, TABLE_COLUMNS, COL_WIDTH):
       c.text = n
 
     for item in items:
@@ -187,7 +147,7 @@ class DocxRenderer(object):
   def renderVersion(self, latest_mod):
     fmt = '%d %b %Y, %H:%M:%S'
     now = time.strftime(fmt)
-    mod = time.strftime(fmt, time.localtime(latest_mod))
+    mod = latest_mod.strftime(fmt) if latest_mod else '---'
     self.out.add_paragraph('Last modification: %s'%mod +
                            '\nGenerated on: %s'%now)
 
@@ -207,8 +167,8 @@ def exportRequirementsDocument(session, requirement_name):
     raise RuntimeError('Could not find %s, sorry'%requirement_name)
   top_item = top_items[0]
 
-  renderer = RstRenderer()
-  #renderer = DocxRenderer()
+  #renderer = RstRenderer()
+  renderer = DocxRenderer()
 
   last_change = session.query(model.ChangeLog.TimeStamp).\
                        filter(model.ChangeLog.RecordType == model.Requirement.__tablename__).\

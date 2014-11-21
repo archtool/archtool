@@ -54,6 +54,9 @@ class WorkitemView(ViewerWithDetailsBase):
     
     # Hook the Assign button
     self.ui.btnAssign.clicked.connect(self.onAssign)
+
+    # Hook the worker selection combo box
+    self.ui.cmbWorker.currentIndexChanged.connect(self.onWorkerChange)
             
 
   def open(self, session):

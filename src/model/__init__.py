@@ -795,11 +795,11 @@ def clearEngine():
     the_engine = None
     SessionFactory = None
     
-def open(url):
+def open(url, create=False):
   global the_url
   the_url = url
   engine = create_engine(url, echo=True)
-  changeEngine(engine, False)
+  changeEngine(engine, create)
     
 def cleanDatabase():
   ''' First drops all tables, then re-creates them. '''
