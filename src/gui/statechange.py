@@ -78,5 +78,4 @@ class StateChangeEditor(StatusEditorForm[1]):
       new = PlaneableStatus()
       diag.getDetails(new)
       parent_details.StateChanges.append(new)
-      session.commit()
 

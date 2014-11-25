@@ -389,8 +389,7 @@ class PlaneableItem(Base, Versioned):   #pylint:disable=W0232
   # All plannable items can be broken down into other planeable items
   Parent      = Column(Integer, ForeignKey('planeableitem.Id', deferrable=True))
   Description = Column(Text)
-  #StateChanges = relationship('PlaneableStatus', order_by='PlaneableStatus.TimeStamp.desc()')
-  Children    = relationship('PlaneableItem', order_by='PlaneableItem.Name') 
+  Children    = relationship('PlaneableItem', order_by='PlaneableItem.Name')
   ParentItem  = relationship('PlaneableItem', remote_side='PlaneableItem.Id')
   Priority    = Column(Enum(*PRIORITIES.values(), name='PRIORITIES'), default=PRIORITIES.MUST)
   ItemType    = Column(String(50))

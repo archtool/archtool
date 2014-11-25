@@ -11,9 +11,10 @@ from model import PlaneableItem
 from model import config
 from docutils.core import publish_string, default_description
 import time, datetime
+from PyQt4 import QtGui
 
 import docx
-
+from docx.enum.text import WD_BREAK
 
 TABLE_COLUMNS = ["Id", "Description", "Priority"]
 COL_WIDTH     = [718, 7468, 814]
@@ -100,10 +101,13 @@ class RstRenderer(object):
     print >> self.out, '\n\nGenerated on: %s'%now
 
   def write(self, fname):
-    html = publish_string(self.out.getvalue(), writer_name='html')
+    witer_name = 'html'
+    if fname.endswith('.odt'):
+      writer_name = 'odf_odt'
+    html = publish_string(self.out.getvalue(), writer_name=writer_name)
 
-    if not fname.endswith('.html'):
-      fname += '.html'
+    if not fname.endswith('.%s'%writer_name):
+      fname += '.%s'%writer_name
 
     with open(fname, 'w') as f:
       f.write(html)
@@ -111,7 +115,12 @@ class RstRenderer(object):
 
 class DocxRenderer(object):
   def __init__(self):
-    self.out = docx.Document()
+    fname = str(QtGui.QFileDialog.getOpenFileName(None, "Select the Word Template document",
+                                                  '.', "*.docx"))
+    if fname == '':
+      return
+
+    self.out = docx.Document(docx = fname)
 
   def __str__(self):
     out = StringIO.StringIO()
@@ -129,8 +138,7 @@ class DocxRenderer(object):
 
 
   def renderRequirementsTable(self, items):
-    table = self.out.add_table(rows=len(items), cols=len(TABLE_COLUMNS))
-    table.autofit = True
+    table = self.out.add_table(rows=1, cols=len(TABLE_COLUMNS))
     hdr_cells = table.rows[0].cells
     for c, n, w in zip(hdr_cells, TABLE_COLUMNS, COL_WIDTH):
       c.text = n
@@ -141,15 +149,18 @@ class DocxRenderer(object):
       for c, t in zip(row_cells, values):
         c.text = t
 
-    table.columns[0].width = 1
-    table.columns[1].width = 4
 
   def renderVersion(self, latest_mod):
     fmt = '%d %b %Y, %H:%M:%S'
     now = time.strftime(fmt)
     mod = latest_mod.strftime(fmt) if latest_mod else '---'
-    self.out.add_paragraph('Last modification: %s'%mod +
-                           '\nGenerated on: %s'%now)
+    p = self.out.add_paragraph()
+    r = p.add_run()
+    r.add_text('Last modification: %s'%mod)
+    r.add_break(WD_BREAK.LINE)
+    r.add_text('Generated on: %s'%now)
+    r.add_break(WD_BREAK.LINE)
+    r.add_text(u'Copyright \u00A9 %s'%time.strftime('%Y'))
 
   def write(self, fname):
     if not fname.endswith('.docx'):
@@ -167,8 +178,8 @@ def exportRequirementsDocument(session, requirement_name):
     raise RuntimeError('Could not find %s, sorry'%requirement_name)
   top_item = top_items[0]
 
-  #renderer = RstRenderer()
-  renderer = DocxRenderer()
+  renderer = RstRenderer()
+  #renderer = DocxRenderer()
 
   last_change = session.query(model.ChangeLog.TimeStamp).\
                        filter(model.ChangeLog.RecordType == model.Requirement.__tablename__).\
