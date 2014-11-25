@@ -31,7 +31,6 @@ from model.update import updateDatabase
 from controller import Controller
 
 
-# FIXME: Bij het openen van een file of het maken van een nieuwe, de recent files aanpassen.
 # FIXME: Nieuwe rollen kunnen toevoegen in de style editor.
 
 # TODO: Een view kunnen representeren als een Sequence Diagram ipv Collaboration Diagram.
@@ -95,6 +94,25 @@ class ArchitectureTool(MainWindowForm[1]):
       action.triggered.connect(func)
 
     # Add the recent files to the menu
+    self.setRecentFileMenu()
+
+    # Open the most recent file
+    recent = config.getRecentFiles()
+    if len(recent) > 0:
+      self.open(url=recent[0])
+
+    # Monkey-patch the menu to show its tooltips. I don't believe QT developers are so arrogant
+    # they purposely disable tooltips in menu's!
+    def handleMenuHovered(action):
+      QtGui.QToolTip.showText(
+            QtGui.QCursor.pos(), action.toolTip(),
+            self.ui.menuRecent_Files, self.ui.menuRecent_Files.actionGeometry(action))
+    self.ui.menuRecent_Files.hovered.connect(handleMenuHovered)
+
+
+  def setRecentFileMenu(self):
+    self.ui.menuRecent_Files.clear()
+    # Add the recent files to the menu
     recent = config.getRecentFiles()
     for f in recent:
       a = QtGui.QAction(os.path.basename(f), self)
@@ -102,13 +120,10 @@ class ArchitectureTool(MainWindowForm[1]):
       # Mask any passwords
       f_nopasswd = re.sub(':[^/]+?@', ':***@', f)
       # TODO: make this a tool tip, not a status tip.
-      a.setStatusTip(f_nopasswd)
+      a.setToolTip(f_nopasswd)
       self.ui.menuRecent_Files.addAction(a)
 
-    # Open the most recent file
-    if len(recent) > 0:
-      self.open(url=recent[0])
-      
+
   def onNew(self, fname=None):
     if not fname:
       fname = str(QtGui.QFileDialog.getSaveFileName(self, "Open an architecture model",
@@ -213,6 +228,9 @@ class ArchitectureTool(MainWindowForm[1]):
     self.setWindowTitle("Architecture Tool: %s"%url.split('/')[-1])
     config.addRecentFile(url)
     self.current_url = url
+
+    # Update the recent file menu
+    self.setRecentFileMenu()
     
   def onArchitectureView(self, triggered=False, cls=ArchitectureView):
     ''' Open the Architecture View in the central window.
