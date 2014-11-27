@@ -127,7 +127,8 @@ class ArchitectureView(ViewerWithTreeBase):
     # Make the context menus for the tree widgets.
     tree_models = {self.ui.treeBlocks:model.ArchitectureBlock,
                      self.ui.treeUseCases:model.View,
-                     self.ui.treeRequirements:model.Requirement}
+                     self.ui.treeRequirements:model.Requirement,
+                     self.ui.treeBugs:model.Bug}
     self.tree_models = tree_models
 
     for widget, model_class in tree_models.iteritems():
@@ -138,6 +139,7 @@ class ArchitectureView(ViewerWithTreeBase):
     self.ui.treeRequirements.setFinder(self.ui.edtFindReq, self.ui.btnFindReq)
     self.ui.treeBlocks.setFinder(self.ui.edtFindBlock, self.ui.btnFindBlock)
     self.ui.treeUseCases.setFinder(self.ui.edtFindUseCase, self.ui.btnFindUseCase)
+    self.ui.treeBugs.setFinder(self.ui.edtFindBug, self.ui.btnFindBug)
 
     self.ui.tabGraphicViews.tabCloseRequested.connect(self.onTabCloseRequested)
     self.ui.tabGraphicViews.currentChanged.connect(self.onTabChanged)
@@ -152,7 +154,7 @@ class ArchitectureView(ViewerWithTreeBase):
     
         
     # Add database hooks to properly update when items are added.
-    for cls in [model.ArchitectureBlock, model.View, model.Requirement]:
+    for cls in [model.ArchitectureBlock, model.View, model.Requirement, model.Bug]:
       event.listen(cls, 'after_update', self.onDetailUpdate)
       event.listen(cls, 'after_insert', self.onDetailInsert)
       #FIXME: also handle deletes.
@@ -337,12 +339,9 @@ class ArchitectureView(ViewerWithTreeBase):
     exportRequirementQuestions(self.session, out, chapters)    
 
   def getTreeWidget(self, details):
-    if isinstance(details, model.ArchitectureBlock):
-      return self.ui.treeBlocks
-    elif isinstance(details, model.View):
-      return self.ui.treeUseCases
-    elif isinstance(details, model.Requirement):
-      return self.ui.treeRequirements
+    for widget, table in self.tree_models.items():
+      if isinstance(details, table):
+        return widget
     return None
   
   def drop2Details(self, event):

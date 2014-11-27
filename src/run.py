@@ -33,9 +33,14 @@ from controller import Controller
 
 # FIXME: Nieuwe rollen kunnen toevoegen in de style editor.
 
+# TODO: Add a small screen to the requirements export that lets you choose HTML or DOCX output.
+# TODO: Sort trees on ID or name (selectable through right-click menu or radio button)
+# TODO: When adding state changes, set default user to the previous one.
+# TODO: Order the state dropbock in state changes properly.
 # TODO: Een view kunnen representeren als een Sequence Diagram ipv Collaboration Diagram.
 # TODO: Een Use Case droppen in een andere Use Case, dit wordt dan een blokje.
 # TODO: Dubbel-klik op een Use Case blokje opent deze use case.
+# TODO: Color-code requirements depending on their current state
 # TODO: Navigeren van acties naar views waarin deze voorkomt
 # TODO: De schatting van een (groep) Use Cases opvragen.
 # TODO: Diffs kunnen laten zien, en een document met alleen de wijzigingen kunnen genereren, of de

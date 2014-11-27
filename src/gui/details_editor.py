@@ -479,7 +479,19 @@ class DetailsViewer(QtGui.QWidget):
         widget.setText(value)
       widget.setWordWrap(True)
       widget.getValue = lambda : value
-    
+    elif len(column.foreign_keys) > 0:
+      foreign_name = next(iter(column.foreign_keys)).target_fullname
+      tbl = model.Base.getTable(foreign_name.split('.')[0])
+      widget = QtGui.QComboBox(self)
+      # Assume we want to show the 'Name' field of the table.
+      values = self.session.query(tbl.Id, tbl.Name).all()
+      indices = [v[0] for v in values]
+      values = [v[1] for v in values]
+      widget.addItems(values)
+      widget.getValue = lambda : indices[widget.currentIndex()]
+      self.bindCallback(widget.activated, widget, column.name)
+      if value:
+        widget.setCurrentIndex(indices.index(value))
     elif hasattr(type_, 'enums'):
       widget = QtGui.QComboBox(self)
       widget.addItems(type_.enums)
@@ -550,6 +562,16 @@ class DetailsViewer(QtGui.QWidget):
     editor = self.edits[index]
     editor.setFocus()
     editor.selectAll()
+
+  def closeEvent(self, evnt):
+    self.session.commit() # Commit any outstanding changes
+    return QtGui.QWidget.closeEvent(self, evnt)
+
+
+  @staticmethod
+  def createAsWindow(item, session, readonly=False):
+    win = DetailsViewer(None, item, session, readonly)
+    win.show()
 
 
 class EffortOverview(QtGui.QTableWidget):

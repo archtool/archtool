@@ -11,7 +11,7 @@ __author__ = 'ehwaal'
 class SQLUpdater(object):
   ''' Updater for generic SQL databases.
 
-      Can be subclassed in case specific updates are problematic for spefic RDMSes.
+      Can be subclassed in case specific updates are problematic for specific RDMSes.
 
       Mainly raw SQL is used, because the database may not be compatible with the current model.
 
@@ -74,6 +74,9 @@ class SQLUpdater(object):
   def update8to9(self):
     # No update needed for SQLite.
     return 9, []
+
+  def update9to10(self):
+    return 10, ['ALTER TABLE bug ADD COLUMN ReportedOn DATETIME']
 
 
 

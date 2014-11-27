@@ -19,7 +19,7 @@ class StateChangeView(StatusViewForm[1]):
     self.ui = StatusViewForm[0]()
     self.ui.setupUi(self)
     self.details = details
-    self.session = session
+    self.session = session if session else parent.session
     
     msg = '%s:%s'%(details.Status, details.TimeStamp.strftime('%Y-%m-%d %H:%M:%S'))
     self.ui.grpBox.setTitle(msg)
@@ -39,7 +39,6 @@ class StateChangeView(StatusViewForm[1]):
     if self.session is None:
       return
     workers = self.session.query(Worker).all()
-    workers = [w[0] for w in workers]
     diag = StateChangeEditor(self, workers, self.details)
     r = diag.exec_()
     if r == QtGui.QDialog.Accepted:
@@ -62,7 +61,8 @@ class StateChangeEditor(StatusEditorForm[1]):
       if value.TimeRemaining:
         self.ui.edtTimeRemaining.setText(str(value.TimeRemaining))
       if value.AssignedTo:
-        self.ui.cmbAssigned.setCurrenIndex(workers.index(value.AssignedTo))
+        self.ui.cmbAssigned.setCurrentIndex(workers.index(value.theWorker))
+
   def getDetails(self, details):
     details.Description=str(self.ui.edtDescription.toPlainText()).decode(ENCODING)
     details.Status=str(self.ui.cmbStatus.currentText())
@@ -72,7 +72,8 @@ class StateChangeEditor(StatusEditorForm[1]):
   @staticmethod
   def add(parent_widget, parent_details, session):
     workers = session.query(Worker).all()
-    diag = StateChangeEditor(parent_widget, workers)
+    copy_from = parent_details.StateChanges[-1] if parent_details.StateChanges else None
+    diag = StateChangeEditor(parent_widget, workers, copy_from)
     r = diag.exec_()
     if r == QtGui.QDialog.Accepted:
       new = PlaneableStatus()

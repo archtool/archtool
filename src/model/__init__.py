@@ -8,6 +8,7 @@ This program is released under the conditions of the GNU General Public License.
 '''
 import re
 import sys
+import inspect
 from urlparse import urlparse
 from contextlib import contextmanager
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
@@ -23,7 +24,7 @@ from model.history import Versioned
 from datetime import datetime
 from collections import OrderedDict
 
-VERSION = 9
+VERSION = 10
 
 
 # Determine which encoding to use when interacting with files
@@ -103,6 +104,9 @@ class Const(object):
 
 class MyBase(object):
   ''' Base class for database tables. '''
+  READONLY = []
+  HIDDEN = []
+
   Id = Column(Integer, primary_key=True)
 
   @declared_attr
@@ -164,20 +168,28 @@ class MyBase(object):
         The standard implementation returns all columns except primary keys
         and the 'ItemType' and 'AnchorType' columns.
     '''
+    hidden = set()
+    for base in inspect.getmro(cls):
+      hidden = hidden.union(base.__dict__.get('HIDDEN', []))
     cols = cls.getColumns().values()
     names = []
     columns = []
     for c in cols:
       if c.primary_key:
         continue
-      if len(c.foreign_keys) > 0:
-        continue
-      if c.name in ['ItemType', 'AnchorType']:
+      if c in hidden:
         continue
       names.append(c.name)
       columns.append(c)
     
     return names, columns
+
+  @staticmethod
+  def getTable(name):
+    for table in Base.getTables():
+      if table.__tablename__ == name.lower():
+        return table
+    raise RuntimeError('Table name %s not found!'%name)
 
 
 
@@ -356,6 +368,8 @@ class ArchitectureBlock(Base, Versioned):   #pylint:disable=W0232
   Parent = Column(Integer, ForeignKey('architectureblock.Id', deferrable=True))
   Children = relationship('ArchitectureBlock', passive_deletes=True)
 
+  HIDDEN = [Parent]
+
 
 class BlockConnection(Base, Versioned):   #pylint:disable=W0232
   ''' The Architecture Blocks are inter-connected.
@@ -370,6 +384,8 @@ class BlockConnection(Base, Versioned):   #pylint:disable=W0232
 
   theEnd        = relationship(ArchitectureBlock, uselist=False, foreign_keys=[End])
   theStart      = relationship(ArchitectureBlock, uselist=False, foreign_keys=[Start])
+
+  HIDDEN = [Start, End]
 
 
 # Define an n-to-m mapper class between planeable items
@@ -402,7 +418,8 @@ class PlaneableItem(Base, Versioned):   #pylint:disable=W0232
       'polymorphic_identity':'planeableitem',
       'polymorphic_on':ItemType
   }
-  
+
+  HIDDEN = [ItemType, Parent]
   
   @classmethod
   def getTree(cls, session, with_root=True):
@@ -467,6 +484,7 @@ class PlaneableStatus(Base, Versioned):
 
   theItem  = relationship('PlaneableItem',
                 backref=backref('StateChanges', order_by='PlaneableStatus.TimeStamp.desc()'))
+  theWorker = relationship('Worker')
 
   def __init__(self, **kwds):
     if 'TimeStamp' in kwds and isinstance(kwds['TimeStamp'], basestring):
@@ -564,6 +582,8 @@ class View(PlaneableItem):   #pylint:disable=W0232
       'polymorphic_identity':'view'
   }
 
+  HIDDEN = [Refinement]
+
 
 ###############################################################################
 ## Graphical Representation
@@ -582,6 +602,8 @@ class Anchor(Base, Versioned):   #pylint:disable=W0232
       'polymorphic_identity':'anchor',
       'polymorphic_on':AnchorType
   }
+
+  HIDDEN = [AnchorType]
   
   # TODO: Add the function to get the anchor location here.
 
@@ -716,12 +738,14 @@ class Bug(PlaneableItem):
 
   # Override the Id inherited from Base
   Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
-  Type = Column(Enum(*REQ_TYPES.values(), name='REQ_TYPES'), default=REQ_TYPES.FUNCTIONAL)
-  ReportedBy    = Column(ForeignKey('worker.Id'))
+  ReportedBy = Column(ForeignKey('worker.Id'))
+  ReportedOn = Column(DateTime, default=datetime.now)
 
   __mapper_args__ = {
       'polymorphic_identity':'bug'
   }
+
+  READONLY = [ReportedOn]
 
 
 

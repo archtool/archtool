@@ -10,7 +10,7 @@ from design import WorkitemViewForm
 from details_editor import DetailsViewer
 from viewer_base import ViewerWithDetailsBase
 import model
-
+from sqlalchemy import or_
 
 
 # TODO: Default status must be Open: selecting Open must also show those without status.
@@ -50,7 +50,7 @@ class WorkitemView(ViewerWithDetailsBase):
     
     # Hook the items table, for when the user selects a row.
     for tbl in self.tables:
-      tbl.cellClicked.connect(partial(self.onCellClicked, widget=tbl))
+      tbl.cellDoubleClicked.connect(partial(self.onCellDoubleClicked, widget=tbl))
     
     # Hook the Assign button
     self.ui.btnAssign.clicked.connect(self.onAssign)
@@ -75,13 +75,15 @@ class WorkitemView(ViewerWithDetailsBase):
     for wdg in [self.ui.cmbWorker, self.ui.cmbProject]:
       wdg.clear()
   
-  def onCellClicked(self, row, column, widget):
+  def onCellDoubleClicked(self, row, column, widget):
     if row < len(self.table_contents[widget]):
       item = self.table_contents[widget][row]
-      self.openDetailsViewer(item[0], read_only=True)
+      DetailsViewer.createAsWindow(item[0], self.session)
 
   def onWorkerChange(self):
     worker = str(self.ui.cmbWorker.currentText())
+    if not worker:
+      return
     worker_id = self.session.query(model.Worker.Id).filter(model.Worker.Name==worker).one()[0]
     items = self.getItems(status=model.OPEN_STATES,
                           assigned_to=worker_id)
@@ -95,9 +97,12 @@ class WorkitemView(ViewerWithDetailsBase):
     self.ui.tblCurrent.clearContents()
     self.ui.tblCurrent.setRowCount(len(items))
     for row, item in enumerate(items):
-      for col, txt in enumerate([item[0].Name, item[0].Priority, item[3]]):
+      for col, txt in enumerate(['%4i'%item[0].Id, item[0].Name, item[0].Priority, item[3]]):
         if not txt is None:
           self.ui.tblCurrent.setItem(row, col, QtGui.QTableWidgetItem(str(txt)))
+
+    self.ui.tblCurrent.resizeColumnsToContents()
+
 
   def fillFiltererdTable(self, items):
     ''' Show a list of items.
@@ -107,11 +112,17 @@ class WorkitemView(ViewerWithDetailsBase):
 
     # Set the dimensions of the table
     self.ui.tblItems.setRowCount(len(items))
+
+    workers = dict(self.session.query(model.Worker.Id, model.Worker.Name).all())
+
     # Fill the table
     for row, item in enumerate(items):
-      for col, txt in enumerate([item[0].Name, item[0].Priority, item[1], item[2]]):
+      worker = workers[item[2]] if item[2] else ''
+      for col, txt in enumerate(['%4i'%item[0].Id, item[0].Name, item[0].Priority, item[1], worker]):
         if not txt is None:
           self.ui.tblItems.setItem(row, col, QtGui.QTableWidgetItem(txt))
+
+    self.ui.tblItems.resizeColumnsToContents()
     
 
   def onAssign(self, _checked):
@@ -159,17 +170,21 @@ class WorkitemView(ViewerWithDetailsBase):
     stmt = model.PlaneableStatus.getLatestQuery(self.session).subquery()
     base = self.session.query(model.PlaneableItem, stmt.c.Status, stmt.c.AssignedTo,
                               stmt.c.TimeRemaining, stmt.c.TimeSpent).\
-                             outerjoin(stmt).order_by(model.PlaneableItem.Name)
+                             outerjoin(stmt)
     if not item_type is None:
       base = base.filter(model.PlaneableItem.ItemType==item_type)
     if not priority is None:
       base = base.filter(model.PlaneableItem.Priority==priority)
     if not status is None:
       if isinstance(status, list):
-        base = base.filter(stmt.c.Status.in_(status))
+        condition = stmt.c.Status.in_(status)
       else:
-        base = base.filter(stmt.c.Status == status)
-    base = base.filter(stmt.c.AssignedTo == assigned_to)
+        condition = stmt.c.Status == status
+      if model.REQUIREMENTS_STATES.OPEN in status:
+        condition = or_(condition, stmt.c.Status == None)
+      base = base.filter(condition)
+    if assigned_to:
+      base = base.filter(stmt.c.AssignedTo == assigned_to)
       
     return base.all()
       
