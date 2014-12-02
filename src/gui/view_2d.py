@@ -26,11 +26,8 @@ from controller import Controller, cmnds
 # TODO: children are contained by and on top of parents.
 # TODO: Have two types of view: one where actions shown on a link are from the connection (Architecture),
 #       and one where the actions shown on a link are from an object (UML).
-
-# FIXME: When dropping a new block or selecting a menu item, deselect the current items.
-# FIXME: delete block in view leaves block outline on screen
 # FIXME: rename architecture block is not shown in open viewer.
-# FIXME: Zorg dat bij het aanmaken van iets nieuws, dit meteen geselecteerd is.
+# FIXME: delete architecture block is not shown in viewer.
 
 MIME_TYPE = 'application/x-qabstractitemmodeldatalist'
 
@@ -368,6 +365,14 @@ class MyScene(QtGui.QGraphicsScene):
                                                coods, order))
     if new_details:
       self.addBlock(new_details)
+      self.selectItem(new_details)
+
+  def selectItem(self, details):
+    ''' Ensure a specific item is selected, and all other items de-selected.
+    '''
+    for i in self.items():
+      sel = True if getattr(i, 'details', None) == details else False
+      i.setSelected(sel)
     
   def addBlock(self, rep_details, add_connections=True):
     coods = QtCore.QPointF(rep_details.x, rep_details.y)
@@ -649,6 +654,7 @@ class TwoDView(QtGui.QGraphicsView):
                                                                       pos,
                                                                       len(self.scene.anchors)))
     self.scene.addBlock(repr_details)
+    self.scene.selectItem(repr_details)
 
   def onAddChildBlock(self, triggered=False):
     ''' Called to create a new child block.
@@ -686,6 +692,7 @@ class TwoDView(QtGui.QGraphicsView):
     details = theController.execute(cmnds.AddAnnotation(self.details.Id, pos, anchor_id,
                                                         len(self.scene.anchors)))
     self.scene.addAnnotation(details)
+    self.scene.selectItem(details)
 
 
   def keyPressEvent(self, ev):
@@ -779,6 +786,7 @@ class TwoDView(QtGui.QGraphicsView):
 
     # Cause the action to be shown in the View.
     self.scene.addAction(fprepr, fp, item)
+    self.scene.selectItem(fprepr)
     
   def onChangeItemOrder(self, direction):
     ''' Called to move a drawing item in the Z direction. This function supports

@@ -9,6 +9,8 @@ This program is released under the conditions of the GNU General Public License.
 
 # TODO: Add change handlers for the style checkbox, combo boxes & line edits.
 
+from contextlib import contextmanager
+
 from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, event
 from datetime import datetime, timedelta
@@ -73,42 +75,48 @@ class StyleEditor(StyleEditForm[1]):
     Role = 3
     
   def __init__(self):
-    self.allow_role_updates = False
-    self.stylable = None
-    self.stylesheet = None
-    self.editor = None
-    self.session = None   # To be set by the owner
-
-    StyleEditForm[1].__init__(self)
-    self.ui = StyleEditForm[0]()
-    self.ui.setupUi(self)
-
-    self.ui.btnFactoryDefaults.clicked.connect(self.onResetToDefaults)
-    self.ui.edtStyles.textChanged.connect(self.onTextChanged)
-    self.ui.edtStyles.focusOutEvent = self.onEditFocusLost
-    self.ui.actionSave.triggered.connect(self.onEditFocusLost)
-    self.ui.cmbRole.currentIndexChanged.connect(self.onRoleChanged)
-    self.ui.cmbDetails.currentIndexChanged.connect(self.onStyleItemChanged)
-    for btn in [self.ui.btnGlobal, self.ui.btnStereotype, self.ui.btnRole]:
-      btn.clicked.connect(self.onStyleItemChanged)
-    
-    self.stylesheet_changed = False
-    Style.current_style.subscribe(self.onStylesheetChanged)
-    Style.current_object.subscribe(self.onStylableChanged)
     self.allow_role_updates = True
-  def onStylesheetChanged(self, styles):
+    with self.ignoreRoleUpdates():
+      self.stylable = None
+      self.stylesheet = None
+      self.editor = None
+      self.session = None   # To be set by the owner
+
+      StyleEditForm[1].__init__(self)
+      self.ui = StyleEditForm[0]()
+      self.ui.setupUi(self)
+
+      self.ui.btnFactoryDefaults.clicked.connect(self.onResetToDefaults)
+      self.ui.btnCreateRole.clicked.connect(self.onNewRole)
+      self.ui.edtStyles.textChanged.connect(self.onTextChanged)
+      self.ui.edtStyles.focusOutEvent = self.onEditFocusLost
+      self.ui.actionSave.triggered.connect(self.onEditFocusLost)
+      self.ui.cmbRole.currentIndexChanged.connect(self.onRoleChanged)
+      self.ui.cmbDetails.currentIndexChanged.connect(self.onStyleItemChanged)
+      for btn in [self.ui.btnGlobal, self.ui.btnStereotype, self.ui.btnRole]:
+        btn.clicked.connect(self.onStyleItemChanged)
+
+      self.stylesheet_changed = False
+      Style.current_style.subscribe(self.onStylesheetChanged)
+      Style.current_object.subscribe(self.onStylableChanged)
+
+  @contextmanager
+  def ignoreRoleUpdates(self):
+    ''' Custom function to be used in a 'with' statement; controls the allow_role_updates variable.
+    '''
     self.allow_role_updates = False
-    self.stylesheet = styles
-    self.stylesheet.subscribe(self.onStyleItemChanged)
-    try:
+    yield
+    self.allow_role_updates = True
+
+  def onStylesheetChanged(self, styles):
+    with self.ignoreRoleUpdates():
+      self.stylesheet = styles
+      self.stylesheet.subscribe(self.onStyleItemChanged)
       self.ui.edtStyles.setPlainText(styles.details.Details)
       self.ui.cmbRole.clear()
-    finally:
-      self.allow_role_updates = True
   def onStylableChanged(self, stylable):
     self.stylable = None
-    self.allow_role_updates = False
-    try:
+    with self.ignoreRoleUpdates():
       self.ui.cmbRole.clear()
       self.ui.lblStereotype.setText('')
       if not stylable:
@@ -134,9 +142,7 @@ class StyleEditor(StyleEditForm[1]):
       self.ui.cmbDetails.addItems(self.stylesheet.requestedItems(stereotype))
         
       self.onStyleItemChanged(None)
-    finally:
-      self.allow_role_updates = True
-      
+
   def onTextChanged(self):
     self.stylesheet_changed = True
     
@@ -255,7 +261,8 @@ class StyleEditor(StyleEditForm[1]):
     elif t == StyleTypes.BOOL:
       w = QtGui.QCheckBox(self)
       w.setChecked(getBool(current))
-      w.stateChanged.connect(self.acceptCheckboxUpdate)
+      w.stateCh
+      anged.connect(self.acceptCheckboxUpdate)
       return w
     
     elif t == StyleTypes.FONT:
@@ -295,6 +302,30 @@ class StyleEditor(StyleEditForm[1]):
       return
     createDefaultStyle(self.session)
 
+  def onNewRole(self):
+    ''' Called when the user clicks on the button 'Create new role'
+    '''
+    objs = Style.current_object.get()
+    if not objs:
+      QtGui.QMessageBox.information(self, 'Cant add role',
+                               'Please select some stylable objects before creating a new role')
+      return
+    txt, ok = QtGui.QInputDialog.getText(self, 'Enter role name', 'New role name:')
+    txt = str(txt)
+    if not ok or not txt:
+      return
+
+    # Set the current selection to this role.
+    for obj in objs:
+      obj.setRole(txt)
+
+    # Ensure something is set for the new role
+    style = Style.current_style.get()
+    stereo = self.stylable.stereotype
+    style.setItem(txt, stereo + '-rolename', txt)
+
+    # Update the GUI
+    self.onStylableChanged(objs)
 
 class XRefEditor(XRefEditorForm[1]):
   def __init__(self, details, session, parent, open_view):

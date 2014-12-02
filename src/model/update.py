@@ -49,7 +49,7 @@ class SQLUpdater(object):
       self.executeQueries(queries)
       version = new_version
 
-    # TODO: Delete the old database versions.
+    # Delete the old database versions.
     q = 'DELETE FROM "dbaseversion" WHERE "Version" != %s;'%VERSION
     self.engine.execute(q)
 

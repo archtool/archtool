@@ -171,8 +171,11 @@ class ModelItemTree(QtGui.QTreeWidget):
     self.detail_items = {}
     cls = self.model_class
     session = self.session_parent.session
-    root_items = session.query(cls).filter(cls.Parent==None).\
-                         options(subqueryload(cls.Children)).all()
+    # Get all elements to be shown in the tree, eager load all Children.
+    root_items = session.query(cls).options(subqueryload(cls.Children)).all()
+    # Filter so that only the root items remain.
+    # The Children are reachable through the 'Children' field.
+    root_items = [r for r in root_items if r.Parent==None]
 
     def addChildren(parent_item):
       # Add all children

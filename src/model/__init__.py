@@ -33,11 +33,6 @@ ENCODING = 'cp1252' if 'win' in sys.platform else 'utf-8'
 
 
 
-# TODO: Implement an undo method
-# TODO: Implement a TestCase: a specialized view where FPreps are edited in a table,
-#       with a precondition for the View, and an expected result for the FP.
-
-
 SQLITE_URL_PREFIX = 'sqlite:///'
 
 
@@ -436,16 +431,16 @@ class PlaneableItem(Base, Versioned):   #pylint:disable=W0232
       return roots
     return elements
 
-  @staticmethod  
-  def getAllOffspring(details, offspring=None):
+  def getAllOffspring(self, offspring=None):
     ''' Get all children, grandchildren etc (recursively).
         The offspring is added to the 'offspring' list, if present.
      '''
     if offspring is None:
       offspring = []
-    offspring += details.Children
-    for child in details.Children:
-      PlaneableItem.getAllOffspring(child, offspring)
+    for child in self.Children:
+      offspring.append(child)
+      if child.Children:
+        child.getAllOffspring(offspring)
     return offspring
   
   @staticmethod
@@ -604,8 +599,6 @@ class Anchor(Base, Versioned):   #pylint:disable=W0232
   }
 
   HIDDEN = [AnchorType]
-  
-  # TODO: Add the function to get the anchor location here.
 
 
 class BlockRepresentation(Anchor):   #pylint:disable=W0232

@@ -7,8 +7,7 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 
-# TODO: Font names containing spaces are not handled properly.
-# TODO: Add a UML profile to the default styles.
+# FIXME: Font names containing spaces are not handled properly.
 # TODO: Allow style export & import. Use that to initialise the database
 
 import re
@@ -193,7 +192,6 @@ class Style(Observable):
     results = sorted(set(results))
     return results
     
-    
   def reloadDetails(self):
     pairs = self.details.Details.split(';')
     test = [d.split(':') for d in pairs]
@@ -282,8 +280,6 @@ class Style(Observable):
     '''
     font = self.findItem(name, 'font') or DEFAULT_FONT
     return getFont(font)
-  
-
   
   def getArrow(self, name, arrow_type):
     ''' Returns the polygon object to be used for the arrow, or None.

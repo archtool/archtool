@@ -31,12 +31,10 @@ from model.update import updateDatabase
 from controller import Controller
 
 
-# FIXME: Nieuwe rollen kunnen toevoegen in de style editor.
-
 # TODO: Add a small screen to the requirements export that lets you choose HTML or DOCX output.
 # TODO: Sort trees on ID or name (selectable through right-click menu or radio button)
 # TODO: When adding state changes, set default user to the previous one.
-# TODO: Order the state dropbock in state changes properly.
+# TODO: Order the state dropbox in state changes properly.
 # TODO: Een view kunnen representeren als een Sequence Diagram ipv Collaboration Diagram.
 # TODO: Een Use Case droppen in een andere Use Case, dit wordt dan een blokje.
 # TODO: Dubbel-klik op een Use Case blokje opent deze use case.
@@ -52,7 +50,10 @@ from controller import Controller
 # TODO: Implement support for attachements
 # TODO: Multi-user support (user logs in, username is added to the logs)
 # TODO: Undo is session-based (do not undo things done in another session).
-
+# TODO: Allow history to be compacted / cleaned
+# TODO: Implement an undo method
+# TODO: Implement a TestCase: a specialized view where FPreps are edited in a table,
+#       with a precondition for the View, and an expected result for the FP.
 
 
 

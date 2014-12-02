@@ -24,7 +24,7 @@ def getWorkRemaining(project, session):
   requirements = [req for req in project.AItems if req.ItemType=='requirement']
   offspring = list(requirements)
   for r in requirements:
-    PlaneableItem.getAllOffspring(r, offspring)
+    r.getAllOffspring(offspring)
   
   all_ids = [r.Id for r in offspring]
   all_requirements = offspring

@@ -27,7 +27,7 @@ def exportRstFiltered(session, states_2_show, out, chapters=None):
         print >> out, section.Description.encode('cp1252'), '\n'
       
       
-      requirements = PlaneableItem.getAllOffspring(section)
+      requirements = section.getAllOffspring()
       requirements = [r for r in requirements \
                if (len(r.StateChanges)==0 and model.REQUIREMENTS_STATES[0] in states_2_show) or \
                   (len(r.StateChanges)>0 and r.StateChanges[0].Status in states_2_show)]
@@ -105,7 +105,7 @@ def exportRequirementQuestions(sessio, out, chapters=None):
   else:
     requirements = []
     for chapter in chapters:
-      requirements += PlaneableItem.getAllOffspring(chapter)
+      requirements += chapter.getAllOffspring()
   
   requirements = [r for r in requirements \
            if len(r.StateChanges)>0 and r.StateChanges[0].Status == 'Question']

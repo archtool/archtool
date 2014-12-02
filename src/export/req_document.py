@@ -192,9 +192,8 @@ def exportRequirementsDocument(session, requirement_name):
     
     for section in sorted(chapter.Children, cmp=cmpRequirements):
       renderer.renderSectionHead(section)
-      # TODO: make this a recursive query to catch sub-requirements
       #renderer.renderRequirementsTable(sorted(section.Children, key=lambda x:x.Id))
-      renderer.renderRequirementsTable(sorted(section.Children, cmp=cmpRequirements))
+      renderer.renderRequirementsTable(sorted(section.getAllOffspring(), cmp=cmpRequirements))
 
   print renderer
   fname = '%s/%s'%(config.getConfig('export_dir'), top_item.Name)

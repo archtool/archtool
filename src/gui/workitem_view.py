@@ -13,7 +13,7 @@ import model
 from sqlalchemy import or_
 
 
-# TODO: Default status must be Open: selecting Open must also show those without status.
+# TODO: Default status must be Open
 # TODO: Add filter showing current projects
 # TODO: Show 'Take this Item' when an item is selected. 
 

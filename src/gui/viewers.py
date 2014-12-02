@@ -22,9 +22,6 @@ from styles import Style
 from controller import Controller
 
 
-# TODO: move the makeModelItemTree to a MyTree, and promote the relevant widgets.
-
-
 theController = Controller.get()
   
   

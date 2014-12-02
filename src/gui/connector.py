@@ -37,7 +37,6 @@ class LineHandle(QtGui.QGraphicsRectItem):
     QtGui.QGraphicsItem.__init__(self, rect, parent)
 
 class Connection(Line):
-  # TODO: start and end the line at the block edge.
   ROLE = 'connection'
   def __init__(self, details, start, end, style, *args, **kwds):
     self.details = details
