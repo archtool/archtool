@@ -7,6 +7,9 @@ Created on Nov 2, 2013
 import re
 import StringIO
 import model
+import os.path
+from string import Template
+
 from model import PlaneableItem
 from model import config
 from docutils.core import publish_string, default_description
@@ -22,10 +25,18 @@ COL_WIDTH     = [718, 7468, 814]
 ENCODING = 'utf-8'
 
 TABLE_HEADER = '''
-.. list-table:: 
-   :widths: 5 85 10
+.. list-table::
+   :widths: 4 60 8
    :header-rows: 1
    
+'''
+
+
+VERSION_INFO = '''
+.. footer::
+    Last modified on: $MODIFIED
+
+    Generated on: $GENERATED
 '''
 
 TABLE_START = '''
@@ -97,17 +108,20 @@ class RstRenderer(object):
     fmt = '%d %b %Y, %H:%M:%S'
     now = time.strftime(fmt)
     mod = latest_mod.strftime(fmt) if latest_mod else '---'
-    print >> self.out, '\n\nLast modification: %s'%mod
-    print >> self.out, '\n\nGenerated on: %s'%now
+    txt = Template(VERSION_INFO)
+    txt = txt.substitute(MODIFIED=mod, GENERATED=now)
+    print >> self.out, txt
 
-  def write(self, fname):
-    witer_name = 'html'
-    if fname.endswith('.odt'):
-      writer_name = 'odf_odt'
-    html = publish_string(self.out.getvalue(), writer_name=writer_name)
-
-    if not fname.endswith('.%s'%writer_name):
-      fname += '.%s'%writer_name
+  def write(self, fname, writer='html'):
+    dirname = os.path.dirname(__file__)
+    if writer == 'odf_odt':
+      ssheet = os.path.join(dirname, 'requirements.odt')
+      overrides = {'stylesheet':ssheet, 'custom_footer':"\tPage %p% of %P%"}
+    else:
+      overrides = {}
+    html = publish_string(self.out.getvalue(), writer_name=writer,
+                          settings_overrides=overrides,
+                          settings=None)
 
     with open(fname, 'w') as f:
       f.write(html)
@@ -196,5 +210,5 @@ def exportRequirementsDocument(session, requirement_name):
       renderer.renderRequirementsTable(sorted(section.getAllOffspring(), cmp=cmpRequirements))
 
   print renderer
-  fname = '%s/%s'%(config.getConfig('export_dir'), top_item.Name)
-  renderer.write(fname)
+  fname = '%s/%s'%(config.getConfig('export_dir'), top_item.Name+'.odt')
+  renderer.write(fname, 'odf_odt')

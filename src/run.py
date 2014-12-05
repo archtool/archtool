@@ -44,7 +44,6 @@ from controller import Controller
 # TODO: Diffs kunnen laten zien, en een document met alleen de wijzigingen kunnen genereren, of de
 #       wijzigingen gehighlight (vanaf een bepaalde datum / versie)
 # TODO: Grote workitems moeten kunnen worden toebedeeld aan meerdere mensen, en hun time-remaining schattingen samengevoegd.
-# TODO: Export SRS documents as Word format.
 # TODO: Edit the configuration...
 # TODO: Voor een Use Case het tekening type selecteren.
 # TODO: Implement support for attachements
@@ -125,7 +124,6 @@ class ArchitectureTool(MainWindowForm[1]):
       a.triggered.connect(partial(self.open, url=f))
       # Mask any passwords
       f_nopasswd = re.sub(':[^/]+?@', ':***@', f)
-      # TODO: make this a tool tip, not a status tip.
       a.setToolTip(f_nopasswd)
       self.ui.menuRecent_Files.addAction(a)
 
