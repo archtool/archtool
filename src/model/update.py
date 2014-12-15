@@ -2,7 +2,7 @@
 Update a database to be opened to the most recent version.
 '''
 
-from model import VERSION, sessionmaker, sessionScope
+from model import VERSION, sessionmaker, sessionScope, UsecaseRepresentation, PlaneableStatus
 import re
 
 __author__ = 'ehwaal'
@@ -20,7 +20,7 @@ class SQLUpdater(object):
   '''
   def __init__(self, engine):
     self.engine = engine
-    pttrn = re.compile('update([0-9])+to([0-9]+)')
+    pttrn = re.compile('update([0-9]+)to([0-9]+)')
     self.handlers = {}
 
     dicts = dict(self.__dict__)
@@ -43,7 +43,7 @@ class SQLUpdater(object):
     while version < VERSION:
       updater = self.handlers.get(version, None)
       if updater is None:
-        raise RuntimeError('Can not update database')
+        raise RuntimeError('Can not update database from version %s to %s'%(version, VERSION))
       new_version, queries = updater()
       queries.append('UPDATE dbaseversion SET Version=%i WHERE Version=%i;'%(new_version, version))
       self.executeQueries(queries)
@@ -72,11 +72,19 @@ class SQLUpdater(object):
     return 8, ['ALTER TABLE fprepresentation ADD COLUMN SequenceNr INTEGER;']
 
   def update8to9(self):
-    # No update needed for SQLite.
+    # Can not upgrade SQLite...
+    self.engine.execute('ALTER TABLE planeablestatus RENAME TO status_old')
+    PlaneableStatus.create(self.engine)
+    self.engine.execute('INSERT INTO planeablestatus VALUES (SELECT * FROM status_old)')
+    self.engine.execute('DROP TABLE status_old')
     return 9, []
 
   def update9to10(self):
     return 10, ['ALTER TABLE bug ADD COLUMN ReportedOn DATETIME']
+
+  def update10to11(self):
+    UsecaseRepresentation.create(self.engine, True)
+    return 11, []
 
 
 

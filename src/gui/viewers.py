@@ -11,7 +11,7 @@ from PyQt4 import QtCore, QtGui
 from design import ArchitectureViewForm, ProjectViewForm
 import model
 from util import mkMenu
-from view_2d import TwoDView, MIME_TYPE, getDetails
+from view_2d import TwoDView, MIME_TYPE, getDetails, MyScene
 from details_editor import EffortOverview, WorkerOverview, StyleEditor
 from req_export import exportRequirementQuestions, exportRequirementsOverview
 from viewer_base import ViewerWithTreeBase
@@ -133,6 +133,7 @@ class ArchitectureView(ViewerWithTreeBase):
       widget.itemClicked.connect(self.onTreeItemClicked)
     self.ui.treeUseCases.itemDoubleClicked.connect(self.onView)
 
+
     self.ui.treeRequirements.setFinder(self.ui.edtFindReq, self.ui.btnFindReq)
     self.ui.treeBlocks.setFinder(self.ui.edtFindBlock, self.ui.btnFindBlock)
     self.ui.treeUseCases.setFinder(self.ui.edtFindUseCase, self.ui.btnFindUseCase)
@@ -237,6 +238,8 @@ class ArchitectureView(ViewerWithTreeBase):
       self.ui.tabGraphicViews.addTab(viewer, details.Name)
       self.ui.tabGraphicViews.setCurrentWidget(viewer)
       viewer.selectedItemChanged.connect(self.onItemSelectionChanged)
+      viewer.scene.open_view.connect(self.openView)
+
 
   def onTabCloseRequested(self, index):
     widget = self.ui.tabGraphicViews.widget(index)

@@ -24,7 +24,7 @@ from model.history import Versioned
 from datetime import datetime
 from collections import OrderedDict
 
-VERSION = 10
+VERSION = 11
 
 
 # Determine which encoding to use when interacting with files
@@ -131,14 +131,14 @@ class MyBase(object):
     
   
   @classmethod
-  def create(cls, engine):
+  def create(cls, engine, checkfirst=False):
     ''' Create a table in a database '''
-    cls.__table__.create(engine) #pylint:disable=E1101
+    cls.__table__.create(engine, checkfirst) #pylint:disable=E1101
     
   @classmethod
-  def drop(cls, engine):
+  def drop(cls, engine, checkfirst=False):
     ''' delete (drop) a table from the database '''
-    cls.__table__.drop(engine)
+    cls.__table__.drop(engine, checkfirst)
 
   @classmethod
   def getTables(cls):
@@ -582,6 +582,11 @@ class View(PlaneableItem):   #pylint:disable=W0232
 
 ###############################################################################
 ## Graphical Representation
+class Representation(object):
+  ''' A mix-in to indicate that this is a representation of an underlying item
+  '''
+  pass
+
 class Anchor(Base, Versioned):   #pylint:disable=W0232
   ''' Base table for anything that can be planned, such as requirements, 
       function points and projects.
@@ -601,7 +606,7 @@ class Anchor(Base, Versioned):   #pylint:disable=W0232
   HIDDEN = [AnchorType]
 
 
-class BlockRepresentation(Anchor):   #pylint:disable=W0232
+class BlockRepresentation(Anchor, Representation):   #pylint:disable=W0232
   ''' A Architecture Block can be seen on many views.
   '''
   # Override the Id inherited from Base
@@ -613,7 +618,7 @@ class BlockRepresentation(Anchor):   #pylint:disable=W0232
   width  = Column(Float)
   IsMultiple = Column(Boolean)
 
-  theBlock      = relationship('ArchitectureBlock', backref='Representations',
+  theDetails      = relationship('ArchitectureBlock', backref='Representations',
                                uselist=False)
 
   # theBlock defined as back reference
@@ -623,7 +628,29 @@ class BlockRepresentation(Anchor):   #pylint:disable=W0232
   }
 
 
-class ConnectionRepresentation(Anchor):
+
+class UsecaseRepresentation(Anchor, Representation):
+  ''' A use case can be defined inside another use case, and shown in the view.
+      Thus 'Use Case Diagrams' can be created.
+  '''
+  # Override the Id inherited from Base
+  Id = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), primary_key=True)
+  # We can not use the column 'View' here, as that is already part of the Anchor table.
+  Parent = Column(Integer, ForeignKey('view.Id', ondelete='CASCADE'))
+  x      = Column(Float)
+  y      = Column(Float)
+  height = Column(Float)
+  width  = Column(Float)
+
+  theDetails = relationship('View', backref='Representations', foreign_keys=[Parent],
+                               uselist=False)
+
+  __mapper_args__ = {
+      'polymorphic_identity':'usecaserepresentation',
+  }
+
+
+class ConnectionRepresentation(Anchor, Representation):
   ''' A connection has many view details that can be set '''
   # Override the Id inherited from Base
   Id = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), primary_key=True)
@@ -631,9 +658,9 @@ class ConnectionRepresentation(Anchor):
   Start      = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
   End        = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), nullable=False)
 
-  theConnection = relationship(BlockConnection, uselist=False)
-  theEnd        = relationship(BlockRepresentation, uselist=False, foreign_keys=[End])
-  theStart      = relationship(BlockRepresentation, uselist=False, foreign_keys=[Start])
+  theDetails = relationship(BlockConnection, uselist=False)
+  theEnd        = relationship(Anchor, uselist=False, foreign_keys=[End])
+  theStart      = relationship(Anchor, uselist=False, foreign_keys=[Start])
 
   __mapper_args__ = {
       'polymorphic_identity':'connectionrepresentation',
@@ -641,7 +668,7 @@ class ConnectionRepresentation(Anchor):
   }
 
   
-class FpRepresentation(Anchor):   #pylint:disable=W0232
+class FpRepresentation(Anchor, Representation):   #pylint:disable=W0232
   ''' Mapper class that links function points to use cases.
   
   In each use case, the FPs are ordered. Thus these use cases are closely linked

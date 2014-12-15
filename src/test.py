@@ -44,13 +44,13 @@ class Test(unittest.TestCase):
       c1 = model.BlockConnection(theStart=b1, theEnd=b2)
 
       # Add function points
-      fp1 = model.FunctionPoint(theConnection=c1, Name='fp1')
+      fp1 = model.FunctionPoint(theDetails=c1, Name='fp1')
       fp2 = model.FunctionPoint(theBlock=b1, Name='fp2')
 
       # Add elements to the view
-      br1 = model.BlockRepresentation(theBlock=b1, theView=v1)
-      s.add(model.BlockRepresentation(theBlock=b1, theView=v1))
-      br2 = model.BlockRepresentation(theBlock=b2, theView=v1)
+      br1 = model.BlockRepresentation(theDetails=b1, theView=v1)
+      s.add(model.BlockRepresentation(theDetails=b1, theView=v1))
+      br2 = model.BlockRepresentation(theDetails=b2, theView=v1)
       fpr1 = model.FpRepresentation(theView=v1, theFp=fp1, theAnchor=br1)
       fpr2 = model.FpRepresentation(theView=v1, theFp=fp2, theAnchor=br2)
       s.add(fpr1)

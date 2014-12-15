@@ -21,11 +21,11 @@ class Controller(object):
     if isinstance(anchor_details, model.ConnectionRepresentation):
       if self.fp_as_call:
         # If the anchor is a connection, get the actions for its end.
-        return anchor_details.theEnd.theBlock.FunctionPoints
-      return anchor_details.theConnection.FunctionPoints
+        return anchor_details.theEnd.theDetails.FunctionPoints
+      return anchor_details.theDetails.FunctionPoints
 
     if isinstance(anchor_details, model.BlockRepresentation):
-      return anchor_details.theBlock.FunctionPoints
+      return anchor_details.theDetails.FunctionPoints
     return []
 
   def getViewElements(self, view_details):
@@ -45,7 +45,10 @@ class Controller(object):
                      filter(model.FunctionPoint.Id == model.FpRepresentation.FunctionPoint).\
                      order_by(model.FpRepresentation.Order.asc()).all()
 
-    return blocks, annotations, connections, actions
+    usecases = self.session.query(model.UsecaseRepresentation).\
+                     filter(model.UsecaseRepresentation.View == view_details.Id).all()
+
+    return blocks, annotations, connections, actions, usecases
 
   def execute(self, cmnd):
     return cmnd.do(self)

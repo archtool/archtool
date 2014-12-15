@@ -78,25 +78,39 @@ class AddBlockRepresentation(object):
     self.order = order
     self.view_id = view_id
   def do(self, ctrl):
-    if isinstance(self.details, model.ArchitectureBlock):
-      new_details = model.BlockRepresentation(Block=self.details.Id,
-                                              View = self.view_id,
-                                              x = self.coods.x(),
-                                              y = self.coods.y(),
-                                              height = BLOCK_HEIGHT,
-                                              width = BLOCK_WIDTH,
-                                              Order = self.order)
-      ctrl.session.add(new_details)
-      ctrl.session.commit()
-      return new_details
+    new_details = None
+    with model.sessionScope(ctrl.session):
+      if isinstance(self.details, model.ArchitectureBlock):
+        new_details = model.BlockRepresentation(Block=self.details.Id,
+                                                View = self.view_id,
+                                                x = self.coods.x(),
+                                                y = self.coods.y(),
+                                                height = BLOCK_HEIGHT,
+                                                width = BLOCK_WIDTH,
+                                                Order = self.order)
+        ctrl.session.add(new_details)
+      elif isinstance(self.details, model.View):
+        new_details = model.UsecaseRepresentation(Parent=self.details.Id,
+                                                View = self.view_id,
+                                                x = self.coods.x(),
+                                                y = self.coods.y(),
+                                                height = BLOCK_HEIGHT,
+                                                width = BLOCK_WIDTH,
+                                                Order = self.order)
+        ctrl.session.add(new_details)
+    return new_details
 
 
 class AddNewBlock(object):
-  def __init__(self, name, parent):
+  def __init__(self, name, parent, is_usecase):
     self.name = name
     self.parent = parent.Id if parent else None
+    self.is_usecase = is_usecase
   def do(self, ctrl):
-    block_details = model.ArchitectureBlock(Name=self.name, Parent=self.parent)
+    if self.is_usecase:
+      block_details = model.View(Name=self.name, Parent=self.parent)
+    else:
+      block_details = model.ArchitectureBlock(Name=self.name, Parent=self.parent)
     ctrl.session.add(block_details)
     ctrl.session.commit()
     return block_details

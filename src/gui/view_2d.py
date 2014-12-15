@@ -82,6 +82,25 @@ class BlockItem(Block):
     return mkMenu(definition, view)
 
 
+
+class UsecaseItem(BlockItem):
+  ROLE = 'usecase'
+  def menuFactory(self, view):
+    ''' Factory function for creating a right-click menu.
+
+    :param view: The view where the right-click menu is requested.
+    :return: An instance of QtGui.QMenu
+    '''
+    details = self.details
+    return mkMenu(view.standard_menu_def, view)
+
+  def mouseDoubleClickEvent(self, event):
+    ''' Open the View that this widget refers to.
+    '''
+    self.scene().openViewItem(self.block_details)
+    event.accept()
+
+
 class AnnotationItem(Block):
   ''' Representation of an annotation. '''
   ROLE = 'annotation'
@@ -228,6 +247,8 @@ def getDetails(item, dont_raise=False):
 class MyScene(QtGui.QGraphicsScene):
   SELECT_PEN = QtGui.QPen()
   SELECT_PEN.setStyle(QtCore.Qt.DashLine)
+  open_view = QtCore.pyqtSignal(model.View)
+
   def __init__(self, details, drop2Details, session):
     '''
     drop2Details: a callback function that finds the details
@@ -248,16 +269,17 @@ class MyScene(QtGui.QGraphicsScene):
     
     self.styles = Styles.style_sheet.getStyle(details.style)
     self.styles.subscribe(lambda _: self.applyStyle())
+
     
     # Add the existing blocks
-    blocks, annotations, connections, actions = theController.getViewElements(self.details)
+    blocks, annotations, connections, actions, usecases = theController.getViewElements(self.details)
     self.anchors = {}    # Anchor.Id : Item tuples
     self.block_details = {} # ArchBlock.Id : ArchBlock
     self.block_items = {}   # ArchBlock.Id : BlockItem
 
-    for block in blocks:
+    for block in blocks + usecases:
       self.anchors[block.Id] = block
-      self.addBlock(block, add_connections=False)
+      self.addBlock(block)
 
     # Add the existing annotations
     for a in annotations:
@@ -374,10 +396,11 @@ class MyScene(QtGui.QGraphicsScene):
       sel = True if getattr(i, 'details', None) == details else False
       i.setSelected(sel)
     
-  def addBlock(self, rep_details, add_connections=True):
+  def addBlock(self, rep_details):
     coods = QtCore.QPointF(rep_details.x, rep_details.y)
-    block_details = rep_details.theBlock
-    block = BlockItem(self.styles, rep_details, block_details)
+    block_details = rep_details.theDetails
+    cls=BlockItem if isinstance(rep_details, model.BlockRepresentation) else UsecaseItem
+    block = cls(self.styles, rep_details, block_details)
     self.anchors[rep_details.Id] = block
     self.addItem(block)
     block.setPos(coods)
@@ -492,6 +515,13 @@ class MyScene(QtGui.QGraphicsScene):
     if hasattr(target, 'item'):
       target.item.text.setText(target.Description)
 
+
+  def openViewItem(self, details):
+    ''' Inform the world that the user wants to open a new view
+    '''
+    print 'Opening view', details
+    self.open_view.emit(details)
+
   def exportSvg(self):
     ''' Determine the SVG representation of this view,
         and return it as a string.
@@ -568,6 +598,9 @@ class TwoDView(QtGui.QGraphicsView):
     #a.triggered.connect(self.onAddBlock)
     # TODO: Implement copy to use case
     self.menu_noitem = mkMenu([('New Block', self.onAddBlock),
+                               ('New Use Case', lambda triggered : self.onAddBlock(triggered,
+                                                                                   details,
+                                                                                   True)),
                                ('New Annotation', self.onAddAnnotation),
                                ('Copieer naar Nieuw View', self.onCopyToUseCase),
                                ('Export as SVG', self.exportSvg)], self)
@@ -639,7 +672,7 @@ class TwoDView(QtGui.QGraphicsView):
     self.scene.addConnection(details)
     self.scene.clearSelection()
 
-  def onAddBlock(self, triggered, parent=None):
+  def onAddBlock(self, triggered, parent=None, is_usecase=False):
     ''' Called to add a new block to the view. '''
     text, ok = QtGui.QInputDialog.getText(self, 'New Block',
                                 "Please specify the block name.")
@@ -648,7 +681,7 @@ class TwoDView(QtGui.QGraphicsView):
     
     text = str(text)
     pos = self.mapToScene(self.last_rmouse_click)
-    block_details = theController.execute(cmnds.AddNewBlock(text, parent))
+    block_details = theController.execute(cmnds.AddNewBlock(text, parent, is_usecase))
     repr_details = theController.execute(cmnds.AddBlockRepresentation(block_details,
                                                                       self.details.Id,
                                                                       pos,
@@ -860,13 +893,8 @@ class TwoDView(QtGui.QGraphicsView):
     items = self.scene.selectedItems()
     if len(items) == 1:
       details = items[0].details
-      if details.__class__ == model.BlockRepresentation:
-        details = self.scene.block_details[details.Id]
-      elif details.__class__ == model.FpRepresentation:
-        details = self.session.query(model.FunctionPoint).\
-                       filter(model.FunctionPoint.Id == details.FunctionPoint).one()
-      elif details.__class__ == model.ConnectionRepresentation:
-        details = details.theConnection
+      if details.__class__ in model.Representation.__subclasses__():
+        details = details.theDetails
       self.selectedItemChanged.emit(details)
       self.selection_order = items
     elif len(items) == 0:

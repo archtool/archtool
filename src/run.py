@@ -31,6 +31,8 @@ from model.update import updateDatabase
 from controller import Controller
 
 
+# TODO: For mandays, accept units of time as 'hrs', 'wks', 'days' etc.
+# TODO: Make use of the 'is multiple' flag  in blocks representations
 # TODO: Add a small screen to the requirements export that lets you choose HTML or DOCX output.
 # TODO: Sort trees on ID or name (selectable through right-click menu or radio button)
 # TODO: When adding state changes, set default user to the previous one.
@@ -68,6 +70,12 @@ def reportError(msg):
     return doIt
   return decorate
 
+
+
+def maskPasswords(url):
+  ''' Edit the url for opening a database so that any passwords are hidden.
+  '''
+  return re.sub(':[^/]+?@', ':***@', url)
 
 
 class ArchitectureTool(MainWindowForm[1]):
@@ -123,7 +131,7 @@ class ArchitectureTool(MainWindowForm[1]):
       a = QtGui.QAction(os.path.basename(f), self)
       a.triggered.connect(partial(self.open, url=f))
       # Mask any passwords
-      f_nopasswd = re.sub(':[^/]+?@', ':***@', f)
+      f_nopasswd = maskPasswords(f)
       a.setToolTip(f_nopasswd)
       self.ui.menuRecent_Files.addAction(a)
 
@@ -211,8 +219,11 @@ class ArchitectureTool(MainWindowForm[1]):
     if len(versions) > 0:
       if versions[0].Version < model.VERSION:
         # Try to convert the model.
-        q = QtGui.QMessageBox.question(self, 'Old database model', 'This file uses an old ' +\
-                 'version of the database. Conversion is necessary  in order to continue.',
+        dbname = url.split('/')[-1]
+        q = QtGui.QMessageBox.question(self, 'Old database model %s'%dbname,
+                 'This database uses an old version of the database. ' +\
+                 'Conversion is necessary  in order to continue. ' +\
+                 'Database URL is: %s'%maskPasswords(url),
                 buttons=QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel,
                 defaultButton=QtGui.QMessageBox.Ok)
         self.session = None

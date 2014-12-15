@@ -326,6 +326,8 @@ def createDefaultStyle(session):
       connection-text-alpha:1.0;
       annotation-color2:#ffef5d;
       annotation-text-alpha:0.0;
+      usecase-color2:#ff6347;
+      usecase-text-alpha:0.0;
       width:3;
       archblock-width:1;
       archblock-offset:[0,0];

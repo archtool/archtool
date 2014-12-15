@@ -49,8 +49,8 @@ class Connection(Line):
 
     Line.__init__(self, 0,0,0,0, None, style, details.style_role)
     
-    if details.theConnection.Name:
-      self.name = Text(details.theConnection.Name, style, self.full_role, self)
+    if details.theDetails.Name:
+      self.name = Text(details.theDetails.Name, style, self.full_role, self)
       
     self.updatePos()
 
