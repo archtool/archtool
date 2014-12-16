@@ -7,7 +7,7 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 
-# TODO: Add change handlers for the style checkbox, combo boxes & line edits.
+# FIXME: When editing is finished in a line edit, it is taken from the widget but not closed.
 
 from contextlib import contextmanager
 
@@ -261,8 +261,7 @@ class StyleEditor(StyleEditForm[1]):
     elif t == StyleTypes.BOOL:
       w = QtGui.QCheckBox(self)
       w.setChecked(getBool(current))
-      w.stateCh
-      anged.connect(self.acceptCheckboxUpdate)
+      w.stateChanged.connect(self.acceptCheckboxUpdate)
       return w
     
     elif t == StyleTypes.FONT:
@@ -286,7 +285,7 @@ class StyleEditor(StyleEditForm[1]):
                  StyleTypes.XYCOOD:'[0.0, 0.0]'}[t]
       current = current if current else default
       w = QtGui.QLineEdit(current, self)
-      w.returnPressed.connect(self.acceptLineEditUpdate)
+      w.editingFinished.connect(self.acceptLineEditUpdate)
       return w
 
 
