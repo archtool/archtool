@@ -229,13 +229,33 @@ class ManDay(Float):
   ''' Define a custom data type so that custom editors can be used
       to enter / display it.
   '''
+  r = re.compile('([0-9.]*)\s*([a-zA-Z]*)')
+  HRS_PER_DAY = 8
+  DAYS_PER_WEEK = 5
+  DAYS_PER_MONTH = 21
   @staticmethod
   def fromString(s):
     ''' Convert a string into a manday. '''
-    if s:
+    if s.isdigit():
       return float(s)
-    else:
-      return None
+    elif s:
+      parts = ManDay.r.match(s).groups()
+      unit = parts[1]
+      amount = parts[0]
+      u = unit[0].lower()
+      if u == 'm':
+        # Unit is 'months'
+        return ManDay.DAYS_PER_MONTH * float(amount)
+      if u in ['h', 'u']:
+        # Unit is 'hours'
+        return float(amount) / ManDay.HRS_PER_DAY
+      if u == 'w':
+        # Unit is 'weeks'
+        return ManDay.DAYS_PER_WEEK * float(amount)
+      if u == 'd':
+        # Unit is 'days'
+        return float(amount)
+    return None
 
 def createConvertingDateTime(time_format):
   ''' Create a custom type that automatically converts between strings and
