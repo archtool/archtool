@@ -7,7 +7,6 @@ Copyright (C) 2014 Evert van de Waal
 This program is released under the conditions of the GNU General Public License.
 '''
 
-# FIXME: When editing is finished in a line edit, it is taken from the widget but not closed.
 
 from contextlib import contextmanager
 
@@ -114,6 +113,7 @@ class StyleEditor(StyleEditForm[1]):
       self.stylesheet.subscribe(self.onStyleItemChanged)
       self.ui.edtStyles.setPlainText(styles.details.Details)
       self.ui.cmbRole.clear()
+
   def onStylableChanged(self, stylable):
     self.stylable = None
     with self.ignoreRoleUpdates():
@@ -156,6 +156,7 @@ class StyleEditor(StyleEditForm[1]):
         stylesheet.details.Details = str(self.ui.edtStyles.toPlainText())
         stylesheet.reloadDetails()
     self.stylesheet_changed = False
+
   def onRoleChanged(self, _):
     if not self.allow_role_updates:
       return
@@ -182,14 +183,15 @@ class StyleEditor(StyleEditForm[1]):
     
     self.ui.edtStyles.setPlainText(self.stylesheet.details.Details)
     
-    if self.editor:
+    if self.editor is not None:
       self.ui.editorLayout.removeWidget(self.editor)
       self.editor.close()
       self.editor = None
     
     while self.ui.editorLayout.count() > 0:
       it = self.ui.editorLayout.takeAt(0)
-      it.widget.close()
+      widget = it.widget()
+      widget.close()
     
     self.editor = self.widgetFactory()
     if self.editor:
@@ -240,8 +242,11 @@ class StyleEditor(StyleEditForm[1]):
     
   
   def acceptLineEditUpdate(self):
+    if not self.editor:
+      return
     item, role, _, _ = self.getCurrent()
     new_value = str(self.editor.text())
+    self.editor.editingFinished.disconnect(self.acceptLineEditUpdate)
     self.stylesheet.setItem(role, item, new_value)
     
   def acceptCheckboxUpdate(self, _):
