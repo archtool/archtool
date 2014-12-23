@@ -24,7 +24,7 @@ from model.history import Versioned
 from datetime import datetime
 from collections import OrderedDict
 
-VERSION = 11
+VERSION = 12
 
 
 # Determine which encoding to use when interacting with files
@@ -236,25 +236,26 @@ class ManDay(Float):
   @staticmethod
   def fromString(s):
     ''' Convert a string into a manday. '''
-    if s.isdigit():
+    try:
       return float(s)
-    elif s:
-      parts = ManDay.r.match(s).groups()
-      unit = parts[1]
-      amount = parts[0]
-      u = unit[0].lower()
-      if u == 'm':
-        # Unit is 'months'
-        return ManDay.DAYS_PER_MONTH * float(amount)
-      if u in ['h', 'u']:
-        # Unit is 'hours'
-        return float(amount) / ManDay.HRS_PER_DAY
-      if u == 'w':
-        # Unit is 'weeks'
-        return ManDay.DAYS_PER_WEEK * float(amount)
-      if u == 'd':
-        # Unit is 'days'
-        return float(amount)
+    except:
+      if s:
+        parts = ManDay.r.match(s).groups()
+        unit = parts[1]
+        amount = parts[0]
+        u = unit[0].lower()
+        if u == 'm':
+          # Unit is 'months'
+          return ManDay.DAYS_PER_MONTH * float(amount)
+        if u in ['h', 'u']:
+          # Unit is 'hours'
+          return float(amount) / ManDay.HRS_PER_DAY
+        if u == 'w':
+          # Unit is 'weeks'
+          return ManDay.DAYS_PER_WEEK * float(amount)
+        if u == 'd':
+          # Unit is 'days'
+          return float(amount)
     return None
 
 def createConvertingDateTime(time_format):
@@ -424,6 +425,7 @@ class PlaneableItem(Base, Versioned):   #pylint:disable=W0232
   ParentItem  = relationship('PlaneableItem', remote_side='PlaneableItem.Id')
   Priority    = Column(Enum(*PRIORITIES.values(), name='PRIORITIES'), default=PRIORITIES.MUST)
   ItemType    = Column(String(50))
+  Created     = Column(DateTime, default=datetime.now)
   AItems      = relationship('PlaneableItem', primaryjoin='planeablexref.c.A==PlaneableItem.Id',
                              secondary=planeablexref, secondaryjoin='planeablexref.c.B==PlaneableItem.Id')
   BItems      = relationship('PlaneableItem', primaryjoin='planeablexref.c.B==PlaneableItem.Id',
@@ -434,7 +436,9 @@ class PlaneableItem(Base, Versioned):   #pylint:disable=W0232
       'polymorphic_on':ItemType
   }
 
-  HIDDEN = [ItemType, Parent]
+  HIDDEN   = [ItemType, Parent]
+  READONLY = [Created]
+
   
   @classmethod
   def getTree(cls, session, with_root=True):
@@ -779,13 +783,12 @@ class Bug(PlaneableItem):
   # Override the Id inherited from Base
   Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
   ReportedBy = Column(ForeignKey('worker.Id'))
-  ReportedOn = Column(DateTime, default=datetime.now)
 
   __mapper_args__ = {
       'polymorphic_identity':'bug'
   }
 
-  READONLY = [ReportedOn]
+  READONLY = []
 
 
 

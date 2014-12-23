@@ -25,7 +25,7 @@
      <x>0</x>
      <y>0</y>
      <width>754</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -60,6 +60,7 @@
      <string>Generation</string>
     </property>
     <addaction name="actionRequirements_Document"/>
+    <addaction name="actionProgress_Report"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -119,6 +120,11 @@
   <action name="actionOpen_Database">
    <property name="text">
     <string>Open Database</string>
+   </property>
+  </action>
+  <action name="actionProgress_Report">
+   <property name="text">
+    <string>Progress Report</string>
    </property>
   </action>
  </widget>

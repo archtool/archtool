@@ -86,6 +86,9 @@ class SQLUpdater(object):
     UsecaseRepresentation.create(self.engine, True)
     return 11, []
 
+  def update11to12(self):
+    return 12, ['ALTER TABLE planeableitem ADD COLUMN Created DATETIME;']
+
 
 
 class PostgresqlUpdated(SQLUpdater):

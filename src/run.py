@@ -24,12 +24,17 @@ from gui.styles import Styles
 from gui.details_editor import CsvImportEditor
 from export import export, importData, loadCsv
 from export.req_document import exportRequirementsDocument
+from export.progress import createProgressReport
 import model
 from model import config, SQLITE_URL_PREFIX
 from model.update import updateDatabase
 from controller import Controller
 
 
+
+# TODO: Add a 'created' field to the planneable items.
+# TODO: refresh the tables in the workitem view when edited.
+# TODO: When showing an amount in mandays, add the unit!
 # TODO: Make use of the 'is multiple' flag  in blocks representations
 # TODO: Add a small screen to the requirements export that lets you choose HTML or DOCX output.
 # TODO: Sort trees on ID or name (selectable through right-click menu or radio button)
@@ -44,6 +49,7 @@ from controller import Controller
 # TODO: Grote workitems moeten kunnen worden toebedeeld aan meerdere mensen, en hun time-remaining
 #       schattingen samengevoegd.
 # TODO: Edit the configuration...
+# TODO: Let the days/month, days/week and hours/day be configuration items
 # TODO: Voor een Use Case het tekening type selecteren.
 # TODO: Implement support for attachements
 # TODO: Multi-user support (user logs in, username is added to the logs)
@@ -96,7 +102,8 @@ class ArchitectureTool(MainWindowForm[1]):
                              (self.ui.actionNew_from_CSV, self.newFromCsv),
                              (self.ui.actionWork_Items, self.onWorkItemView),
                              (self.ui.actionRequirements_Document, self.onRequirementsDocument),
-                             (self.ui.actionOpen_Database, self.onOpenDatabase)
+                             (self.ui.actionOpen_Database, self.onOpenDatabase),
+                             (self.ui.actionProgress_Report, self.onProgressReport)
                             ]:
             action.triggered.connect(func)
 
@@ -281,20 +288,40 @@ class ArchitectureTool(MainWindowForm[1]):
         # Then export the database
         export(fname, model.the_engine)
 
+
+    def getToplevelRequirement(self):
+        # Find the possible top requirements for the document, and let the user choose one.
+        tops = self.session.query(model.Requirement.Name).filter(model.Requirement.Parent == None).all()
+        tops = [t[0] for t in tops]
+        return QtGui.QInputDialog.getItem(self, "Requirements Document",
+                                                  "Vanaf welk requirement wilt u het document genereren?",
+                                                  tops, editable=False)
+
     def onRequirementsDocument(self):
         """ Called when the user wants to generate a requirements document.
             Requirements documents are generated from one top element, and include
             all its child elements.
         """
-        # Find the possible top requirements for the document, and let the user choose one.
-        tops = self.session.query(model.Requirement.Name).filter(model.Requirement.Parent == None).all()
-        tops = [t[0] for t in tops]
-        top_item, ok = QtGui.QInputDialog.getItem(self, "Requirements Document",
-                                                  "Vanaf welk requirement wilt u het document genereren?",
-                                                  tops, editable=False)
+        top_item, ok = self.getToplevelRequirement()
         if ok and str(top_item) != '':
             top_item = str(top_item)
             exportRequirementsDocument(self.session, top_item)
+
+    def onProgressReport(self):
+        """ Called when the user wants to generate a progress report.
+        """
+        top_item, ok = self.getToplevelRequirement()
+        if not ok or str(top_item) == '':
+            return
+
+        top_name = str(top_item)
+        top_item = self.session.query(model.Requirement).\
+                                filter(model.Requirement.Name==top_name).\
+                                filter(model.Requirement.Parent==None).one()
+
+        # Create a widget that holds the progress report
+        createProgressReport(self.session, top_item)
+
 
 
     def customEvent(self, ev):
