@@ -625,7 +625,7 @@ class EffortOverview(QtGui.QTableWidget):
     QtGui.QTableWidget.__init__(self, len(workers), weeks, parent)
     start = model.WorkingWeek.fromString(project.FirstWeek)
     deltas = [timedelta(7*d) for d in range(weeks)]
-    labels = [(start + d).strftime(model.week_format) for d in deltas]
+    labels = ['%i%02i'%(start + d).isocalendar()[:2] for d in deltas]
     self.setHorizontalHeaderLabels(labels)
     self.setVerticalHeaderLabels([w.Name for w in workers])
     
@@ -641,15 +641,18 @@ class EffortOverview(QtGui.QTableWidget):
       self.setItem(row, column, item)
       
     self.itemChanged.connect(self.onItemChange)
+    self.weeks = labels
   
   def onItemChange(self, item):
+    if not item.text():
+      return
     hrs = float(str(item.text()))
     column, row = item.column(), item.row()
     if hasattr(item, 'details'):
       item.details.Hours = hrs
     else:
       effort = model.PlannedEffort(Worker=self.workers[row].Id, Project=self.project.Id,
-                                   Week=self.project.FirstWeek+timedelta(7*column),
+                                   Week=self.weeks[column],
                                    Hours=hrs)
       self.project.Effort.append(effort)
     

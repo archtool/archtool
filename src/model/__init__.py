@@ -21,7 +21,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 from model.history import Versioned
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from collections import OrderedDict
 
 VERSION = 12
@@ -324,7 +324,6 @@ class CHANGE_TYPE(Const):
   CHANGE = 'Change'
   
 
-week_format = '%Y%W'
 sql_format  = '%Y-%m-%d %H:%M:%S.%f'
 
 
@@ -341,10 +340,17 @@ class WorkingWeek(TypeDecorator):
   @staticmethod
   def fromString(txt):
     # in strptime, %W only works if the weekday (w) is also specified...
-    if len(txt) == 6:
-      return datetime.strptime(txt+'0', week_format+'%w')
-    if txt.count('-')==2 and txt.count(':')==2:
-      return datetime.strptime(txt[:26], sql_format)
+    def iso_year_start(iso_year):
+      "The gregorian calendar date of the first day of the given ISO year"
+      fourth_jan = date(iso_year, 1, 4)
+      delta = timedelta(fourth_jan.isoweekday()-1)
+      return fourth_jan - delta
+
+    "Gregorian calendar date for the given ISO year, week and day"
+    iso_year = int(txt[:4])
+    iso_week = int(txt[4:6])
+    year_start = iso_year_start(iso_year)
+    return year_start + timedelta(weeks=iso_week-1)
     
   
   def process_bind_param(self, value, _dialect):  #pylint:disable=R0201
@@ -357,12 +363,9 @@ class WorkingWeek(TypeDecorator):
     ''' Convert a datetime to a string. The datetime is what is stored in the dbase.
     '''
     if value:
-      result = StrWrapper(value.strftime(week_format))
-      result.dt = value
+      result = '%i%02i'%value.isocalendar()[:2]
       return result
     return value  
-
-
 
 
 ###############################################################################
