@@ -2,15 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="43efa686-2048-4bbf-853c-2e89567506a7" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/gui/design/project_view.ui" afterPath="$PROJECT_DIR$/src/gui/design/project_view.ui" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/model/__init__.py" afterPath="$PROJECT_DIR$/src/model/__init__.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/gui/details_editor.py" afterPath="$PROJECT_DIR$/src/gui/details_editor.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/export/progress.py" afterPath="$PROJECT_DIR$/src/export/progress.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/export/req_document.py" afterPath="$PROJECT_DIR$/src/export/req_document.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/run.py" afterPath="$PROJECT_DIR$/src/run.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/model/update.py" afterPath="$PROJECT_DIR$/src/model/update.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/gui/viewers.py" afterPath="$PROJECT_DIR$/src/gui/viewers.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="archtool.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -35,8 +27,8 @@
             <file leaf-file-name="__init__.py" pinned="false" current="false" current-in-tab="true">
               <entry file="file://$PROJECT_DIR$/src/model/__init__.py">
                 <provider selected="true" editor-type-id="text-editor">
-                  <state vertical-scroll-proportion="0.27006507" vertical-offset="14077" max-vertical-offset="17784">
-                    <caret line="770" column="0" selection-start-line="770" selection-start-column="0" selection-end-line="770" selection-end-column="0" />
+                  <state vertical-scroll-proportion="0.4143167" vertical-offset="8890" max-vertical-offset="17784">
+                    <caret line="504" column="15" selection-start-line="504" selection-start-column="2" selection-end-line="504" selection-end-column="15" />
                     <folding />
                   </state>
                 </provider>
@@ -86,8 +78,8 @@
       <file leaf-file-name="progress.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/export/progress.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.64040405" vertical-offset="2210" max-vertical-offset="2774">
-              <caret line="133" column="34" selection-start-line="133" selection-start-column="34" selection-end-line="133" selection-end-column="34" />
+            <state vertical-scroll-proportion="0.7219153" vertical-offset="2230" max-vertical-offset="3496">
+              <caret line="138" column="45" selection-start-line="138" selection-start-column="45" selection-end-line="138" selection-end-column="45" />
               <folding>
                 <element signature="e#112#127#0" expanded="true" />
               </folding>
@@ -667,14 +659,14 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1323" height="1080" extended-state="4" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25445026" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.13025211" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.15486382" sideWeight="0.4994709" order="1" side_tool="false" content_ui="combo" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.42010581" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.36931217" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.16729182" sideWeight="0.5005291" order="0" side_tool="true" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.38219896" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -1088,14 +1080,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/model/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="18088">
-          <caret line="15" column="73" selection-start-line="15" selection-start-column="73" selection-end-line="15" selection-end-column="73" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/run.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="321" max-vertical-offset="6688">
@@ -1114,10 +1098,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/model/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="18088">
+          <caret line="15" column="73" selection-start-line="15" selection-start-column="73" selection-end-line="15" selection-end-column="73" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/export/progress.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.64040405" vertical-offset="2210" max-vertical-offset="2774">
-          <caret line="133" column="34" selection-start-line="133" selection-start-column="34" selection-end-line="133" selection-end-column="34" />
+        <state vertical-scroll-proportion="0.7219153" vertical-offset="2230" max-vertical-offset="3496">
+          <caret line="138" column="45" selection-start-line="138" selection-start-column="45" selection-end-line="138" selection-end-column="45" />
           <folding>
             <element signature="e#112#127#0" expanded="true" />
           </folding>

@@ -89,6 +89,7 @@ def makeEarnedValueChart(session, project, items, ax):
     * The actual costs for the project  (red)
     * The earned value for the project, based on the workitems completed (green)
   """
+  pe = PlannedEffort
   def plotCosts(data, color):
     start = WorkingWeek.fromString(project.FirstWeek).toordinal() - 7
     x = [WorkingWeek.fromString(w[0]).toordinal()-start for w in data]
@@ -100,19 +101,56 @@ def makeEarnedValueChart(session, project, items, ax):
     ax.plot(x, y, color)
 
   # Determine the planned costs for the project
-  planned_costs = session.query(PlannedEffort.Week, func.sum(PlannedEffort.Hours)).\
-                          filter(PlannedEffort.Project==project.Id).\
-                          filter(PlannedEffort.IsActual==False).\
-                          group_by(PlannedEffort.Week).\
-                          order_by(PlannedEffort.Week).all()
-  actual_costs = session.query(PlannedEffort.Week, func.sum(PlannedEffort.Hours)).\
-                          filter(PlannedEffort.Project==project.Id).\
-                          filter(PlannedEffort.IsActual==True).\
-                          group_by(PlannedEffort.Week).\
-                          order_by(PlannedEffort.Week).all()
+  planned_costs = session.query(pe.Week, func.sum(pe.Hours)).\
+                          filter(pe.Project==project.Id).\
+                          filter(pe.IsActual==False).\
+                          group_by(pe.Week).\
+                          order_by(pe.Week).all()
+  actual_costs = session.query(pe.Week, func.sum(pe.Hours)).\
+                          filter(pe.Project==project.Id).\
+                          filter(pe.IsActual==True).\
+                          group_by(pe.Week).\
+                          order_by(pe.Week).all()
 
   plotCosts(planned_costs, 'b')
   plotCosts(actual_costs, 'r')
+
+
+  # Determine the initial estimate: the first estimate for each entry
+  work_remaining = {}
+  for it in items:
+    for ch in reversed(it.StateChanges):
+      if ch.Status not in OPEN_STATES:
+        continue
+      if not ch.TimeRemaining:
+        continue
+      work_remaining[it.Id] = ch.TimeRemaining
+      break
+
+  # Make a copy of the init
+  initial_estimate = sum(work_remaining.values())
+
+  # Determine the earned value after each state change
+  all_values = [0.0]
+  all_timestamps = [0.0]
+
+  start = WorkingWeek.fromString(project.FirstWeek).toordinal()
+  for change in session.query(PlaneableStatus).order_by(PlaneableStatus.TimeStamp):
+    if change.Planeable not in work_remaining:
+      continue
+
+    if change.Status in OPEN_STATES:
+      work_remaining[change.Planeable] = change.TimeRemaining
+    else:
+      work_remaining[change.Planeable] = 0.0
+
+    remaining = sum(work_remaining.values())
+    value = project.Budget * (1 - remaining / initial_estimate)
+
+    all_values.append(value)
+    all_timestamps.append(change.TimeStamp.toordinal()-start)
+
+  ax.plot(all_timestamps, all_values, 'g')
 
 
 
