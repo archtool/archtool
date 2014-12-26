@@ -11,7 +11,7 @@ This program is released under the conditions of the GNU General Public License.
 from contextlib import contextmanager
 
 from PyQt4 import QtCore, QtGui
-from sqlalchemy import Integer, Boolean, String, Text, DateTime, event
+from sqlalchemy import Integer, Boolean, String, Text, DateTime, Float, event
 from datetime import datetime, timedelta
 from statechange import StateChangeEditor, StateChangeView
 from gui.design import (PlannedItemForm, XRefEditorForm, StyleEditForm, CsvImportForm)
@@ -553,6 +553,14 @@ class DetailsViewer(QtGui.QWidget):
       self.bindCallback(widget.textChanged, widget, column.name)
       if value:
         widget.setPlainText(value)
+    elif isinstance(type_, Float):
+      widget = QtGui.QDoubleSpinBox(self)
+      widget.getValue = lambda : widget.value()
+      widget.setRange(-1e9, 1e9)
+      widget.setDecimals(2)
+      self.bindCallback(widget.valueChanged, widget, column.name)
+      if value:
+        widget.setValue(value)
     elif isinstance(type_, String) or isinstance(type_, model.WorkingWeek):
       # A working week does its own converting: just feed it a string.
       widget = QtGui.QLineEdit(self)
@@ -613,9 +621,10 @@ class EffortOverview(QtGui.QTableWidget):
   ''' Show a table showing the amount of effort for each worker on a project.
       The horizontal axis is weeks, the vertical is the worker.
   '''
-  def __init__(self, parent, project, workers):
+  def __init__(self, parent, project, workers, is_actual=False):
     self.project = project
     self.workers = workers
+    self.is_actual = is_actual
     
     end = int(project.LastWeek)
     start = int(project.FirstWeek)
@@ -633,6 +642,8 @@ class EffortOverview(QtGui.QTableWidget):
     for effort in project.Effort:
       # Skip the planned efforts (those that have week=None
       if effort.Week is None:
+        continue
+      if effort.IsActual != self.is_actual:
         continue
       column = labels.index(effort.Week)
       row = worker_ids.index(effort.Worker)
@@ -653,8 +664,9 @@ class EffortOverview(QtGui.QTableWidget):
     else:
       effort = model.PlannedEffort(Worker=self.workers[row].Id, Project=self.project.Id,
                                    Week=self.weeks[column],
-                                   Hours=hrs)
+                                   Hours=hrs, IsActual=self.is_actual)
       self.project.Effort.append(effort)
+      item.details = effort
     
     
     

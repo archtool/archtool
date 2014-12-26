@@ -69,12 +69,15 @@ class PlanningView(ViewerWithTreeBase):
     project = item.details
     workers = self.session.query(model.Worker).all()
     
-    widget = EffortOverview(self, project, workers)
-    self.ui.areaOverview.setWidget(widget)
-    widget.show()
-    self.ui.areaOverview.show()
+    for actual, area in [(False, self.ui.areaPlanned), (True, self.ui.areaActual)]:
+      widget = EffortOverview(self, project, workers, actual)
+      area.setWidget(widget)
+      widget.show()
+      area.show()
   
   def onViewWorker(self, item):
+    return
+    # TODO: Allow the default hours to be edited.
     worker = item.details
     projects = self.session.query(model.Project).all()
     

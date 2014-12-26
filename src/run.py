@@ -289,38 +289,36 @@ class ArchitectureTool(MainWindowForm[1]):
         export(fname, model.the_engine)
 
 
-    def getToplevelRequirement(self):
+    def getProject(self):
         # Find the possible top requirements for the document, and let the user choose one.
-        tops = self.session.query(model.Requirement.Name).filter(model.Requirement.Parent == None).all()
-        tops = [t[0] for t in tops]
-        return QtGui.QInputDialog.getItem(self, "Requirements Document",
-                                                  "Vanaf welk requirement wilt u het document genereren?",
+        projects = self.session.query(model.Project).all()
+        tops = [p.Name for p in projects]
+        name, ok =  QtGui.QInputDialog.getItem(self, "Document Generation",
+                                                  "Select the project to generate the document for:",
                                                   tops, editable=False)
+        name = str(name)
+        if ok and name:
+            return projects[tops.index(name)]
 
     def onRequirementsDocument(self):
         """ Called when the user wants to generate a requirements document.
             Requirements documents are generated from one top element, and include
             all its child elements.
         """
-        top_item, ok = self.getToplevelRequirement()
-        if ok and str(top_item) != '':
-            top_item = str(top_item)
-            exportRequirementsDocument(self.session, top_item)
+        project = self.getProject()
+        if project:
+            # Find the requirements linked to this project
+            requirements = [it for it in project.AItems if it.ItemType == 'requirement']
+            exportRequirementsDocument(self.session, requirements)
 
     def onProgressReport(self):
         """ Called when the user wants to generate a progress report.
         """
-        top_item, ok = self.getToplevelRequirement()
-        if not ok or str(top_item) == '':
+        project = self.getProject()
+        if not project:
             return
 
-        top_name = str(top_item)
-        top_item = self.session.query(model.Requirement).\
-                                filter(model.Requirement.Name==top_name).\
-                                filter(model.Requirement.Parent==None).one()
-
-        # Create a widget that holds the progress report
-        createProgressReport(self.session, top_item)
+        createProgressReport(self.session, project)
 
 
 

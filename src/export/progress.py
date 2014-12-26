@@ -6,7 +6,9 @@ __author__ = 'ehwaal'
 
 import datetime
 import pylab
-from model import REQUIREMENTS_STATES, OPEN_STATES, REQ_TYPES, PlaneableStatus, Requirement
+from model import (REQUIREMENTS_STATES, OPEN_STATES, REQ_TYPES, PlaneableStatus, Requirement,
+                   PlannedEffort, WorkingWeek)
+from sqlalchemy import func
 
 
 # TODO: Take into account the Creation time for planeableitems.
@@ -75,25 +77,60 @@ def makeBurnDownChart(session, items, ax):
 
   ax.set_xlabel('Days since project start')
   ax.set_ylabel('Open and closed work items')
-  ax.legend(loc='bottom left', shadow=True)
+  ax.legend(loc='lower left', shadow=True)
 
 
 
 
 
-def makeEarnedValueChart(project):
-  pass
+def makeEarnedValueChart(session, project, items, ax):
+  """ Makes three lines:
+    * The planned costs for the project (blue)
+    * The actual costs for the project  (red)
+    * The earned value for the project, based on the workitems completed (green)
+  """
+  def plotCosts(data, color):
+    start = WorkingWeek.fromString(project.FirstWeek).toordinal() - 7
+    x = [WorkingWeek.fromString(w[0]).toordinal()-start for w in data]
+    x.insert(0, 0)
+    y = [w[1] for w in data]
+    y.insert(0, 0)
+    y = pylab.array(y).cumsum()
+
+    ax.plot(x, y, color)
+
+  # Determine the planned costs for the project
+  planned_costs = session.query(PlannedEffort.Week, func.sum(PlannedEffort.Hours)).\
+                          filter(PlannedEffort.Project==project.Id).\
+                          filter(PlannedEffort.IsActual==False).\
+                          group_by(PlannedEffort.Week).\
+                          order_by(PlannedEffort.Week).all()
+  actual_costs = session.query(PlannedEffort.Week, func.sum(PlannedEffort.Hours)).\
+                          filter(PlannedEffort.Project==project.Id).\
+                          filter(PlannedEffort.IsActual==True).\
+                          group_by(PlannedEffort.Week).\
+                          order_by(PlannedEffort.Week).all()
+
+  plotCosts(planned_costs, 'b')
+  plotCosts(actual_costs, 'r')
 
 
-def createProgressReport(session, item):
+
+def createProgressReport(session, project):
   # Determine the work items to take into account.
-  items = parent_item.getAllOffspring()
-  # When working with requirements, only take the functional requirements into account
-  if isinstance(parent_item, Requirement):
-    items = [it for it in items if it.Type == REQ_TYPES.FUNCTIONAL]
+  items = []
+  for work in project.AItems:
+    new = work.getAllOffspring()
 
-  fig, (ax1) = pylab.subplots(1, 1)
+    # When working with requirements, only take the functional requirements into account
+    if isinstance(work, Requirement):
+      new = [it for it in new if it.Type == REQ_TYPES.FUNCTIONAL]
+
+    items += new
+
+  fig, (ax1, ax2) = pylab.subplots(2, 1)
   makeBurnDownChart(session, items, ax1)
+  makeEarnedValueChart(session, project, items, ax2)
   fig.savefig('progress.svg', format='svg')
 
   # Determine the time remaining

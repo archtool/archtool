@@ -73,6 +73,7 @@ class SQLUpdater(object):
 
   def update8to9(self):
     # Can not upgrade SQLite...
+    # Create a new table, and copy the values into it.
     self.engine.execute('ALTER TABLE planeablestatus RENAME TO status_old')
     PlaneableStatus.create(self.engine)
     self.engine.execute('INSERT INTO planeablestatus VALUES (SELECT * FROM status_old)')
@@ -88,6 +89,12 @@ class SQLUpdater(object):
 
   def update11to12(self):
     return 12, ['ALTER TABLE planeableitem ADD COLUMN Created DATETIME;']
+
+  def update12to13(self):
+    return 13, ['ALTER TABLE worker ADD COLUMN Rate FLOAT;',
+                'ALTER TABLE project ADD COLUMN Budget FLOAT;',
+                'ALTER TABLE plannedeffort ADD COLUMN IsActual INTEGER;',
+                'UPDATE plannedeffort SET IsActual=1;']
 
 
 

@@ -125,8 +125,9 @@ class RstRenderer(object):
       f.write(html)
 
 
-def exportRequirementsDocument(session, requirement_name):
-  top_items = session.query(model.Requirement).\
+def exportRequirementsDocument(session, top_items):
+  if False:
+    top_items = session.query(model.Requirement).\
                      filter(model.Requirement.Name==requirement_name).\
                      all()
 

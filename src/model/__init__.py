@@ -13,7 +13,7 @@ from urlparse import urlparse
 from contextlib import contextmanager
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy import Column, Integer, String, Float, Text, Boolean, DateTime, Enum
-from sqlalchemy import ForeignKey, create_engine, Table
+from sqlalchemy import ForeignKey, create_engine, Table, UniqueConstraint
 from sqlalchemy.orm import relationship, backref, sessionmaker
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.sql.functions import GenericFunction
@@ -24,7 +24,7 @@ from model.history import Versioned
 from datetime import datetime, date, timedelta
 from collections import OrderedDict
 
-VERSION = 12
+VERSION = 13
 
 
 # Determine which encoding to use when interacting with files
@@ -230,9 +230,11 @@ class ManDay(Float):
       to enter / display it.
   '''
   r = re.compile('([0-9.]*)\s*([a-zA-Z]*)')
+  # TODO: Make these conversion units configurable
   HRS_PER_DAY = 8
   DAYS_PER_WEEK = 5
   DAYS_PER_MONTH = 21
+
   @staticmethod
   def fromString(s):
     ''' Convert a string into a manday. '''
@@ -751,6 +753,7 @@ class Annotation(Anchor):
 class Worker(Base, Versioned):   #pylint:disable=W0232
   ''' Stores details for a worker on this project. '''
   Name = Column(String)
+  Rate = Column(Float)
 
 class Project(PlaneableItem, Versioned):   #pylint:disable=W0232
   ''' A project is something a worker can be assigned to. '''
@@ -760,6 +763,7 @@ class Project(PlaneableItem, Versioned):   #pylint:disable=W0232
   Id   = Column(Integer, ForeignKey('planeableitem.Id'), primary_key=True)
   FirstWeek = Column(WorkingWeek)
   LastWeek  = Column(WorkingWeek)
+  Budget    = Column(Float)
   
   __mapper_args__ = {
       'polymorphic_identity':'project'
@@ -772,10 +776,13 @@ class PlannedEffort(Base, Versioned):   #pylint:disable=W0232
   Project = Column(Integer, ForeignKey('project.Id', ondelete='CASCADE'))
   Week    = Column(WorkingWeek)  # If null: default effort for worker on project
   Hours   = Column(Float)
+  IsActual= Column(Boolean)
 
   theProject = relationship('Project', backref='Effort')
 
-
+  __table_args__ = (UniqueConstraint(Worker, Project, Week, IsActual,
+                                     name='_planned_effort_constraint'),
+                     )
 
 class Bug(PlaneableItem):
   ''' A Bug is reported by a non-programmer, and then examined by a programmer.
