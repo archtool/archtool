@@ -18,6 +18,7 @@ from primitives_2d import Block, Text, Line, NO_POS, extractSvgGradients
 from connector import Connection
 from styles import Styles, Style
 from controller import Controller, cmnds
+from gui.util import mkMenu
 
 
 # TODO: Allow copy - paste of blocks between views.
@@ -562,20 +563,6 @@ class MyScene(QtGui.QGraphicsScene):
     
       
       
-
-def mkMenu(definition, parent):
-  ''' Utility to create a menu from a configuration structure.'''
-  menu = QtGui.QMenu(parent)
-  for action, func in definition:
-    if action == '---':
-      menu.addSeparator()
-    else:
-      a = QtGui.QAction(action, parent)
-      menu.addAction(a)
-      a.triggered.connect(func)
-  return menu
-
-
 class TwoDView(QtGui.QGraphicsView):
   ''' The TwoDView renders the MyScene, showing the architecture view.
   '''

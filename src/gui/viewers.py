@@ -10,9 +10,9 @@ This program is released under the conditions of the GNU General Public License.
 from PyQt4 import QtCore, QtGui
 from design import ArchitectureViewForm, ProjectViewForm
 import model
-from util import mkMenu
+from util import mkMenu, showWidgetDialog
 from view_2d import TwoDView, MIME_TYPE, getDetails, MyScene
-from details_editor import EffortOverview, WorkerOverview, StyleEditor
+from details_editor import EffortOverview, WorkerOverview, StyleEditor, EstimateDetails
 from req_export import exportRequirementQuestions, exportRequirementsOverview
 from viewer_base import ViewerWithTreeBase
 import sqlalchemy
@@ -39,9 +39,12 @@ class PlanningView(ViewerWithTreeBase):
       widget.itemClicked.connect(self.onTreeItemClicked)
       
     # Add a context menu to the workers viewer
-    actions = [('Add', self.onAddWorker, {}), ('Delete', self.onDeleteWorker, {})]
+    actions = [('Add', self.onAddWorker), ('Delete', self.onDeleteWorker)]
     mkMenu(actions, self, self.ui.lstWorkers)
-    
+
+    # Add a context menu to the projects viewer
+    self.ui.treeProjects.item_actions.append(('Planning Details', self.onEstimateDetails))
+
     # If a project is double-clicked, the planning overview is shown.
     self.ui.treeProjects.itemDoubleClicked.connect(self.onViewPlanning)
     # If a worker is double-clicked, the worker overview is shown.
@@ -74,6 +77,18 @@ class PlanningView(ViewerWithTreeBase):
       area.setWidget(widget)
       widget.show()
       area.show()
+
+  def onEstimateDetails(self):
+    # Commit any outstanding changes
+    self.session.commit()
+    with model.sessionScope(self.session) as session:
+      project = self.ui.treeProjects.currentItem().details
+      widget = EstimateDetails(None, project)
+      result = showWidgetDialog(self, widget)
+      if result != QtGui.QDialog.Accepted:
+        # Rollback any changes made while editing
+        session.rollback()
+
   
   def onViewWorker(self, item):
     return

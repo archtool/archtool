@@ -21,14 +21,14 @@ def mkMenu(definition, parent, menu=None):
   if menu is None:
     menu = QtGui.QMenu(parent)
     is_menu = True
-  for action, func, kwargs in definition:
+  for action, func in definition:
     if action == '---' and is_menu:
       menu.addSeparator()
     else:
       a = QtGui.QAction(action, parent)
       menu.addAction(a)
       if func:
-        a.triggered.connect(partial(func, **kwargs))
+        a.triggered.connect(func)
   return menu
 
 
@@ -73,4 +73,22 @@ class Const(object):
       if lookup is value and not str(key).startswith('__'):
         return key
     raise KeyError(lookup)
+
+
+
+def showWidgetDialog(parent, widget):
+  """ Wrap a widget with a modal dialog.
+  """
+  diag = QtGui.QDialog(parent)
+  widget.setParent(diag)
+  layout = QtGui.QVBoxLayout(diag)
+  layout.addWidget(widget)
+  buttonBox = QtGui.QDialogButtonBox(diag)
+  buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
+  layout.addWidget(buttonBox)
+
+  buttonBox.accepted.connect(diag.accept)
+  buttonBox.rejected.connect(diag.reject)
+  return diag.exec_()
+
 

@@ -6,6 +6,7 @@ Created on May 11, 2014
 
 
 from weakref import proxy
+from functools import partial
 
 from PyQt4 import QtGui, QtCore
 import model
@@ -51,15 +52,24 @@ class ModelItemTree(QtGui.QTreeWidget):
     self.session_parent = None
     self.filter = None
     self.detail_items = {}
+    self.item_actions = [('Delete', self.deleteHandler)]
+    self.std_actions = [('Add', self.addHandler)]
+
+  def contextMenuEvent(self, ev):
+    index = self.indexAt(ev.pos())
+    if index.isValid():
+      actions = self.item_actions
+    else:
+      actions = self.std_actions
+    menu = mkMenu(actions, self.session_parent)
+    menu.exec_(self.mapToGlobal(ev.pos()))
+
   def setFinder(self, edit, button):
     self.filter = Finder(self, edit, button)
   def setModelClass(self, cls, parent):
+    self.setContextMenuPolicy(QtCore.Qt.DefaultContextMenu)
     self.model_class = cls
     self.session_parent = parent
-
-    # Install the handlers as menu items
-    actions = [('Add', self.addHandler, {}), ('Delete', self.deleteHandler, {})]
-    mkMenu(actions, parent, self)
 
     # Cause the parent to be informed when details are changed.
     self.itemChanged.connect(parent.onItemChanged)

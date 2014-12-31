@@ -9,6 +9,7 @@ This program is released under the conditions of the GNU General Public License.
 
 
 from contextlib import contextmanager
+from datetime import timedelta
 
 from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, Float, event
@@ -677,13 +678,13 @@ class WorkerOverview(QtGui.QTableWidget):
   def __init__(self, parent, worker, projects):
     self.worker = worker
     self.projects = projects
-    
+
     QtGui.QTableWidget.__init__(self, len(projects), 1, parent)
-    
+
     # Fill the headers
     self.setHorizontalHeaderLabels([worker.Name])
     self.setVerticalHeaderLabels([p.Name for p in projects])
-    
+
     # Find out if there is already an effort to be spent.
     for row, p in enumerate(projects):
       planned = None
@@ -695,7 +696,7 @@ class WorkerOverview(QtGui.QTableWidget):
         item = QtGui.QTableWidgetItem(str(e.Hours))
         item.details = e
         self.setItem(row, 0, item)
-        
+
     self.itemChanged.connect(self.onItemChange)
   def onItemChange(self, item):
     hrs = float(str(item.text()))
@@ -706,3 +707,100 @@ class WorkerOverview(QtGui.QTableWidget):
       effort = model.PlannedEffort(Worker=self.worker.Id, Project=self.projects[row].Id,
                                    Week=None, Hours=hrs)
       self.projects[row].Effort.append(effort)
+
+
+
+class EstimateDetails(QtGui.QTableWidget):
+  ''' A simple table with one column: the amount of time to be spent on each project.
+      The projects are the rows.
+  '''
+  def __init__(self, parent, project):
+    self.project = project
+
+    end = int(project.LastWeek)
+    start = int(project.FirstWeek)
+    years = end/100 - start/100
+    weeks = (end%100) - (start%100) + 52 * years + 1
+
+    items = []
+    for work in project.AItems:
+      new = work.getAllOffspring()
+
+      # When working with requirements, only take the functional requirements into account
+      if isinstance(work, model.Requirement):
+        new = [it for it in new if it.Type == model.REQ_TYPES.FUNCTIONAL]
+
+      items += new
+
+
+    QtGui.QTableWidget.__init__(self, len(items)+1, weeks, parent)
+    start = model.WorkingWeek.fromString(project.FirstWeek)
+    deltas = [timedelta(7*d) for d in range(weeks)]
+    labels = ['%i%02i'%(start + d).isocalendar()[:2] for d in deltas]
+    self.setHorizontalHeaderLabels(labels)
+    self.setVerticalHeaderLabels([w.Name for w in items] + ['TOTALS'])
+
+    # Fill all cells with empty items
+    for row in range(len(items)):
+      for column in range(weeks):
+        ci = QtGui.QTableWidgetItem('-')
+        ci.details = None
+        self.setItem(row, column, ci)
+
+    # Now process the estimates and place them in the table
+    start = model.WorkingWeek.fromString(project.FirstWeek).toordinal()
+    for row, item in enumerate(items):
+      for state in reversed(item.StateChanges):
+        # Determine which week this is
+        column = (state.TimeStamp.toordinal()-start) / 7
+        # Set the cell
+        item = QtGui.QTableWidgetItem(str(state.TimeRemaining))
+        item.details = state
+        self.setItem(row, column, item)
+
+    self.itemChanged.connect(self.onItemChange)
+    self.weeks = labels
+    self.planeables = items
+    self.start = start
+
+    self.calculateSums(create=True)
+
+  def onItemChange(self, item):
+    if not item.text():
+      return
+    column, row = item.column(), item.row()
+    if row >= len(self.planeables):
+      # The bottom row is being changed (by the calculateSums function)
+      return
+    days = model.ManDay.fromString(str(item.text()))
+    if item.details is not None:
+      item.details.TimeRemaining = days
+    else:
+      state = model.REQUIREMENTS_STATES.OPEN if days>0 else model.REQUIREMENTS_STATES.DONE
+      planeable = self.planeables[row]
+      t = datetime.fromordinal(self.start + 7*column)
+      change = model.PlaneableStatus(TimeStamp=t,
+                                   Status=state,
+                                   TimeRemaining=days)
+      planeable.StateChanges.append(change)
+      item.details = change
+
+    self.calculateSums()
+
+  def calculateSums(self, create=False):
+    """ The bottom row contains the totals for each column. This function
+        calculates these totals.
+    """
+    for column in range(len(self.weeks)):
+      total = 0.0
+      for row in range(len(self.planeables)):
+        item = self.item(row, column)
+        if item.details is not None and item.details.TimeRemaining:
+          total += item.details.TimeRemaining
+      if create:
+        item = QtGui.QTableWidgetItem('%f days'%total)
+        item.setFlags(QtCore.Qt.NoItemFlags)
+        self.setItem(len(self.planeables), column, item)
+      else:
+        item = self.item(len(self.planeables), column)
+        item.setText('%f days'%total)
