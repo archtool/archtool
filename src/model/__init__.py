@@ -562,6 +562,8 @@ class FunctionPoint(PlaneableItem):   #pylint:disable=W0232
       #'inherit_condition': (Id == PlaneableItem.Id)
   }
 
+  HIDDEN = [Connection, Block]
+
 class Requirement(PlaneableItem):   #pylint:disable=W0232
   ''' Requirements management is incorporated.
   Requirements, unlike function points, are not linked to the architecture.
@@ -713,8 +715,8 @@ class FpRepresentation(Anchor, Representation):   #pylint:disable=W0232
   Yoffset = Column(Float, default=0.0)
   SequenceNr = Column(Integer)
 
-  theFp = relationship('FunctionPoint', uselist=False)
-  theAnchor = relationship(Anchor, uselist = False, foreign_keys=[AnchorPoint])
+  theDetails = relationship('FunctionPoint', uselist=False)
+  theAnchor  = relationship(Anchor, uselist = False, foreign_keys=[AnchorPoint])
   
   __mapper_args__ = {
       'polymorphic_identity':'fprepresentation',

@@ -76,7 +76,7 @@ class SQLUpdater(object):
     # Create a new table, and copy the values into it.
     self.engine.execute('ALTER TABLE planeablestatus RENAME TO status_old')
     PlaneableStatus.create(self.engine)
-    self.engine.execute('INSERT INTO planeablestatus VALUES (SELECT * FROM status_old)')
+    self.engine.execute('insert into planeablestatus select * from status_old')
     self.engine.execute('DROP TABLE status_old')
     return 9, []
 

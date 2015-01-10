@@ -40,3 +40,6 @@ Thumbs.db
 
 # Temporary directory
 tmp
+
+# Documentation build directory
+_build

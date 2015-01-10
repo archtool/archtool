@@ -207,9 +207,11 @@ class Test(unittest.TestCase):
     self.assertEqual(r[0].Name, name)
 
     # Add a status change.
+    self.assertEqual(len(r[1].StateChanges), 0)
     self.postGuiFunc(StateChangeEditor.add, cw.details_viewer, r[1], self.form.session)
-    while True:
-      QTest.qWait(100)
+    self.answer('')
+    QTest.qWait(100)
+    self.assertEqual(len(r[1].StateChanges), 1)
 
     # TODO: Try to drag the child item away from the first requirement.
 
@@ -260,7 +262,7 @@ class Test(unittest.TestCase):
     self.assertEqual(session.query(model.FunctionPoint).count(), 1)
 
     # Add an Action to the connection
-    editor.last_rmouse_click = QtCore.QPoint(245, 190)
+    editor.last_rmouse_click = QtCore.QPoint(224, 196)
     self.postGuiFunc(editor.onNewAction)
     self.answer('Actie 2')
     QTest.qWait(100)

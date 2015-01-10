@@ -67,7 +67,10 @@ class StateChangeEditor(StatusEditorForm[1]):
     details.Description=str(self.ui.edtDescription.toPlainText()).decode(ENCODING)
     details.Status=str(self.ui.cmbStatus.currentText())
     details.TimeRemaining=ManDay.fromString(str(self.ui.edtTimeRemaining.text()))
-    details.AssignedTo=self.workers[self.ui.cmbAssigned.currentIndex()].Id
+    if self.ui.cmbAssigned.currentIndex() >= 0:
+      details.AssignedTo=self.workers[self.ui.cmbAssigned.currentIndex()].Id
+    else:
+      details.AssignedTo = None
     
   @staticmethod
   def add(parent_widget, parent_details, session):
