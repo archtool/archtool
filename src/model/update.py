@@ -2,7 +2,8 @@
 Update a database to be opened to the most recent version.
 '''
 
-from model import VERSION, sessionmaker, sessionScope, UsecaseRepresentation, PlaneableStatus
+from model import (VERSION, sessionmaker, sessionScope, UsecaseRepresentation, PlaneableStatus,
+                   Icon)
 import re
 
 __author__ = 'ehwaal'
@@ -95,6 +96,10 @@ class SQLUpdater(object):
                 'ALTER TABLE project ADD COLUMN Budget FLOAT;',
                 'ALTER TABLE plannedeffort ADD COLUMN IsActual INTEGER;',
                 'UPDATE plannedeffort SET IsActual=1;']
+
+  def update13to14(self):
+    Icon.create(self.engine, checkfirst=True)
+    return 14, []
 
 
 

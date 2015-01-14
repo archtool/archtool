@@ -8,6 +8,7 @@ __author__ = 'ehwaal'
 
 import model
 import sqlalchemy as sql
+import os.path
 
 
 BLOCK_WIDTH  = 100
@@ -166,5 +167,19 @@ class AddAnnotation(object):
                                   AnchorPoint=self.anchor_id,
                                   Order = self.order,
                                   width=BLOCK_WIDTH, height=BLOCK_HEIGHT)
+      session.add(details)
+    return details
+
+
+class AddIcon(object):
+  def __init__(self, fname):
+    self.fname = fname
+
+  def do(self, ctrl):
+    with file(self.fname, 'rb') as f:
+      data = f.read()
+    with model.sessionScope(ctrl.session) as session:
+      icon_name = os.path.split(self.fname)[-1]
+      details = model.Icon(Name = icon_name, Data = data, Length = len(data))
       session.add(details)
     return details

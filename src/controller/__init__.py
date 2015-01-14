@@ -50,6 +50,12 @@ class Controller(object):
 
     return blocks, annotations, connections, actions, usecases
 
+
+  def getIconNames(self):
+    Icon = model.Icon
+    return [r[0] for r in self.session.query(Icon.Name).order_by(Icon.Name)]
+
+
   def execute(self, cmnd):
     return cmnd.do(self)
 

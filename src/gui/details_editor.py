@@ -10,6 +10,7 @@ This program is released under the conditions of the GNU General Public License.
 
 from contextlib import contextmanager
 from datetime import timedelta
+import os.path
 
 from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, Float, event
@@ -20,6 +21,8 @@ import model
 from styles import (Style, StyleTypes, getBool, getItemType,
                     getFont, createDefaultStyle)
 from util import Const
+from controller import Controller
+from controller.cmnds import AddIcon
 
 
 
@@ -294,6 +297,25 @@ class StyleEditor(StyleEditForm[1]):
       w.editingFinished.connect(self.acceptLineEditUpdate)
       return w
 
+    elif t == StyleTypes.ICON:
+      names = Controller.get().getIconNames()
+      frame = QtGui.QWidget(self)
+      w = QtGui.QComboBox(frame)
+      w.addItems(names)
+      if current:
+        w.setCurrentIndex(names.index(current))
+      w.currentIndexChanged.connect(self.acceptComboUpdate)
+      b = QtGui.QPushButton('Add Icon', frame)
+      b.clicked.connect(self.onAddIcon)
+      layout = QtGui.QVBoxLayout(frame)
+      layout.addWidget(w)
+      layout.addWidget(b)
+      frame.combo = w
+      frame.currentText = w.currentText
+      return frame
+    else:
+      raise RuntimeError("Unsupported style item")
+
 
   def onResetToDefaults(self, triggered=False):
     ''' Called when the user clicks on the button 'Reset to Factory Defaults'
@@ -331,6 +353,21 @@ class StyleEditor(StyleEditForm[1]):
 
     # Update the GUI
     self.onStylableChanged(objs)
+
+  def onAddIcon(self):
+    """ Called when the user wants to add a new icon
+    """
+    fname = str(QtGui.QFileDialog.getOpenFileName(self, "Select an icon",
+                                                  '.'))
+    if fname == '':
+        return
+
+    Controller.get().execute(AddIcon(fname))
+
+    self.editor.combo.addItem(os.path.split(fname)[-1])
+    l = self.editor.combo.count()
+    self.editor.combo.setCurrentIndex(l-1)
+
 
 class XRefEditor(XRefEditorForm[1]):
   def __init__(self, details, session, parent, open_view):
@@ -804,3 +841,20 @@ class EstimateDetails(QtGui.QTableWidget):
       else:
         item = self.item(len(self.planeables), column)
         item.setText('%f days'%total)
+
+  def exportCsv(self, triggered=None):
+    ''' Export the contents of the table as a CSV File.
+    '''
+    fname = str(QtGui.QFileDialog.getSaveFileName(self, "Select a file to export to",
+                                              '.', "*.csv"))
+    if not fname:
+      return
+
+    with file(fname, 'w') as f:
+      print >>f, 'Requirement;', ';'.join(self.weeks)
+      columns = range(len(self.weeks))
+      for r in range(self.rowCount()-1):
+        print >>f, self.verticalHeaderItem(r).text(), \
+                   ';', \
+                   ';'.join([str(self.item(r, c).text()) for c in columns])
+

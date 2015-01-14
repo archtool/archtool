@@ -76,7 +76,7 @@ class Const(object):
 
 
 
-def showWidgetDialog(parent, widget):
+def showWidgetDialog(parent, widget, actions=None):
   """ Wrap a widget with a modal dialog.
   """
   diag = QtGui.QDialog(parent)
@@ -89,6 +89,11 @@ def showWidgetDialog(parent, widget):
 
   buttonBox.accepted.connect(diag.accept)
   buttonBox.rejected.connect(diag.reject)
+
+  if actions:
+    diag.addActions(actions)
+    diag.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+
   return diag.exec_()
 
 

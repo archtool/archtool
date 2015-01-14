@@ -38,6 +38,7 @@ class StyleTypes(Const):
   FONT      = 8
   XYCOOD    = 9
   CONNECTOR = 10
+  ICON      = 11
 
 
 class ConnectorTypes(Const):
@@ -60,7 +61,8 @@ KNOWN_STYLEITEMS = {'halign'          :StyleTypes.HALIGN,
                     'is_gradient'     :StyleTypes.BOOL,
                     'end'             :StyleTypes.ARROW,
                     'start'           :StyleTypes.ARROW,
-                    'constyle'        :StyleTypes.CONNECTOR
+                    'constyle'        :StyleTypes.CONNECTOR,
+                    'icon'            :StyleTypes.ICON
                    }
 
 
@@ -302,6 +304,17 @@ class Style(Observable):
     f = self.findItem(name, None)
     return float(f) if f else default
 
+  def getIcon(self, name):
+    """ Return a QImage object, or None.
+    """
+    icon = self.findItem(name, 'icon')
+    if icon:
+      session = Styles.style_sheet.session
+      records = session.query(model.Icon).filter(model.Icon.Name == icon).all()
+      if records:
+        record = records[0]
+        return QtGui.QImage(record.Data)
+
 
 def createDefaultStyle(session):
   with model.sessionScope(session):
@@ -319,6 +332,7 @@ def createDefaultStyle(session):
       color1:white;
       color2:#00529c;
       text-is_gradient:False;
+      icon:None;
       functionpoint-is_gradient:False;
       functionpoint-alpha:1.0;
       functionpoint-end:[[0,0], [-5, 5], [0, 0], [-5, -5], [0,0]];

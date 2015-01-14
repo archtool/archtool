@@ -84,7 +84,10 @@ class PlanningView(ViewerWithTreeBase):
     with model.sessionScope(self.session) as session:
       project = self.ui.treeProjects.currentItem().details
       widget = EstimateDetails(None, project)
-      result = showWidgetDialog(self, widget)
+      action = QtGui.QAction('Export as CSV', self)
+      action.triggered.connect(widget.exportCsv)
+
+      result = showWidgetDialog(self, widget, [action])
       if result != QtGui.QDialog.Accepted:
         # Rollback any changes made while editing
         session.rollback()
@@ -95,7 +98,7 @@ class PlanningView(ViewerWithTreeBase):
     # TODO: Allow the default hours to be edited.
     worker = item.details
     projects = self.session.query(model.Project).all()
-    
+
     widget = WorkerOverview(self, worker, projects)
     self.ui.areaOverview.setWidget(widget)
     widget.show()

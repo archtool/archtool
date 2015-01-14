@@ -351,6 +351,7 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
     if text is None:
       text = ''
     self.text = Text(text, style, self.full_role, self)
+    self.icon = None
     if resizable:
       self.corner = ResizeHandle(self)
       self.corner.setPos(QtCore.QPointF(details.width, details.height))
@@ -365,6 +366,13 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
   def applyStyle(self):
     self.setPen(self.style.getPen(self.full_role))
     self.setBrush(self.style.getBrush(self.full_role))
+    icon = self.style.getIcon(self.full_role)
+    if icon is not None:
+      pixmap = QtGui.QPixmap.fromImage(icon)
+      if self.icon is None:
+        self.icon = QtGui.QGraphicsPixmapItem(pixmap, parent=self)
+      else:
+        self.icon.setPixmap(pixmap)
     self.adjustText()
   
   def adjustText(self):

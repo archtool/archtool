@@ -12,7 +12,7 @@ import inspect
 from urlparse import urlparse
 from contextlib import contextmanager
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
-from sqlalchemy import Column, Integer, String, Float, Text, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Float, Text, Boolean, DateTime, Enum, LargeBinary
 from sqlalchemy import ForeignKey, create_engine, Table, UniqueConstraint
 from sqlalchemy.orm import relationship, backref, sessionmaker
 from sqlalchemy.types import TypeDecorator
@@ -24,7 +24,7 @@ from model.history import Versioned
 from datetime import datetime, date, timedelta
 from collections import OrderedDict
 
-VERSION = 13
+VERSION = 14
 
 
 # Determine which encoding to use when interacting with files
@@ -747,7 +747,16 @@ class Annotation(Anchor):
   @classmethod
   def editableColumnDetails(cls):
     return ['Description'], [cls.Description]
-  
+
+
+class Icon(Base):
+  """ Stores BLOB's of icons that can be used in the style sheets.
+  """
+  Name = Column(String)  # The file name of the icon, e.g. document.png
+  Data = Column(LargeBinary)
+  Length = Column(Integer)
+
+
 
 ###############################################################################
 ## Project Planning
