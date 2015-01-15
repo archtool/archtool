@@ -367,18 +367,21 @@ class Block(QtGui.QGraphicsRectItem, StyledItem):
     self.setPen(self.style.getPen(self.full_role))
     self.setBrush(self.style.getBrush(self.full_role))
     icon = self.style.getIcon(self.full_role)
-    if icon is not None:
-      pixmap = QtGui.QPixmap.fromImage(icon)
+    if icon is not None and not icon.isNull():
       if self.icon is None:
-        self.icon = QtGui.QGraphicsPixmapItem(pixmap, parent=self)
+        self.icon = QtGui.QGraphicsPixmapItem(icon, parent=self)
       else:
-        self.icon.setPixmap(pixmap)
+        self.icon.setPixmap(icon)
     self.adjustText()
   
   def adjustText(self):
     if self.text:
       self.text.applyStyle()
       self.text.setPos(0, 0)
+    if self.icon:
+      w, h = self.icon.pixmap().width(), self.icon.pixmap().height()
+      self.icon.setScale(min([self.details.width/w, self.details.height/h]))
+
       
   def updatePos(self):
     ''' Called when position of the item has changed.

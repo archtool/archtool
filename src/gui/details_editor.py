@@ -19,7 +19,7 @@ from statechange import StateChangeEditor, StateChangeView
 from gui.design import (PlannedItemForm, XRefEditorForm, StyleEditForm, CsvImportForm)
 import model
 from styles import (Style, StyleTypes, getBool, getItemType,
-                    getFont, createDefaultStyle)
+                    getFont, createDefaultStyle, NO_ICON)
 from util import Const
 from controller import Controller
 from controller.cmnds import AddIcon
@@ -27,6 +27,7 @@ from controller.cmnds import AddIcon
 
 
 CODEC = QtCore.QTextCodec.codecForName(model.ENCODING)
+
 
 def toUnicode(qstr):
   ''' Convert a QT string to unicode
@@ -299,6 +300,7 @@ class StyleEditor(StyleEditForm[1]):
 
     elif t == StyleTypes.ICON:
       names = Controller.get().getIconNames()
+      names = names + [NO_ICON]
       frame = QtGui.QWidget(self)
       w = QtGui.QComboBox(frame)
       w.addItems(names)

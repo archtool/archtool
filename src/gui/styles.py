@@ -21,6 +21,7 @@ DEFAULT_COLOR      = 'darkslateblue'
 DEFAULT_BACKGROUND = 'white'
 DEFAULT_FONT       = 'Arial 12pt'
 
+NO_ICON = '---'
 
 class ArrowTypes(Const):
   START = 'start'
@@ -305,15 +306,17 @@ class Style(Observable):
     return float(f) if f else default
 
   def getIcon(self, name):
-    """ Return a QImage object, or None.
+    """ Return a pixmap object, or None.
     """
     icon = self.findItem(name, 'icon')
-    if icon:
+    if icon and icon != NO_ICON:
       session = Styles.style_sheet.session
       records = session.query(model.Icon).filter(model.Icon.Name == icon).all()
       if records:
         record = records[0]
-        return QtGui.QImage(record.Data)
+        pixmap = QtGui.QPixmap()
+        pixmap.loadFromData(record.Data)
+        return pixmap
 
 
 def createDefaultStyle(session):

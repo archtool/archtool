@@ -25,8 +25,6 @@ from gui.util import mkMenu
 # TODO: Separate a functionpoint sequence number from its Z-order.
 # TODO: Support re-ordering multiple items.
 # TODO: children are contained by and on top of parents.
-# TODO: Have two types of view: one where actions shown on a link are from the connection (Architecture),
-#       and one where the actions shown on a link are from an object (UML).
 # FIXME: rename architecture block is not shown in open viewer.
 # FIXME: delete architecture block is not shown in viewer.
 

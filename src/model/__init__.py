@@ -754,7 +754,6 @@ class Icon(Base):
   """
   Name = Column(String)  # The file name of the icon, e.g. document.png
   Data = Column(LargeBinary)
-  Length = Column(Integer)
 
 
 
