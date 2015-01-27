@@ -32,7 +32,6 @@ from controller import Controller
 
 
 
-# TODO: Add a 'created' field to the planneable items.
 # TODO: refresh the tables in the workitem view when edited.
 # TODO: When showing an amount in mandays, add the unit!
 # TODO: Make use of the 'is multiple' flag  in blocks representations
@@ -58,6 +57,8 @@ from controller import Controller
 # TODO: Implement an undo method
 # TODO: Implement a TestCase: a specialized view where FPreps are edited in a table,
 #       with a precondition for the View, and an expected result for the FP.
+
+# FIXME: bij de totalen in de planningsdertails ook de vorige waarden in niet ingevulde weken meenemen.
 
 def reportError(msg):
     def decorate(func):

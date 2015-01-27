@@ -27,6 +27,7 @@ from gui.util import mkMenu
 # TODO: children are contained by and on top of parents.
 # FIXME: rename architecture block is not shown in open viewer.
 # FIXME: delete architecture block is not shown in viewer.
+# FIXME: when selecting multiple items, dragging should move them all.
 
 MIME_TYPE = 'application/x-qabstractitemmodeldatalist'
 
@@ -666,7 +667,7 @@ class TwoDView(QtGui.QGraphicsView):
     
     text = str(text)
     pos = self.mapToScene(self.last_rmouse_click)
-    block_details = theController.execute(cmnds.AddNewBlock(text, parent, is_usecase))
+    block_details = theController.execute(cmnds.AddNewBlock(text, parent.theDetails, is_usecase))
     repr_details = theController.execute(cmnds.AddBlockRepresentation(block_details,
                                                                       self.details.Id,
                                                                       pos,

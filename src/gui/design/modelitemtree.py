@@ -58,7 +58,7 @@ class ModelItemTree(QtGui.QTreeWidget):
   def contextMenuEvent(self, ev):
     index = self.indexAt(ev.pos())
     if index.isValid():
-      actions = self.item_actions
+      actions = self.item_actions + [('---', None)] + self.std_actions
     else:
       actions = self.std_actions
     menu = mkMenu(actions, self.session_parent)
