@@ -17,11 +17,11 @@
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>Attachements</string>
+      <string>Attachments</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <widget class="QListWidget" name="lstAttachements"/>
+       <widget class="QListWidget" name="lstAttachments"/>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">

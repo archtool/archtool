@@ -24,7 +24,7 @@ from model.history import Versioned
 from datetime import datetime, date, timedelta
 from collections import OrderedDict
 
-VERSION = 14
+VERSION = 15
 
 
 # Determine which encoding to use when interacting with files
@@ -370,6 +370,15 @@ class WorkingWeek(TypeDecorator):
     return value  
 
 
+
+class Attachments(object):
+  """ A mix-in class for tables that can be referred to from the Attachement table.
+  """
+  @declared_attr
+  def Attachments(cls):
+    return relationship('Attachment')
+
+
 ###############################################################################
 ## The elements stored in the database
 class DbaseVersion(Base):   #pylint:disable=W0232
@@ -379,7 +388,7 @@ class DbaseVersion(Base):   #pylint:disable=W0232
 
 ###############################################################################
 ## Structural model
-class ArchitectureBlock(Base, Versioned):   #pylint:disable=W0232
+class ArchitectureBlock(Base, Versioned, Attachments):   #pylint:disable=W0232
   ''' A building block of the architecture.
   
   A hierarchy is supported where a block contains smaller, child, blocks.
@@ -387,12 +396,13 @@ class ArchitectureBlock(Base, Versioned):   #pylint:disable=W0232
   Name = Column(String)
   Description = Column(Text)
   Parent = Column(Integer, ForeignKey('architectureblock.Id', deferrable=True))
+
   Children = relationship('ArchitectureBlock', passive_deletes=True)
 
   HIDDEN = [Parent]
 
 
-class BlockConnection(Base, Versioned):   #pylint:disable=W0232
+class BlockConnection(Base, Versioned, Attachments):   #pylint:disable=W0232
   ''' The Architecture Blocks are inter-connected.
   
   The connections are directional so the direction of FP's can be
@@ -417,7 +427,7 @@ planeablexref = Table('planeablexref', Base.metadata,
 
 ###############################################################################
 ## Behavioural model, based on 'planable items' (requirements, usecases, etc).
-class PlaneableItem(Base, Versioned):   #pylint:disable=W0232
+class PlaneableItem(Base, Versioned, Attachments):   #pylint:disable=W0232
   ''' Base table for anything that can be planned, such as requirements, 
       function points and projects.
   '''
@@ -611,6 +621,7 @@ class View(PlaneableItem):   #pylint:disable=W0232
   HIDDEN = [Refinement]
 
 
+
 ###############################################################################
 ## Graphical Representation
 class Representation(object):
@@ -724,7 +735,7 @@ class FpRepresentation(Anchor, Representation):   #pylint:disable=W0232
   }
 
 
-class Annotation(Anchor):
+class Annotation(Anchor, Attachments):
   ''' An annotation is a comment or description that can be added to a View. '''
   # Override the Id inherited from Base
   Id = Column(Integer, ForeignKey(Anchor.Id, ondelete='CASCADE'), primary_key=True)
@@ -755,6 +766,18 @@ class Icon(Base):
   Name = Column(String)  # The file name of the icon, e.g. document.png
   Data = Column(LargeBinary)
 
+
+class Attachment(Base, Versioned):
+  """ Stores BLOB's of any information that can be attached to internal objects.
+      For example, a protocol definition document that is attached to a connection,
+      an external document that is attached to a requirement, etc.
+  """
+  Name = Column(String)
+  Data = Column(LargeBinary)
+  Block = Column(Integer, ForeignKey('architectureblock.Id', ondelete='CASCADE'))
+  Connection = Column(Integer, ForeignKey('blockconnection.Id', ondelete='CASCADE'))
+  Planeable = Column(Integer, ForeignKey('planeableitem.Id', ondelete='CASCADE'))
+  Annotation = Column(Integer, ForeignKey('annotation.Id', ondelete='CASCADE'))
 
 
 ###############################################################################

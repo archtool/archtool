@@ -52,7 +52,8 @@ class ModelItemTree(QtGui.QTreeWidget):
     self.session_parent = None
     self.filter = None
     self.detail_items = {}
-    self.item_actions = [('Delete', self.deleteHandler)]
+    self.item_actions = [('Add', self.addHandler),
+                         ('Delete', self.deleteHandler)]
     self.std_actions = [('Add', self.addHandler)]
 
   def contextMenuEvent(self, ev):

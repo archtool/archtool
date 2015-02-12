@@ -183,3 +183,17 @@ class AddIcon(object):
       details = model.Icon(Name = icon_name, Data = data, Length = len(data))
       session.add(details)
     return details
+
+class AddAttachment(object):
+  def __init__(self, fname, details):
+    self.fname = fname
+    self.details = details
+
+  def do(self, ctrl):
+    with file(self.fname, 'rb') as f:
+      data = f.read()
+
+      name = os.path.split(self.fname)[-1]
+      attachment = model.Attachment(Name = name, Data = data)
+      self.details.Attachments.append(attachment)
+      return attachment
