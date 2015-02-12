@@ -27,4 +27,4 @@ XRefEditorForm       = loadUiType('%s/xref_editor.ui'%d)
 WorkitemViewForm     = loadUiType('%s/work_item_view.ui'%d)
 StyleEditForm        = loadUiType('%s/style_editor.ui'%d)
 CsvImportForm        = loadUiType('%s/import_csv.ui'%d)
-
+AttachmentsForm      = loadUiType('%s/attachement_editor.ui'%d)

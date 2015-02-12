@@ -4,6 +4,7 @@ Update a database to be opened to the most recent version.
 
 from model import (VERSION, sessionmaker, sessionScope, UsecaseRepresentation, PlaneableStatus,
                    Icon)
+import model
 import re
 
 __author__ = 'ehwaal'
@@ -101,7 +102,9 @@ class SQLUpdater(object):
     Icon.create(self.engine, checkfirst=True)
     return 14, []
 
-
+  def update14to15(self):
+    model.Attachment.create(self.engine, checkfirst=True)
+    return 15, []
 
 class PostgresqlUpdated(SQLUpdater):
   def update8to9(self):

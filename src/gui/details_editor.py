@@ -16,13 +16,14 @@ from PyQt4 import QtCore, QtGui
 from sqlalchemy import Integer, Boolean, String, Text, DateTime, Float, event
 from datetime import datetime, timedelta
 from statechange import StateChangeEditor, StateChangeView
-from gui.design import (PlannedItemForm, XRefEditorForm, StyleEditForm, CsvImportForm)
+from gui.design import (PlannedItemForm, XRefEditorForm, StyleEditForm, CsvImportForm,
+                        AttachmentsForm)
 import model
 from styles import (Style, StyleTypes, getBool, getItemType,
                     getFont, createDefaultStyle, NO_ICON)
 from util import Const
 from controller import Controller
-from controller.cmnds import AddIcon
+from controller.cmnds import AddIcon, AddAttachment
 
 
 
@@ -364,7 +365,7 @@ class StyleEditor(StyleEditForm[1]):
     if fname == '':
         return
 
-    Controller.get().execute(AddIcon(fname))
+    Controller.execute(AddIcon(fname))
 
     self.editor.combo.addItem(os.path.split(fname)[-1])
     l = self.editor.combo.count()
@@ -445,6 +446,55 @@ class XRefEditor(XRefEditorForm[1]):
 
 
 
+class AttachmentsEditor(AttachmentsForm[1]):
+  def __init__(self, details, parent):
+    AttachmentsForm[1].__init__(self, parent)
+
+    self.details = details
+
+    self.ui = AttachmentsForm[0]()
+    self.ui.setupUi(self)
+
+    self.ui.btnAdd.clicked.connect(self.onAdd)
+    self.ui.btnRemove.clicked.connect(self.onRemove)
+
+    if len(details.Attachments) == 0:
+      self.ui.lstAttachments.hide()
+
+    for a in details.Attachments:
+      item = QtGui.QListWidgetItem(a.Name, self.ui.lstAttachments)
+      item.details = a
+
+  def onAdd(self):
+    """ Add a new attachment to the list
+    """
+    # Let the user select a file to attach
+    fname = str(QtGui.QFileDialog.getOpenFileName(self, "Select an attachment",
+                                                  '.'))
+    if fname == '':
+        return
+
+    # Create the attachment record
+    attachment = Controller.get().execute(AddAttachment(fname, self.details))
+    item = QtGui.QListWidgetItem(attachment.Name, self.ui.lstAttachments)
+    item.details = attachment
+    self.ui.lstAttachments.show()
+
+  def onRemove(self):
+    """ The User wants to remove a specific attachment
+    """
+    for i in reversed(range(self.ui.lstAttachments.count())):
+      it = self.ui.lstAttachments.item(i)
+      if self.ui.lstAttachments.isItemSelected(it):
+        # Delete the selected attachments from the list widget
+        self.ui.lstAttachments.takeItem(i)
+        # Delete the selected attachments from the database
+        self.details.Attachments.remove(it.details)
+    if len(self.details.Attachments) == 0:
+      self.ui.lstAttachments.hide()
+
+
+
 class PlannedItemSelector(PlannedItemForm[1]):
   add_items = QtCore.pyqtSignal(list)
   
@@ -522,7 +572,17 @@ class DetailsViewer(QtGui.QWidget):
       edits.append(e)
       
     self.vertical_layout.addLayout(formLayout)
-    
+
+    # If the details contain attachements, add items for this
+    if hasattr(details, 'Attachments'):
+      # Show the current attachments
+      ed = AttachmentsEditor(details, self)
+      self.vertical_layout.addWidget(ed)
+      if read_only:
+        # Hide to buttons for editing the attachments
+        ed.ui.btnAdd.hide()
+        ed.ui.btnRemove.hide()
+
     # If the details is a 'PlanneableItem', add some special items
     if isinstance(details, model.PlaneableItem):
       if not read_only:
@@ -539,10 +599,11 @@ class DetailsViewer(QtGui.QWidget):
         b = QtGui.QPushButton('Add State Change', self)
         b.clicked.connect(lambda : StateChangeEditor.add(self, details, session))
         self.vertical_layout.addWidget(b)
-      
+
       # Add database hooks to properly update when status updates are added.
       event.listen(model.PlaneableStatus, 'after_insert', self.onStateChangeInsert)
-    
+
+
     self.edits = edits
     
   def __inputFactory(self, column, value, read_only):
