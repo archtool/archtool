@@ -307,10 +307,16 @@ class ArchitectureTool(MainWindowForm[1]):
             all its child elements.
         """
         project = self.getProject()
-        if project:
-            # Find the requirements linked to this project
-            requirements = [it for it in project.AItems if it.ItemType == 'requirement']
-            exportRequirementsDocument(self.session, requirements)
+        if not project:
+            return
+        # Find the requirements linked to this project
+        requirements = [it for it in project.AItems if it.ItemType == 'requirement']
+        if not requirements:
+            msg = "There are no requirements associated with project %s"%project.Name
+            QtGui.QMessageBox.critical(self, 'No requirements', msg)
+            return
+
+        exportRequirementsDocument(self.session, requirements)
 
     def onProgressReport(self):
         """ Called when the user wants to generate a progress report.

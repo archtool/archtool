@@ -33,8 +33,16 @@ TABLE_HEADER = '''
 VERSION_INFO = '''
 .. footer::
     Last modified on: $MODIFIED
+udo
 
-    Generated on: $GENERATED
+
+
+
+d
+
+
+    cdGenerated on: $GENERATED
+    cdGenerated on: $GENERATED
 '''
 
 TABLE_START = '''
@@ -149,7 +157,9 @@ def exportRequirementsDocument(session, top_items):
     for section in sorted(chapter.Children, cmp=cmpRequirements):
       renderer.renderSectionHead(section)
       #renderer.renderRequirementsTable(sorted(section.Children, key=lambda x:x.Id))
-      renderer.renderRequirementsTable(sorted(section.getAllOffspring(), cmp=cmpRequirements))
+      offspring = section.getAllOffspring()
+      if offspring:
+        renderer.renderRequirementsTable(sorted(offspring, cmp=cmpRequirements))
 
   print renderer
   fname = '%s/%s'%(config.getConfig('export_dir'), top_item.Name+'.odt')

@@ -589,7 +589,7 @@ class TwoDView(QtGui.QGraphicsView):
                                                                                    True)),
                                ('New Annotation', self.onAddAnnotation),
                                ('Copieer naar Nieuw View', self.onCopyToUseCase),
-                               ('Export as SVG', self.exportSvg)], self)
+                               ('Export as PNG', self.exportPng)], self)
     up = lambda _:self.onChangeItemOrder(self.MOVE_UP)
     down = lambda _:self.onChangeItemOrder(self.MOVE_DOWN)
     top = lambda _:self.onChangeItemOrder(self.MOVE_TOP)
@@ -667,7 +667,8 @@ class TwoDView(QtGui.QGraphicsView):
     
     text = str(text)
     pos = self.mapToScene(self.last_rmouse_click)
-    block_details = theController.execute(cmnds.AddNewBlock(text, parent.theDetails, is_usecase))
+    pdetails = None if parent is None else parent.theDetails
+    block_details = theController.execute(cmnds.AddNewBlock(text, pdetails, is_usecase))
     repr_details = theController.execute(cmnds.AddBlockRepresentation(block_details,
                                                                       self.details.Id,
                                                                       pos,
@@ -891,6 +892,28 @@ class TwoDView(QtGui.QGraphicsView):
           self.selection_order.append(i)
     Style.current_style.set(self.scene.styles)
     Style.current_object.set(items)
+
+  def exportPng(self):
+    ''' Called when the user wants to export a view as PNG file.
+    '''
+    # Get a file to store it in.
+    path = self.details.getParents()
+    model_url = currentFile()
+    model_name = urlparse(model_url)[2]
+    dirname, basename = os.path.split(model_name)
+    fname = '%s.%s.png'%(basename, '.'.join([p.Name for p in path]))
+    fname = os.path.join(dirname, fname)
+    fname = str(QtGui.QFileDialog.getSaveFileName(self, 'export as PNG', fname, '*.png'))
+    if fname == '':
+      return
+    rect = self.scene.sceneRect()
+    image = QtGui.QImage(rect.width(), rect.height(), QtGui.QImage.Format_ARGB32)
+    image.fill(0xff000000)
+    painter = QtGui.QPainter(image)
+    painter.setRenderHint(QtGui.QPainter.Antialiasing)
+    self.scene.render(painter)
+    image.save(fname)
+    del painter
 
   def exportSvg(self):
     ''' Called when the user wants to export a view as SVG file.
