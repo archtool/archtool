@@ -234,4 +234,3 @@ class ModelItemTree(QtGui.QTreeWidget):
       item = createTreeItem(rec)
       self.detail_items[rec.Id] = item
       self.addTopLevelItem(item)
-

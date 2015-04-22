@@ -75,7 +75,7 @@ class ViewerWithTreeBase(ViewerWithDetailsBase):
     ViewerWithDetailsBase.open(self, session)
     # Populate the tree lists.    
     for widget, cls in self.tree_models.iteritems():
-      widget.populateTree()
+      widget.ui.tree.populateTree()
 
   def onTreeItemClicked(self, item):
     ''' Called when the user clicks on an item in a tree view.

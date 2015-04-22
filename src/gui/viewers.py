@@ -8,7 +8,7 @@ This program is released under the conditions of the GNU General Public License.
 '''
 
 from PyQt4 import QtCore, QtGui
-from design import ArchitectureViewForm, ProjectViewForm
+from design import ArchitectureViewForm, ProjectViewForm, TreeViewForm
 import model
 from util import mkMenu, showWidgetDialog
 from view_2d import TwoDView, MIME_TYPE, getDetails, MyScene
@@ -141,26 +141,23 @@ class ArchitectureView(ViewerWithTreeBase):
     ViewerWithTreeBase.__init__(self, parent, ArchitectureViewForm[0])
 
     self.current_stereotype = ''
-    
-    # Make the context menus for the tree widgets.
-    tree_models = {self.ui.treeBlocks:model.ArchitectureBlock,
-                     self.ui.treeUseCases:model.View,
-                     self.ui.treeRequirements:model.Requirement,
-                     self.ui.treeBugs:model.Bug,
-                     self.ui.treeActions:model.FunctionPoint}
+
+    # Create the tree model viewers
+    tree_models = {self.ui.wdgBlocks:model.ArchitectureBlock,
+                   self.ui.wdgViews:model.View,
+                     self.ui.wdgRequirements:model.Requirement,
+                     self.ui.wdgBugs:model.Bug,
+                     self.ui.wdgActions:model.FunctionPoint}
     self.tree_models = tree_models
 
     for widget, model_class in tree_models.iteritems():
-      widget.setModelClass(model_class, self)
-      widget.itemClicked.connect(self.onTreeItemClicked)
-    self.ui.treeUseCases.itemDoubleClicked.connect(self.onView)
-
-
-    self.ui.treeRequirements.setFinder(self.ui.edtFindReq, self.ui.btnFindReq)
-    self.ui.treeBlocks.setFinder(self.ui.edtFindBlock, self.ui.btnFindBlock)
-    self.ui.treeUseCases.setFinder(self.ui.edtFindUseCase, self.ui.btnFindUseCase)
-    self.ui.treeBugs.setFinder(self.ui.edtFindBug, self.ui.btnFindBug)
-    self.ui.treeActions.setFinder(self.ui.edtFindAction, self.ui.btnFindAction)
+      widget.ui = TreeViewForm[0]()
+      widget.ui.setupUi(widget)
+      widget.ui.tree.setModelClass(model_class, self)
+      widget.ui.tree.itemClicked.connect(self.onTreeItemClicked)
+      widget.ui.tree.setFinder(widget.ui.edtFind, widget.ui.btnFind)
+      if widget is self.ui.wdgViews:
+        widget.ui.tree.itemDoubleClicked.connect(self.onView)
 
     self.ui.tabGraphicViews.tabCloseRequested.connect(self.onTabCloseRequested)
     self.ui.tabGraphicViews.currentChanged.connect(self.onTabChanged)
@@ -205,9 +202,8 @@ class ArchitectureView(ViewerWithTreeBase):
       stored immediatly.
     '''
     # Clean up all tree widgets
-    for widget in [self.ui.treeBlocks, self.ui.treeUseCases, 
-                   self.ui.treeRequirements, self.ui.treeActions]:
-      widget.clear()
+    for widget in self.tree_models:
+      widget.ui.tree.clear()
       
     # Close all views in the tab window
     while self.ui.tabGraphicViews.count() > 0:
