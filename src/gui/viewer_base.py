@@ -6,6 +6,7 @@ Created on Feb 7, 2014
 
 from PyQt4 import QtGui, QtCore
 from details_editor import DetailsViewer
+from design import TreeViewForm
 import model
 
 class ViewerBase(QtGui.QWidget):
@@ -98,3 +99,12 @@ class ViewerWithTreeBase(ViewerWithDetailsBase):
     '''
     self.openDetailsViewer(details)
 
+  def createTreeViewers(self):
+    ''' Create the tree model widgets.
+    '''
+    for widget, model_class in self.tree_models.iteritems():
+      widget.ui = TreeViewForm[0]()
+      widget.ui.setupUi(widget)
+      widget.ui.tree.setModelClass(model_class, self)
+      widget.ui.tree.itemClicked.connect(self.onTreeItemClicked)
+      widget.ui.tree.setFinder(widget.ui.edtFind, widget.ui.btnFind)

@@ -8,7 +8,7 @@ This program is released under the conditions of the GNU General Public License.
 '''
 
 from PyQt4 import QtCore, QtGui
-from design import ArchitectureViewForm, ProjectViewForm, TreeViewForm
+from design import ArchitectureViewForm, ProjectViewForm
 import model
 from util import mkMenu, showWidgetDialog
 from view_2d import TwoDView, MIME_TYPE, getDetails, MyScene
@@ -32,21 +32,19 @@ class PlanningView(ViewerWithTreeBase):
   def __init__(self, parent):
     ViewerWithTreeBase.__init__(self, parent, ProjectViewForm[0])
     
-    tree_models = {self.ui.treeProjects:model.Project}
+    tree_models = {self.ui.wdgProjects:model.Project}
     self.tree_models = tree_models
-    for widget, model_class in tree_models.iteritems():
-      widget.setModelClass(model_class, self)
-      widget.itemClicked.connect(self.onTreeItemClicked)
+    self.createTreeViewers()
       
     # Add a context menu to the workers viewer
     actions = [('Add', self.onAddWorker), ('Delete', self.onDeleteWorker)]
     mkMenu(actions, self, self.ui.lstWorkers)
 
     # Add a context menu to the projects viewer
-    self.ui.treeProjects.item_actions.append(('Planning Details', self.onEstimateDetails))
+    self.ui.wdgProjects.ui.tree.item_actions.append(('Planning Details', self.onEstimateDetails))
 
     # If a project is double-clicked, the planning overview is shown.
-    self.ui.treeProjects.itemDoubleClicked.connect(self.onViewPlanning)
+    self.ui.wdgProjects.ui.tree.itemDoubleClicked.connect(self.onViewPlanning)
     # If a worker is double-clicked, the worker overview is shown.
     self.ui.lstWorkers.itemDoubleClicked.connect(self.onViewWorker)
     # If a worker is selected, his/her details are shown.
@@ -145,19 +143,13 @@ class ArchitectureView(ViewerWithTreeBase):
     # Create the tree model viewers
     tree_models = {self.ui.wdgBlocks:model.ArchitectureBlock,
                    self.ui.wdgViews:model.View,
-                     self.ui.wdgRequirements:model.Requirement,
-                     self.ui.wdgBugs:model.Bug,
-                     self.ui.wdgActions:model.FunctionPoint}
+                   self.ui.wdgRequirements:model.Requirement,
+                   self.ui.wdgBugs:model.Bug,
+                   self.ui.wdgActions:model.FunctionPoint}
     self.tree_models = tree_models
-
-    for widget, model_class in tree_models.iteritems():
-      widget.ui = TreeViewForm[0]()
-      widget.ui.setupUi(widget)
-      widget.ui.tree.setModelClass(model_class, self)
-      widget.ui.tree.itemClicked.connect(self.onTreeItemClicked)
-      widget.ui.tree.setFinder(widget.ui.edtFind, widget.ui.btnFind)
-      if widget is self.ui.wdgViews:
-        widget.ui.tree.itemDoubleClicked.connect(self.onView)
+    self.createTreeViewers()
+    # Let a view be shown when double clicked in the tree viewer.
+    self.ui.wdgViews.ui.tree.itemDoubleClicked.connect(self.onView)
 
     self.ui.tabGraphicViews.tabCloseRequested.connect(self.onTabCloseRequested)
     self.ui.tabGraphicViews.currentChanged.connect(self.onTabChanged)
