@@ -33,7 +33,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
@@ -264,13 +264,19 @@
        <attribute name="title">
         <string>Bugs</string>
        </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_8">
+       <layout class="QVBoxLayout" name="verticalLayout_8"/>
+      </widget>
+      <widget class="QWidget" name="tabActions">
+       <attribute name="title">
+        <string>Actions</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_10">
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout_7">
+         <layout class="QVBoxLayout" name="verticalLayout_9">
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <layout class="QHBoxLayout" name="horizontalLayout_6">
             <item>
-             <spacer name="horizontalSpacer_5">
+             <spacer name="horizontalSpacer_6">
               <property name="orientation">
                <enum>Qt::Horizontal</enum>
               </property>
@@ -283,10 +289,10 @@
              </spacer>
             </item>
             <item>
-             <widget class="QLineEdit" name="edtFindBug"/>
+             <widget class="QLineEdit" name="edtFindAction"/>
             </item>
             <item>
-             <widget class="QToolButton" name="btnFindBug">
+             <widget class="QToolButton" name="btnFindAction">
               <property name="text">
                <string>...</string>
               </property>
@@ -303,7 +309,7 @@
            </layout>
           </item>
           <item>
-           <widget class="ModelItemTree" name="treeBugs">
+           <widget class="ModelItemTree" name="treeActions">
             <property name="contextMenuPolicy">
              <enum>Qt::ActionsContextMenu</enum>
             </property>

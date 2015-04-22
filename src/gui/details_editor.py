@@ -571,6 +571,24 @@ class DetailsViewer(QtGui.QWidget):
       formLayout.setWidget(i, QtGui.QFormLayout.FieldRole, e)
       edits.append(e)
       
+    # If the object can be shown in a view, list the views
+    if isinstance(details, model.FunctionPoint):
+      # Get the representations
+      # TODO: This can be done better...
+      representations = session.query(model.FpRepresentation).\
+              filter(model.FpRepresentation.FunctionPoint == details.Id).all()
+
+      views = set([d.theView for d in representations])
+      views = ', '.join([v.Name for v in views])
+      l = QtGui.QLabel(self)
+      l.setText('Visible in:')
+      formLayout.setWidget(len(names), QtGui.QFormLayout.LabelRole, l)
+      e = QtGui.QLabel(self)
+      e.setText(views)
+      e.setWordWrap(False)
+      formLayout.setWidget(len(names), QtGui.QFormLayout.FieldRole, e)
+      edits.append(e)
+
     self.vertical_layout.addLayout(formLayout)
 
     # If the details contain attachements, add items for this
@@ -602,7 +620,6 @@ class DetailsViewer(QtGui.QWidget):
 
       # Add database hooks to properly update when status updates are added.
       event.listen(model.PlaneableStatus, 'after_insert', self.onStateChangeInsert)
-
 
     self.edits = edits
     

@@ -31,12 +31,21 @@ from model.update import updateDatabase
 from controller import Controller
 
 
-
+# TODO: In planningsoverzicht: ook de initiele schatting kunnen invoeren.
+# TODO: In planningsoverzicht: bij hover over regel, de bijbehorende details laten zien.
+# TODO: In Viewable items: laten zien in welke views ze terug komen.
+# TODO: Bij Viewable items: doorklikken naar Views waar ze in terug komen.
+# TODO: Bij state change ook geen assignee kunnen aanwijzen
+# TODO: Connect a Block (actor) with a Use Case.
+# TODO: In Use Case: allow a block to be replaced by another. Move the connection & actions with also.
+# TODO: Story Board: multi-D matrix with categories in which all stories are placed.
+#       This places stories in (multiple) Categories.
+# TODO: Allow the NxM relationships in the trees.
+# TODO: Allow the order in the tree lists to be edited.
 # TODO: refresh the tables in the workitem view when edited.
 # TODO: When showing an amount in mandays, add the unit!
 # TODO: Make use of the 'is multiple' flag  in blocks representations
 # TODO: Add a small screen to the requirements export that lets you choose HTML or DOCX output.
-# TODO: Sort trees on ID or name (selectable through right-click menu or radio button)
 # TODO: When adding state changes, set default user to the previous one.
 # TODO: Order the state dropbox in state changes properly.
 # TODO: Een view kunnen representeren als een Sequence Diagram ipv Collaboration Diagram.
@@ -59,6 +68,7 @@ from controller import Controller
 #       with a precondition for the View, and an expected result for the FP.
 
 # FIXME: bij de totalen in de planningsdertails ook de vorige waarden in niet ingevulde weken meenemen.
+# FIXME: when deleting an object, any connections are deleted in Use Case, but not actions.
 
 def reportError(msg):
     def decorate(func):

@@ -539,21 +539,20 @@ class MyScene(QtGui.QGraphicsScene):
    xmlns="http://www.w3.org/2000/svg">
    <g transform="translate($x, $y)">
       $gradients
-      $lines
-      $blocks
-      $fps
-      $annotations
+      $items
     </g></svg>'''
 
     connections = [a for a in self.anchors.values() if isinstance(a, Connection)]
-    annotations = [a for a in self.anchors.values() if isinstance(a, AnnotationItem)]
     gradients = '\n'.join([extractSvgGradients(self.styles, t) for t in [BlockItem.ROLE,
                                                                          AnnotationItem.ROLE]])
+    items = self.anchors.values()
+    for i in items:
+      if i.details.Order is None:
+        i.details.Order = 0
+    items.sort(cmp=lambda a,b:cmp(a.details.Order, b.details.Order))
+
     gradients += extractSvgGradients(self.styles, AnnotationItem.ROLE)
-    blocks = '\n'.join([b.exportSvg() for b in self.block_items.values()])
-    fps    = '\n'.join([fp.exportSvg() for fp in self.fpviews.values()])
-    lines  = '\n'.join([c.exportSvg() for c in connections])
-    annotations = '\n'.join([a.exportSvg() for a in annotations])
+    items = '\n'.join([b.exportSvg() for b in items])
     rect = self.sceneRect()
     x = -rect.x()
     y = -rect.y()
@@ -589,7 +588,8 @@ class TwoDView(QtGui.QGraphicsView):
                                                                                    True)),
                                ('New Annotation', self.onAddAnnotation),
                                ('Copieer naar Nieuw View', self.onCopyToUseCase),
-                               ('Export as PNG', self.exportPng)], self)
+                               ('Export as PNG', self.exportPng),
+                                ('Export as SVG', self.exportSvg)], self)
     up = lambda _:self.onChangeItemOrder(self.MOVE_UP)
     down = lambda _:self.onChangeItemOrder(self.MOVE_DOWN)
     top = lambda _:self.onChangeItemOrder(self.MOVE_TOP)
@@ -667,7 +667,10 @@ class TwoDView(QtGui.QGraphicsView):
     
     text = str(text)
     pos = self.mapToScene(self.last_rmouse_click)
-    pdetails = None if parent is None else parent.theDetails
+    if is_usecase:
+      pdetails = parent
+    else:
+      pdetails = None if parent is None else parent.theDetails
     block_details = theController.execute(cmnds.AddNewBlock(text, pdetails, is_usecase))
     repr_details = theController.execute(cmnds.AddBlockRepresentation(block_details,
                                                                       self.details.Id,
@@ -906,11 +909,12 @@ class TwoDView(QtGui.QGraphicsView):
     fname = str(QtGui.QFileDialog.getSaveFileName(self, 'export as PNG', fname, '*.png'))
     if fname == '':
       return
-    rect = self.scene.sceneRect()
+    rect = self.scene.itemsBoundingRect()
     image = QtGui.QImage(rect.width(), rect.height(), QtGui.QImage.Format_ARGB32)
-    image.fill(0xff000000)
+    image.fill(0x000000ff)
     painter = QtGui.QPainter(image)
     painter.setRenderHint(QtGui.QPainter.Antialiasing)
+    painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
     self.scene.render(painter)
     image.save(fname)
     del painter
@@ -919,15 +923,17 @@ class TwoDView(QtGui.QGraphicsView):
     ''' Called when the user wants to export a view as SVG file.
         The SVG is stored as a file containing the model and view names.
     '''
-    svg = self.scene.exportSvg()
     path = self.details.getParents()
     model_url = currentFile()
     model_name = urlparse(model_url)[2]
     dirname, basename = os.path.split(model_name)
     fname = '%s.%s.svg'%(basename, '.'.join([p.Name for p in path]))
     fname = os.path.join(dirname, fname)
+    fname = str(QtGui.QFileDialog.getSaveFileName(self, 'export as SVG', fname, '*.svg'))
+    if fname == '':
+      return
+
+    svg = self.scene.exportSvg()
     with open(fname, 'w') as f:
       f.write(svg)
-    QtGui.QMessageBox.information(self, 'SVG Exported',
-                                 'The diagram was exported as %s'%fname)
 
