@@ -43,3 +43,6 @@ tmp
 
 # Documentation build directory
 _build
+
+# Python virtual environment
+virtualenv
