@@ -1,13 +1,21 @@
-from rest_api.models import System, PlaneableItem
-from rest_api.serializations import SystemSerializer, PlaneableListSerializers
+from rest_api.models import Priorities, System, PlaneableItem
+from rest_api.serializations import (SystemSerializer, PlaneableListSerializers, \
+    PlaneableDetailSerializer)
+from rest_framework.decorators import api_view
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import Http404, HttpResponseBadRequest
 
+
 class SystemList(generics.ListCreateAPIView):
     queryset = System.objects.all()
     serializer_class = SystemSerializer
+
+
+@api_view(['GET'])
+def priorities_list(request):
+    return Response(Priorities.keys())
 
 
 class SystemDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -37,8 +45,9 @@ class PlaneableItemsList(generics.ListCreateAPIView):
         return PlaneableListSerializers[itemtype]
 
 
-class PlaneableDetailView:
-    pass
+class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = PlaneableItem.objects.all()
+    serializer_class = PlaneableDetailSerializer
 
 
 class ViewItemsView:

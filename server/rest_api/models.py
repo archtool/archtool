@@ -25,10 +25,17 @@ ENCODING = 'cp1252' if 'win' in sys.platform else 'utf-8'
 
 NAME_LENGTH = 100
 
+
 class Options(IntEnum):
     @classmethod
     def items(cls):
         return [(name, int(value)) for name, value in cls.__members__.items()]
+    @classmethod
+    def choices(cls):
+        return [(int(value), name) for name, value in cls.__members__.items()]
+    @classmethod
+    def keys(cls):
+        return cls.__members__.keys()
 
 
 class Priorities(Options):
@@ -121,7 +128,7 @@ class Icon(Model):
 class ChangeLog(Model):
     recordtype = models.CharField(max_length=20)
     recordid   = models.IntegerField()
-    changetype = models.IntegerField(choices=ChangeType.items())
+    changetype = models.IntegerField(choices=ChangeType.choices())
     timestamp  = models.DateTimeField(auto_now_add=True)
     details    = models.TextField()
 
@@ -146,7 +153,7 @@ class PlaneableItem(Model):
 
     system = RequiredFK(System)
     parent = OptionalFK("self", related_name='children')
-    priority = models.IntegerField(choices=Priorities.items(), default=int(Priorities.must))
+    priority = models.IntegerField(choices=Priorities.choices(), default=int(Priorities.must))
     created = models.DateTimeField(auto_now_add=True)
     order = models.IntegerField(default=0)
     itemtype = models.CharField(max_length=6)
@@ -174,12 +181,22 @@ class PlaneableItem(Model):
     def classes():
         return [PlaneableItem] + PlaneableItem.__subclasses__()
 
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views.
+        """
+        fields = ['id', 'name', 'description', 'priority', 'created', 'aitems', 'bitems',
+                  'attachments']
+
+        return fields
+
 
 class PlaneableStatus(Model):
     planeable = RequiredFK(PlaneableItem)
     description = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    status = models.IntegerField(choices=PlaneableStates.items())
+    status = models.IntegerField(choices=PlaneableStates.choices())
     timeremaining = models.FloatField()
     timespent = models.FloatField()
     assignedto = OptionalFK(User)
@@ -195,7 +212,7 @@ class Action(PlaneableItem):
 class Requirement(PlaneableItem):
     abref = 'req'
 
-    reqtype = models.IntegerField(choices=RequirementType.items(),
+    reqtype = models.IntegerField(choices=RequirementType.choices(),
                                   default=int(RequirementType.functional))
 
 

@@ -11,8 +11,12 @@ class SystemSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'description')
 
 
+class IdSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False, validators=[])
+
 def create_planeableserializer(cls):
-    class serializer(serializers.ModelSerializer):
+    class Serializer(serializers.ModelSerializer):
+        parent = IdSerializer(required=False, read_only=True)
         class Meta:
             model = cls
             fields = ('id', 'name', 'parent')
@@ -26,7 +30,12 @@ def create_planeableserializer(cls):
                 if 'itemtype' not in self.context['request'].POST:
                     self.validated_data['itemtype'] = self.context['request'].GET['itemtype']
             return valid
-    return serializer
+    return Serializer
 
 PlaneableListSerializers = {cls.abref : create_planeableserializer(cls)
                             for cls in PlaneableItem.classes()}
+
+
+class PlaneableDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlaneableItem
