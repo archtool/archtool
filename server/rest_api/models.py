@@ -138,7 +138,8 @@ class PlaneableXRef(Model):
 
 
 class PlaneableItem(Model):
-    abref = ''
+    abref = 'item'
+    CLS_DICT = None
 
     name = models.CharField(max_length=NAME_LENGTH)
     description = models.TextField()
@@ -154,6 +155,24 @@ class PlaneableItem(Model):
     aitems = models.ManyToManyField("self", through=PlaneableXRef,
                                     symmetrical=False, related_name="bitems")
     attachments = models.ManyToManyField(Attachment)
+
+
+    @staticmethod
+    def get_types():
+        return [PlaneableItem.abref]+[cls.abref for cls in PlaneableItem.__subclasses__()]
+
+    @staticmethod
+    def get_cls(abref):
+        if PlaneableItem.CLS_DICT is None:
+            PlaneableItem.CLS_DICT = {cls.abref : cls
+            for cls in PlaneableItem.__subclasses__() + [PlaneableItem]}
+        if abred not in PlaneableItem.CLS_DICT:
+            return None
+        return PlaneableItem.CLS_DICT[abref]
+
+    @staticmethod
+    def classes():
+        return [PlaneableItem] + PlaneableItem.__subclasses__()
 
 
 class PlaneableStatus(Model):

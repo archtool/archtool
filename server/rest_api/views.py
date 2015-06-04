@@ -1,7 +1,9 @@
-from rest_api.models import System
-from rest_api.serializations import SystemSerializer
+from rest_api.models import System, PlaneableItem
+from rest_api.serializations import SystemSerializer, PlaneableListSerializers
 from rest_framework import generics
-
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.http import Http404, HttpResponseBadRequest
 
 class SystemList(generics.ListCreateAPIView):
     queryset = System.objects.all()
@@ -11,3 +13,41 @@ class SystemList(generics.ListCreateAPIView):
 class SystemDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = System.objects.all()
     serializer_class = SystemSerializer
+
+
+class PlaneableTypesView(APIView):
+    def get(self, request):
+        return Response(PlaneableItem.get_types())
+
+
+class PlaneableItemsList(generics.ListCreateAPIView):
+    def get_queryset(self):
+        """ The queryset is dependent on the argument 'itemtype' and 'model' supplied in the
+            request.
+        :return: The queryset
+        """
+        queryset = PlaneableItem.objects.all()
+        itemtype = self.request.query_params['itemtype']
+        system = self.request.query_params['system']
+        queryset.filter(itemtype=itemtype).filter(system_id=system)
+        return queryset
+
+    def get_serializer_class(self):
+        itemtype = self.request.query_params['itemtype']
+        return PlaneableListSerializers[itemtype]
+
+
+class PlaneableDetailView:
+    pass
+
+
+class ViewItemsView:
+    pass
+
+
+class WorkItemsView:
+    pass
+
+
+class PlanningView:
+    pass
