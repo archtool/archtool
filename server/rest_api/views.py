@@ -2,7 +2,7 @@ from rest_api.models import Priorities, System, PlaneableItem
 from rest_api.serializations import (SystemSerializer, PlaneableListSerializers, \
     PlaneableDetailSerializer)
 from rest_framework.decorators import api_view
-from rest_framework import generics
+from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import Http404, HttpResponseBadRequest
@@ -11,6 +11,7 @@ from django.http import Http404, HttpResponseBadRequest
 class SystemList(generics.ListCreateAPIView):
     queryset = System.objects.all()
     serializer_class = SystemSerializer
+    permission_classes = (permissions.AllowAny,)
 
 
 @api_view(['GET'])

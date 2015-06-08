@@ -1,16 +1,25 @@
 <!doctype html>
-<html lang="en" ng-app="archtoolApp">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Archtool</title>
   <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
   <link rel="stylesheet" href="css/app.css">
   <script src="bower_components/angular/angular.js"></script>
-  <script src="js/controllers.js"></script>
+  <script src="bower_components/angular-resource/angular-resource.js"></script>
+  <script src="js/app.js"></script>
+
 
 
 </head>
-<body>
+<body ng-app="archtoolApp">
+
+
+<div ng-controller="SystemCtrl">
+    <select ng-model="currentSystem" ng-options="item.name for item in systems">
+        <option value="">Select Account</option>
+    </select>
+</div>
 
 
 <div class="container-fluid">
@@ -31,7 +40,7 @@
                 <rect width="{{block.width}}" height="{{block.height}}" />
                 <g transform="translate(1.5, 1.5)">
                     <rect class="archblock" id="namebg" width="{{block.width-3}}" height="{{block.height-3}}" />
-                    <text class="archblock" y="3" <tspan x="3" dy="12.0pt">{{block.Name}}</tspan></text>
+                    <text class="archblock" y="3" <tspan x="3" dy="12.0pt">{{block.name}}</tspan></text>
                 </g>
             </g>
 

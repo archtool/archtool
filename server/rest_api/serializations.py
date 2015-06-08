@@ -1,6 +1,7 @@
 __author__ = 'ehwaal'
 
 from django.forms import widgets
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
 from .models import (System, PlaneableItem, PlaneableStatus, Requirement, Action,
                      Connection, Bug, View, Project)
