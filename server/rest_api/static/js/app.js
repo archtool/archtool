@@ -1,7 +1,7 @@
 'use strict';
 
 /* Controllers */
-var archtoolApp = angular.module("archtoolApp", ['ngResource', 'ui.bootstrap']);
+var archtoolApp = angular.module("archtoolApp", ['ngResource', 'ui.bootstrap', 'ui.tree']);
 archtoolApp.config(function($resourceProvider) {
   $resourceProvider.defaults.stripTrailingSlashes = false;
 });
@@ -11,7 +11,7 @@ archtoolApp.controller("SvgEditor", function ($scope) {
     {'Id':1,
      'x': 20,
      'y': 20,
-     'name': "Design",
+     'name': "Is",
      'width': 100,
      'height': 50,
      'style': 'archblock'
@@ -36,7 +36,9 @@ archtoolApp.controller("SvgEditor", function ($scope) {
 
   $scope.lines = [
     {'start':$scope.blocks[0],
-     'end':$scope.blocks[1]}
+     'end':$scope.blocks[1]},
+    {'start':$scope.blocks[2],
+     'end':$scope.blocks[0]}
   ];
 
   $scope.selected = [];
@@ -88,35 +90,24 @@ archtoolApp.controller("SvgEditor", function ($scope) {
 });
 
 
-archtoolApp.controller('SystemCtrl', function ($scope, $resource, $modal) {
+archtoolApp.controller('SystemCtrl', function ($scope, $rootScope, $resource, $modal) {
     var Systems = $resource('/api/systems/');
 
     $scope.systems = Systems.query();
-    $scope.currentSystem = null;
+    $rootScope.currentSystem = null;
 
-    $scope.new = function() {
+    $scope.newSystem = function() {
 
       var modalWindow = $modal.open({
         animation: false,
-        template: '<div class="modal-header">'+
-                  '<h3 class="modal-title">Model Details</h3>'+
-                  '</div><form role="form"><div class="form-group>'+
-                  '  <label for="name">Name</label>'+
-                  '  <input type="text" class="form-control" id="name" ng-model="system.name">'+
-                  '</div><div class="form-group>'+
-                  '  <label for="description">Description</label>'+
-                  '  <input type="textarea" class="form-control" id="description"  ng-model="system.description">'+
-                  '</div><div class="modal-footer">'+
-                  '  <button class="btn btn-primary" ng-click="ok()">OK</button>'+
-                  '  <button class="btn btn-warning" ng-click="cancel()">Cancel</button>'+
-                  '</div></form>',
+        templateUrl: "/api/editortemplate/system",
         controller: "ModalSystemEditor",
         resolve:{'Resource':function(){return Systems;}}
       });
 
       modalWindow.result.then(function (newSystem) {
         $scope.systems.push(newSystem);
-        $scope.currentSystem = newSystem;
+        $rootScope.currentSystem = newSystem;
       });
     };
  });
@@ -136,6 +127,132 @@ archtoolApp.controller("ModalSystemEditor", function($scope, $modalInstance, Res
     };
 });
 
-archtoolApp.controller("ItemsList", function($scope, $resource){
-  /** How to access the currentSystem??? */
+
+archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $modal){
+    var itemTypes = $resource("/api/planeabletypes/");
+    $scope.itemTypes = itemTypes.query();
+
+    var Priorities = $resource("/api/priorities/");
+    $rootScope.priorities = Priorities.query();
+
+    $scope.currentItemType = null;
+    $scope.itemTypes.$promise.then(function (result) {
+        $scope.itemTypes = result;
+        $scope.currentItemType = result[0];
+    });
+
+    var Items = $resource("/api/planeableitems/?system=:system&itemtype=:itemtype", {
+        'system':function(){return $rootScope.currentSystem.id;},
+        'itemtype':function(){return $scope.currentItemType;}});
+
+    $scope.rootItems = [];
+
+    /** Evaluate the query when either the itemtype or the system changes */
+    $rootScope.$watch('currentSystem', function(newvalue, oldvalue){
+        if (newvalue != null) {
+        var items = Items.query();
+        items.$promise.then(function (result) {
+            orderItems(result);
+        });
+        }
+    });
+    $scope.$watch('currentItemType', function(newvalue, oldvalue){
+        var items = Items.query();
+        items.$promise.then(function (result) {
+            orderItems(result);
+        });
+    });
+
+    var orderItems = function(items){
+        /** Create an associative array with item ID as key. */
+        var ar = {}
+        for (var i=0; i<items.length; i++){
+            ar[items[i].id] = items[i];
+            /* Also initialise the 'children' field. */
+            items[i].children = [];
+        }
+
+        /** Re-organise the items according to their hierarchy.
+            Also find root items. */
+        var rootItems = [];
+        for (var i=0; i<items.length; i++){
+            var item = items[i];
+            if (item.parent == null) {
+                rootItems.push(item);
+            } else {
+                /* Get the parent item */
+                var parent_id = item.parent;
+                var parent = ar[parent_id];
+                /* Add this item as a child. */
+                parent.children.push(item);
+                /* TODO: Sort the children according to their order. */
+            }
+        }
+        $scope.rootItems = rootItems;
+        /*$scope.items = items;*/
+    };
+
+    $scope.remove = function(scope) {
+      scope.remove();
+    };
+
+    $scope.toggle = function(scope) {
+      scope.toggle();
+    };
+
+    function getInitialData(item) {
+        parent = null;
+        if (item != null) {
+            parent = item.id;
+        }
+        return {'parent':parent,
+                'system':$rootScope.currentSystem.id,
+                'itemtype':$scope.currentItemType};
+    };
+
+    $scope.newSubItem = function(item) {
+      var modalWindow = $modal.open({
+        animation: false,
+        templateUrl: "/api/editortemplate/"+item.itemtype,
+        controller: "ModalItemEditor",
+        resolve:{'Resource':function(){return Items;},
+                 'Initial':function(){return getInitialData(item);}
+                }
+      });
+
+      modalWindow.result.then(function (newItem) {
+        item.children.push(newItem);
+      });
+    };
+
+    var getRootNodesScope = function() {
+      return angular.element(document.getElementById("tree-root")).scope();
+    };
+
+    $scope.collapseAll = function() {
+      var scope = getRootNodesScope();
+      scope.collapseAll();
+    };
+
+    $scope.expandAll = function() {
+      var scope = getRootNodesScope();
+      scope.expandAll();
+    };
 });
+
+
+archtoolApp.controller("ModalItemEditor", function($scope, $modalInstance, Resource, Initial){
+    $scope.item = new Resource(Initial);
+
+    $scope.ok = function() {
+      $scope.item = $scope.item.$save(function(data){
+        $scope.item.id = data.id;
+      });
+      $modalInstance.close($scope.item);
+    };
+    $scope.cancel = function() {
+      $modalInstance.dismiss('cancel');
+    };
+});
+
+

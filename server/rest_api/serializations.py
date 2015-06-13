@@ -12,15 +12,13 @@ class SystemSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'description')
 
 
-class IdSerializer(serializers.Serializer):
-    id = serializers.IntegerField(required=False, validators=[])
-
 def create_planeableserializer(cls):
     class Serializer(serializers.ModelSerializer):
-        parent = IdSerializer(required=False, read_only=True)
+        parent = serializers.IntegerField(source='parent_id', required=False, allow_null=True,
+                                          validators=[])
         class Meta:
             model = cls
-            fields = ('id', 'name', 'parent')
+            fields = ('id', 'name', 'parent', 'order')
         def is_valid(self, raise_exception=False):
             valid = serializers.ModelSerializer.is_valid(self, raise_exception)
             if not valid:

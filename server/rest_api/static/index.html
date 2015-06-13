@@ -4,32 +4,71 @@
   <meta charset="utf-8">
   <title>Archtool</title>
   <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+  <link rel="stylesheet" href="bower_components/angular-ui-tree/dist/angular-ui-tree.min.css">
   <link rel="stylesheet" href="css/app.css">
   <script src="bower_components/angular/angular.js"></script>
   <script src="bower_components/angular-resource/angular-resource.js"></script>
   <script src="bower_components/angular-ui/ui-bootstrap-tpls.js"></script>
+  <script src="bower_components/angular-ui-tree/dist/angular-ui-tree.js"></script>
   <script src="js/app.js"></script>
 
 </head>
 <body ng-app="archtoolApp">
 
-<form role="form" class=".form-inline">
-    <div ng-controller="SystemCtrl">
-        <label for="name">Model</label>
-        <select ng-model="currentSystem" ng-options="item.name for item in systems">
-            <option value="">Select the model</option>
-        </select>
-        <button type="button" class="btn btn-primary btn-xs" ng-click="new()">Add Model</button>
-    </div>
-</form>
 
-
-<div ng-controller="ItemsList">
-
+<div class="container">
+    <form role="form" class=".form-inline pull-right">
+        <div ng-controller="SystemCtrl">
+            <label for="name">Model</label>
+            <select ng-model="$root.currentSystem" ng-options="item.name for item in systems">
+                <option value="">Select the model</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-xs" ng-click="newSystem()">Add Model</button>
+        </div>
+    </form>
 </div>
 
+
+
+<div class="container" ng-controller="ItemsList">
+    <div class="row">
+      <div class="col-lg-6">
+        <h4>Tree view for type:
+            <select ng-model="currentItemType" ng-options="item for item in itemTypes">
+            </select>
+          <a href="" class="btn btn-default pull-right" ng-click="collapseAll()">Collapse all</a>
+          <a href="" class="btn btn-default pull-right" ng-click="expandAll()">Expand all</a>
+        </h4>
+        <!-- Nested node template -->
+        <script type="text/ng-template" id="nodes_renderer.html">
+          <div ui-tree-handle class="tree-node tree-node-content">
+            <a class="btn btn-success btn-xs" data-nodrag ng-click="toggle(this)">
+                <span class="glyphicon" ng-class="{'glyphicon-chevron-right': collapsed, 'glyphicon-chevron-down': !collapsed}">
+                </span></a>
+            {{node.name}}
+            <a class="pull-right btn btn-danger btn-xs" data-nodrag ng-click="remove(this)"><span class="glyphicon glyphicon-remove"></span></a>
+            <a class="pull-right btn btn-primary btn-xs" data-nodrag ng-click="newSubItem(node)" style="margin-right: 8px;"><span class="glyphicon glyphicon-plus"></span></a>
+          </div>
+          <ol ui-tree-nodes="" ng-model="node.nodes" ng-class="{hidden: collapsed}">
+            <li ng-repeat="node in node.children" ui-tree-node ng-include="'nodes_renderer.html'">
+            </li>
+          </ol>
+        </script>
+        <div ui-tree id="tree-root">
+          <ol ui-tree-nodes="" ng-model="currentItem">
+            <li ng-repeat="node in rootItems" ui-tree-node ng-include="'nodes_renderer.html'"></li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+</div>
+
+
+
+
 <div class="container-fluid">
-  <div class="row">
+  <div class="row pull-right">
     <div class="svgeditor" ng-controller="SvgEditor" ng-click="clearSelection()" >
         <svg>
             <linearGradient id="archblock" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -52,7 +91,6 @@
 
             <line ng-repeat="line in lines" x1="{{getX1(line)}}" y1="{{getY1(line)}}"
                   x2="{{getX2(line)}}" y2="{{getY2(line)}}" />
-
 
         </svg>
     </div>
