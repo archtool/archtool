@@ -143,17 +143,20 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
 
     var Items = $resource("/api/planeableitems/?system=:system&itemtype=:itemtype", {
         'system':function(){return $rootScope.currentSystem.id;},
-        'itemtype':function(){return $scope.currentItemType;}});
+        'itemtype':function(){return $scope.currentItemType;}
+    });
+
+    var ItemDetails = $resource("/api/planeableitems/:id", {'id':'@id'});
 
     $scope.rootItems = [];
 
     /** Evaluate the query when either the itemtype or the system changes */
     $rootScope.$watch('currentSystem', function(newvalue, oldvalue){
         if (newvalue != null) {
-        var items = Items.query();
-        items.$promise.then(function (result) {
-            orderItems(result);
-        });
+          var items = Items.query();
+          items.$promise.then(function (result) {
+              orderItems(result);
+          });
         }
     });
     $scope.$watch('currentItemType', function(newvalue, oldvalue){
@@ -192,7 +195,8 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         /*$scope.items = items;*/
     };
 
-    $scope.remove = function(scope) {
+    $scope.removeItem = function(scope, item) {
+      ItemDetails.remove(item);
       scope.remove();
     };
 

@@ -1,7 +1,7 @@
 from string import Template
 import json
 from rest_api.models import Priorities, System, PlaneableItem
-from rest_api.serializations import (SystemSerializer, PlaneableListSerializers, \
+from rest_api.serializations import (SystemSerializer, PlaneableListSerializer, \
     PlaneableDetailSerializer)
 from rest_framework.decorators import api_view
 from rest_framework import generics, permissions
@@ -92,9 +92,7 @@ class PlaneableItemsList(generics.ListCreateAPIView):
         queryset = queryset.order_by('parent').order_by('order')
         return queryset
 
-    def get_serializer_class(self):
-        itemtype = self.request.query_params['itemtype']
-        return PlaneableListSerializers[itemtype]
+    serializer_class = PlaneableListSerializer
 
 
 class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):

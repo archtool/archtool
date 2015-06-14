@@ -12,6 +12,13 @@ class SystemSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'description')
 
 
+class PlaneableListSerializer(serializers.ModelSerializer):
+    parent = serializers.IntegerField(source='parent_id', required=False, allow_null=True,
+                                      validators=[])
+    class Meta:
+        model = PlaneableItem
+        fields = ('id', 'name', 'parent', 'order')
+
 def create_planeableserializer(cls):
     class Serializer(serializers.ModelSerializer):
         parent = serializers.IntegerField(source='parent_id', required=False, allow_null=True,
