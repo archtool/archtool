@@ -160,10 +160,12 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         }
     });
     $scope.$watch('currentItemType', function(newvalue, oldvalue){
-        var items = Items.query();
-        items.$promise.then(function (result) {
-            orderItems(result);
-        });
+        if ($rootScope.currentSystem != null) {
+            var items = Items.query();
+            items.$promise.then(function (result) {
+                orderItems(result);
+            });
+        }
     });
 
     var orderItems = function(items){
