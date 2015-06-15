@@ -244,6 +244,10 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
       var scope = getRootNodesScope();
       scope.expandAll();
     };
+
+    $scope.treeOptions = {'dropped':function(event){
+        var bla = null;
+    }};
 });
 
 
