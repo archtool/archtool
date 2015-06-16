@@ -98,6 +98,8 @@ class PlaneableItemsList(generics.ListCreateAPIView):
 class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = PlaneableItem.objects.all()
     serializer_class = PlaneableDetailSerializer
+    # TODO: Add authorization
+    permission_classes = (permissions.AllowAny,)
 
 
 class ViewItemsView:

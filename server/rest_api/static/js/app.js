@@ -146,7 +146,8 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         'itemtype':function(){return $scope.currentItemType;}
     });
 
-    var ItemDetails = $resource("/api/planeableitems/:id", {'id':'@id'});
+    var ItemDetails = $resource("/api/planeableitems/:id/", {'id':'@id'},
+                                {'update': {'method':'PATCH'}});
 
     $scope.rootItems = [];
 
@@ -213,7 +214,8 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         }
         return {'parent':parent,
                 'system':$rootScope.currentSystem.id,
-                'itemtype':$scope.currentItemType};
+                'itemtype':$scope.currentItemType,
+                'order':item.length};
     };
 
     $scope.newSubItem = function(item) {
@@ -245,9 +247,30 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
       scope.expandAll();
     };
 
-    $scope.treeOptions = {'dropped':function(event){
-        var bla = null;
+    $scope.treeOptions = {'dragStop':function(event){
+        /** An item was dropped in a new location. Check if anything was changed,
+        and update the relevant items if there was. */
+        updateOrder($scope.rootItems, null);
     }};
+
+    function updateOrder(children, parent) {
+        var i=0;
+        for (i=0; i<children.length; i++) {
+            var child = children[i];
+            if (child.parent != parent) {
+                /* The parent has changed: update the item */
+                child.parent = parent;
+                ItemDetails.update({'id':child.id, 'parent':parent});
+            }
+            if (child.order != i) {
+                /* The ordering has changed: update the item */
+                child.order = i;
+                ItemDetails.update({'id':child.id, 'order':child.order});
+            }
+            /* Make a recursive call to check the children */
+            updateOrder(child.children, child.id);
+        }
+    };
 });
 
 
