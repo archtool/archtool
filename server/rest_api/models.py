@@ -149,7 +149,7 @@ class PlaneableItem(Model):
     CLS_DICT = None
 
     name = models.CharField(max_length=NAME_LENGTH)
-    description = models.TextField()
+    description = models.TextField(default='')
 
     system = RequiredFK(System)
     parent = OptionalFK("self", related_name='children')
@@ -184,9 +184,9 @@ class PlaneableItem(Model):
     @classmethod
     def get_detailfields(cls):
         """
-        :return: a list of the details that are editable in detail views.
+        :return: a list of the details that are editable in detail views, and the id.
         """
-        fields = ['id', 'name', 'description', 'priority', 'created', 'aitems', 'bitems',
+        fields = ['id', 'parent', 'system', 'name', 'description', 'priority', 'created', 'aitems', 'bitems',
                   'attachments']
 
         return fields
@@ -215,6 +215,13 @@ class Requirement(PlaneableItem):
     reqtype = models.IntegerField(choices=RequirementType.choices(),
                                   default=int(RequirementType.functional))
 
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        return PlaneableItem.get_detailfields() + ['reqtype']
+
 
 class Connection(PlaneableItem):
     abref = 'con'
@@ -228,6 +235,13 @@ class Bug(PlaneableItem):
 
     reportedby = models.ForeignKey(User)
 
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        return PlaneableItem.get_detailfields() + ['reportedby']
+
 
 class View(PlaneableItem):
     abref = 'view'
@@ -239,7 +253,14 @@ class Project(PlaneableItem):
     abref = 'proj'
     start = models.DateField()
     finish = models.DateField()
-    budget = models.DecimalField(max_digits=12, decimal_places=2)
+    budget = models.DecimalField(max_digits=12, decimal_places=2, default='0.00')
+
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        return PlaneableItem.get_detailfields() + ['start', 'finish', 'budget']
 
 
 ###############################################################################

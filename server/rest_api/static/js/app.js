@@ -135,6 +135,9 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
     var Priorities = $resource("/api/priorities/");
     $rootScope.priorities = Priorities.query();
 
+    var ReqTypes = $resource("/api/reqtypes/");
+    $rootScope.reqTypes = ReqTypes.query();
+
     $scope.currentItemType = null;
     $scope.itemTypes.$promise.then(function (result) {
         $scope.itemTypes = result;
@@ -183,7 +186,7 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         var rootItems = [];
         for (var i=0; i<items.length; i++){
             var item = items[i];
-            if (item.parent == null) {
+            if (!item.parent) {
                 rootItems.push(item);
             } else {
                 /* Get the parent item */
@@ -212,10 +215,11 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         if (item != null) {
             parent = item.id;
         }
+        var order = item ? item.length : $scope.rootItems.length;
         return {'parent':parent,
                 'system':$rootScope.currentSystem.id,
                 'itemtype':$scope.currentItemType,
-                'order':item.length};
+                'order':order};
     };
 
     $scope.newSubItem = function(item) {
@@ -230,6 +234,25 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
 
       modalWindow.result.then(function (newItem) {
         item.children.push(newItem);
+      });
+    };
+
+    $scope.newRootItem = function() {
+      if (!$rootScope.currentSystem){
+          alert('First select a model');
+          return;
+      }
+      var modalWindow = $modal.open({
+        animation: false,
+        templateUrl: "/api/editortemplate/"+$scope.currentItemType,
+        controller: "ModalItemEditor",
+        resolve:{'Resource':function(){return Items;},
+                 'Initial':function(){return getInitialData(null);}
+                }
+      });
+
+      modalWindow.result.then(function (newItem) {
+        $scope.rootItems.push(newItem);
       });
     };
 

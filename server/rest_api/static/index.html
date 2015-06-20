@@ -36,8 +36,11 @@
         <h4>Tree view for type:
             <select ng-model="currentItemType" ng-options="item for item in itemTypes">
             </select>
-          <a href="" class="btn btn-default pull-right" ng-click="collapseAll()">Collapse all</a>
-          <a href="" class="btn btn-default pull-right" ng-click="expandAll()">Expand all</a>
+            <div class="pull-right">
+              <a class="btn btn-primary btn-xs" data-nodrag ng-click="newRootItem()" style="margin-right: 8px;"><span class="glyphicon glyphicon-plus"></span></a>
+              <a href="" class="btn btn-default" ng-click="collapseAll()">Collapse all</a>
+              <a href="" class="btn btn-default" ng-click="expandAll()">Expand all</a>
+            </div>
         </h4>
         <!-- Nested node template -->
         <script type="text/ng-template" id="nodes_renderer.html">
