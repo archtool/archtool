@@ -97,12 +97,17 @@ archtoolApp.controller('SystemCtrl', function ($scope, $rootScope, $resource, $m
     $rootScope.currentSystem = null;
 
     $scope.newSystem = function() {
-
+      var url = "/api/editors/?itemtype=system";
       var modalWindow = $modal.open({
         animation: false,
-        templateUrl: "/api/editortemplate/system",
-        controller: "ModalSystemEditor",
-        resolve:{'Resource':function(){return Systems;}}
+        templateUrl: url,
+        controller: "ModalEditor",
+        resolve:{'context':function(){return {
+            'url': url,
+            'Resource': Systems,
+            'title': 'Add Model',
+            'initial': {}
+        };}}
       });
 
       modalWindow.result.then(function (newSystem) {
@@ -113,14 +118,21 @@ archtoolApp.controller('SystemCtrl', function ($scope, $rootScope, $resource, $m
  });
 
 
-archtoolApp.controller("ModalSystemEditor", function($scope, $modalInstance, Resource){
-    $scope.system = new Resource();
+archtoolApp.controller("ModalEditor", function($scope, $modalInstance, context){
+    $scope.item = new context.Resource(context.initial);
+    $scope.title = context.title;
+    $scope.templateUrl = context.url;
+
+    $scope.submit = function(e) {
+      var form = angular.element(e.target.form);
+      form.submit();
+    };
 
     $scope.ok = function() {
-      $scope.system = $scope.system.$save(function(data){
-        $scope.system.id = data.id;
+      $scope.item = $scope.item.$save(function(data){
+        $scope.item.id = data.id;
       });
-      $modalInstance.close($scope.system);
+      $modalInstance.close($scope.item);
     };
     $scope.cancel = function() {
       $modalInstance.dismiss('cancel');
@@ -223,13 +235,21 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
     };
 
     $scope.newSubItem = function(item) {
+      if (!$rootScope.currentSystem){
+          alert('First select a model');
+          return;
+      }
+      var url = "/api/editors/?itemtype="+$scope.currentItemType;
       var modalWindow = $modal.open({
         animation: false,
-        templateUrl: "/api/editortemplate/"+item.itemtype,
-        controller: "ModalItemEditor",
-        resolve:{'Resource':function(){return Items;},
-                 'Initial':function(){return getInitialData(item);}
-                }
+        templateUrl: url,
+        controller: "ModalEditor",
+        resolve:{'context':function(){return {
+            'url': url,
+            'Resource': Items,
+            'title': 'Add '+$scope.currentItemType,
+            'initial': getInitialData(item)
+        };}}
       });
 
       modalWindow.result.then(function (newItem) {
@@ -242,13 +262,17 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
           alert('First select a model');
           return;
       }
+      var url = "/api/editors/?itemtype="+$scope.currentItemType;
       var modalWindow = $modal.open({
         animation: false,
-        templateUrl: "/api/editortemplate/"+$scope.currentItemType,
-        controller: "ModalItemEditor",
-        resolve:{'Resource':function(){return Items;},
-                 'Initial':function(){return getInitialData(null);}
-                }
+        templateUrl: url,
+        controller: "ModalEditor",
+        resolve:{'context':function(){return {
+            'url': url,
+            'Resource': Items,
+            'title': 'Add '+$scope.currentItemType,
+            'initial': getInitialData(null)
+        };}}
       });
 
       modalWindow.result.then(function (newItem) {
@@ -295,20 +319,4 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         }
     };
 });
-
-
-archtoolApp.controller("ModalItemEditor", function($scope, $modalInstance, Resource, Initial){
-    $scope.item = new Resource(Initial);
-
-    $scope.ok = function() {
-      $scope.item = $scope.item.$save(function(data){
-        $scope.item.id = data.id;
-      });
-      $modalInstance.close($scope.item);
-    };
-    $scope.cancel = function() {
-      $modalInstance.dismiss('cancel');
-    };
-});
-
 

@@ -8,11 +8,11 @@ urlpatterns = [
     url(r'^api/systems/$', views.SystemList.as_view()),
     url(r'^api/priorities/$', views.priorities_list),
     url(r'^api/reqtypes/$', views.reqtypes_list),
-    url(r'^api/editortemplate/(?P<name>[a-z]+)/$', views.EditorTemplatesGenerator.get_template),
     url(r'^api/systems/(?P<pk>[0-9]+)$', views.SystemDetail.as_view()),
     url(r'^api/planeabletypes/$', views.PlaneableTypesView.as_view()),
     url(r'^api/planeableitems/$', views.PlaneableItemsList.as_view()),
     url(r'^api/planeableitems/(?P<pk>[0-9]+)/$', views.PlaneableDetailView.as_view()),
+    url(r'^api/editors/$', views.DetailEditorView.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

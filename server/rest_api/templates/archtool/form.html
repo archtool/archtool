@@ -1,0 +1,18 @@
+{% load rest_framework %}
+<div class="modal-header">
+    <h3 class="modal-title">{% verbatim %}
+        {{title}}
+    {% endverbatim %}</h3>
+</div><form class="form-horizontal" role="form" >
+    {% csrf_token %}
+    {% for field in form %}
+        {% if not field.read_only %}
+            {% render_field field style=style %}
+        {% endif %}
+    {% endfor %}
+    <!-- form.non_field_errors -->
+    <div class="modal-footer">
+        <button type="button" class="btn btn-primary" ng-click="ok()">OK</button>
+        <button type="button" class="btn btn-warning" ng-click="cancel()">Cancel</button>
+    </div>
+</form>

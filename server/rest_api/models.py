@@ -163,7 +163,6 @@ class PlaneableItem(Model):
                                     symmetrical=False, related_name="bitems")
     attachments = models.ManyToManyField(Attachment)
 
-
     @staticmethod
     def get_types():
         return [PlaneableItem.abref]+[cls.abref for cls in PlaneableItem.__subclasses__()]
@@ -190,6 +189,11 @@ class PlaneableItem(Model):
                   'attachments']
 
         return fields
+
+    @staticmethod
+    def get_default(itemtype):
+        classes = {cls.abref:cls for cls in PlaneableItem.__subclasses__()}
+        return classes[itemtype]()
 
 
 class PlaneableStatus(Model):
