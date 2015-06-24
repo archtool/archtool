@@ -5,9 +5,11 @@ from .serializations import (SystemSerializer, PlaneableListSerializer, \
 from rest_framework.decorators import api_view
 from rest_framework import generics, permissions
 from rest_framework.renderers import HTMLFormRenderer, JSONRenderer
+from rest_framework.utils.field_mapping import ClassLookupDict
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import mixins
+from rest_framework import exceptions, serializers, status, VERSION
 from django.http import Http404, HttpResponseBadRequest
 from django.db.models.fields import TextField
 from os import path
@@ -73,12 +75,19 @@ class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def get_serializer_class(self):
+        itemtype = self.request.query_params['itemtype']
         return PlaneableDetailSerializers[itemtype]
 
 
 class MyFormRenderer(HTMLFormRenderer):
     template_pack = 'archtool'
     base_template = 'form.html'
+
+    default_style = ClassLookupDict(dict(HTMLFormRenderer.default_style.mapping))
+    default_style[serializers.DateField] = {
+            'base_template': 'input.html',
+            'input_type': 'text'
+        }
 
 
 class DetailEditorView(generics.RetrieveUpdateDestroyAPIView,

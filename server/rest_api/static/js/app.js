@@ -234,7 +234,7 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
                 'order':order};
     };
 
-    $scope.newSubItem = function(item) {
+    $scope.newItem = function(item) {
       if (!$rootScope.currentSystem){
           alert('First select a model');
           return;
@@ -253,30 +253,12 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
       });
 
       modalWindow.result.then(function (newItem) {
-        item.children.push(newItem);
-      });
-    };
-
-    $scope.newRootItem = function() {
-      if (!$rootScope.currentSystem){
-          alert('First select a model');
-          return;
-      }
-      var url = "/api/editors/?itemtype="+$scope.currentItemType;
-      var modalWindow = $modal.open({
-        animation: false,
-        templateUrl: url,
-        controller: "ModalEditor",
-        resolve:{'context':function(){return {
-            'url': url,
-            'Resource': Items,
-            'title': 'Add '+$scope.currentItemType,
-            'initial': getInitialData(null)
-        };}}
-      });
-
-      modalWindow.result.then(function (newItem) {
-        $scope.rootItems.push(newItem);
+        if (item) {
+          item.children.push(newItem);
+        } else {
+          newItem.children = [];
+          $scope.rootItems.push(newItem);
+        };
       });
     };
 

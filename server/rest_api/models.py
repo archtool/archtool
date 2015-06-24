@@ -185,8 +185,7 @@ class PlaneableItem(Model):
         """
         :return: a list of the details that are editable in detail views, and the id.
         """
-        fields = ['id', 'parent', 'system', 'name', 'description', 'priority', 'created', 'aitems', 'bitems',
-                  'attachments']
+        fields = ['id', 'itemtype', 'system', 'parent', 'order', 'name', 'description', 'priority', 'created']
 
         return fields
 

@@ -24,12 +24,16 @@ class PlaneableListSerializer(serializers.ModelSerializer):
 def create_planeableserializer(cls):
     class S(serializers.ModelSerializer):
         parent = serializers.IntegerField(source='parent_id', required=False, allow_null=True,
-                                          validators=[])
-        system = serializers.IntegerField(source='system_id', validators=[])
+                                          validators=[],
+                                          style={'base_template': 'hidden.html'})
+        system = serializers.IntegerField(source='system_id', validators=[],
+                                          style={'base_template': 'hidden.html'})
 
         class Meta:
             model = cls
             fields = cls.get_detailfields()
+            extra_kwargs = {'itemtype': {'style': {'base_template': 'hidden.html'}},
+                            'order':    {'style': {'base_template': 'hidden.html'}}}
 
     return S
 
