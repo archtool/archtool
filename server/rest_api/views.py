@@ -74,14 +74,18 @@ class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def get_queryset(self):
-        itemtype = self.request.query_params['itemtype']
-        for cls in PlaneableItem.__subclasses__():
+        itemtype = self.request.query_params.get('itemtype', 'item')
+        for cls in PlaneableItem.classes():
             if cls.abref == itemtype:
                 return cls.objects.all()
+        return PlaneableItem.objects.all()
 
     def get_serializer_class(self):
         itemtype = self.request.query_params['itemtype']
-        return PlaneableDetailSerializers[itemtype]
+        if itemtype in PlaneableDetailSerializers:
+            return PlaneableDetailSerializers[itemtype]
+        else:
+            return PlaneableDetailSerializers['item']
 
 
 class MyFormRenderer(HTMLFormRenderer):
