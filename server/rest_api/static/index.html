@@ -44,12 +44,13 @@
         </h4>
         <!-- Nested node template -->
         <script type="text/ng-template" id="nodes_renderer.html">
-          <div ui-tree-handle>
+          <div ui-tree-handle ng-click="viewItem(node)">
             <a class="btn btn-success btn-xs" data-nodrag ng-click="toggle(this)">
                 <span class="glyphicon" ng-class="{'glyphicon-chevron-right': collapsed, 'glyphicon-chevron-down': !collapsed}">
                 </span></a>
             {{node.name}}
             <a class="pull-right btn btn-danger btn-xs" data-nodrag ng-click="removeItem(this, node)"><span class="glyphicon glyphicon-remove"></span></a>
+            <a class="pull-right btn btn-default btn-xs" data-nodrag ng-click="editItem(node)" style="margin-right: 8px;"><span class="glyphicon glyphicon-pencil"></span></a>
             <a class="pull-right btn btn-primary btn-xs" data-nodrag ng-click="newItem(node)" style="margin-right: 8px;"><span class="glyphicon glyphicon-plus"></span></a>
           </div>
           <ol ui-tree-nodes="" ng-model="node.children" ng-class="{hidden: collapsed}">
@@ -67,6 +68,11 @@
     </div>
 </div>
 
+
+<div class="container-fluid" ng-controller="DetailsController">
+    <ng-include src="templateUrl">
+    </ng-include>
+</div>
 
 
 

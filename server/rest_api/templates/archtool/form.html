@@ -1,8 +1,6 @@
 {% load rest_framework %}
 <div class="modal-header">
-    <h3 class="modal-title">{% verbatim %}
-        {{title}}
-    {% endverbatim %}</h3>
+    <h3 class="modal-title">{{style.title}}</h3>
 </div><form class="form-horizontal" role="form" >
     {% csrf_token %}
     {% for field in form %}

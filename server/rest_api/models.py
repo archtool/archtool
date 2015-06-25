@@ -146,6 +146,7 @@ class PlaneableXRef(Model):
 
 class PlaneableItem(Model):
     abref = 'item'
+    editor_title = 'Planeable Item'
     CLS_DICT = None
 
     name = models.CharField(max_length=NAME_LENGTH)
@@ -196,6 +197,8 @@ class PlaneableItem(Model):
 
 
 class PlaneableStatus(Model):
+    editor_title = 'State Update'
+
     planeable = RequiredFK(PlaneableItem)
     description = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -207,6 +210,7 @@ class PlaneableStatus(Model):
 
 class Action(PlaneableItem):
     abref = 'action'
+    editor_title = 'Interaction'
 
     connection = OptionalFK(PlaneableItem, related_name='+')
     isresponse = models.BooleanField(default=False)
@@ -214,6 +218,7 @@ class Action(PlaneableItem):
 
 class Requirement(PlaneableItem):
     abref = 'req'
+    editor_title = 'Requirement'
 
     reqtype = models.IntegerField(choices=RequirementType.choices(),
                                   default=int(RequirementType.functional))
@@ -228,6 +233,7 @@ class Requirement(PlaneableItem):
 
 class Connection(PlaneableItem):
     abref = 'con'
+    editor_title = 'Connection'
 
     start = RequiredFK(PlaneableItem, related_name='+')
     end   = RequiredFK(PlaneableItem, related_name='+')
@@ -235,6 +241,7 @@ class Connection(PlaneableItem):
 
 class Bug(PlaneableItem):
     abref = 'bug'
+    editor_title = 'Bug'
 
     reportedby = models.ForeignKey(User)
 
@@ -248,12 +255,15 @@ class Bug(PlaneableItem):
 
 class View(PlaneableItem):
     abref = 'view'
+    editor_title = 'View'
 
     style = OptionalFK(Style)
 
 
 class Project(PlaneableItem):
     abref = 'proj'
+    editor_title = 'Project'
+
     start = models.DateField()
     finish = models.DateField()
     budget = models.DecimalField(max_digits=12, decimal_places=2, default='0.00')

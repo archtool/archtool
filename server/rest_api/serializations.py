@@ -32,6 +32,7 @@ def create_planeableserializer(cls):
         class Meta:
             model = cls
             fields = cls.get_detailfields()
+            style = {'title':cls.editor_title}
             extra_kwargs = {'itemtype': {'style': {'base_template': 'hidden.html'}},
                             'order':    {'style': {'base_template': 'hidden.html'}}}
 

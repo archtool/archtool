@@ -140,6 +140,16 @@ archtoolApp.controller("ModalEditor", function($scope, $modalInstance, context){
 });
 
 
+archtoolApp.controller("DetailsController", function($scope, $rootScope){
+    $scope.templateUrl = null;
+
+    $rootScope.$watch("currentSelection", function(newval, oldval){
+        $scope.templateUrl = '/api/editors/?itemtype='+newval.itemtype;
+        $scope.item = newval;
+    });
+});
+
+
 archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $modal){
     var itemTypes = $resource("/api/planeabletypes/");
     $scope.itemTypes = itemTypes.query();
@@ -156,12 +166,14 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         $scope.currentItemType = result[0];
     });
 
+    $rootScope.currentSelection = null;
+
     var Items = $resource("/api/planeableitems/?system=:system&itemtype=:itemtype", {
         'system':function(){return $rootScope.currentSystem.id;},
         'itemtype':function(){return $scope.currentItemType;}
     });
 
-    var ItemDetails = $resource("/api/planeableitems/:id/", {'id':'@id'},
+    var ItemDetails = $resource("/api/planeableitems/:id/?itemtype=:it", {'id':'@id', 'it':'@it'},
                                 {'update': {'method':'PATCH'}});
 
     $scope.rootItems = [];
@@ -274,6 +286,12 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
     $scope.expandAll = function() {
       var scope = getRootNodesScope();
       scope.expandAll();
+    };
+
+    $scope.viewItem = function(item) {
+      var details = ItemDetails.get({id:item.id, it:item.itemtype}, function() {
+        $rootScope.currentSelection = details;
+      });
     };
 
     $scope.treeOptions = {'dragStop':function(event){

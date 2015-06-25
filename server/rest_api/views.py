@@ -70,9 +70,14 @@ class PlaneableItemsList(generics.ListCreateAPIView):
 
 
 class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = PlaneableItem.objects.all()
     # TODO: Add authorization
     permission_classes = (permissions.AllowAny,)
+
+    def get_queryset(self):
+        itemtype = self.request.query_params['itemtype']
+        for cls in PlaneableItem.__subclasses__():
+            if cls.abref == itemtype:
+                return cls.objects.all()
 
     def get_serializer_class(self):
         itemtype = self.request.query_params['itemtype']
@@ -93,11 +98,19 @@ class MyFormRenderer(HTMLFormRenderer):
 class DetailEditorView(generics.RetrieveUpdateDestroyAPIView,
                        mixins.CreateModelMixin):
     renderer_classes = [MyFormRenderer]
-    queryset = System.objects.all()
+
+    def get_queryset(self):
+        itemtype = self.request.query_params['itemtype']
+        if itemtype == 'system':
+            return System.objects.all()
+        else:
+            for cls in PlaneableItem.__subclasses__():
+                if cls.abref == itemtype:
+                    return cls.objects.all()
 
     def get_object(self):
         itemtype = self.request.query_params['itemtype']
-        if not self.lookup_url_kwarg or 'pk' not in self.lookup_url_kwarg:
+        if 'pk' not in self.kwargs:
             # Return a default instance
             if itemtype == 'system':
                 return System()
