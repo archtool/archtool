@@ -81,7 +81,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'archtool.sqlite3'),
     },
-    'OPTIONS': {'timeout': 20, 'DATE_FORMAT':'%Y-%m-%dT%H:%M:%S.000Z'},
+    'OPTIONS': {'timeout': 100, 'DATE_FORMAT':'%Y-%m-%dT%H:%M:%S.000Z'},
 }
 
 

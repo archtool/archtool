@@ -11,6 +11,7 @@
   <script src="bower_components/angular-ui/ui-bootstrap-tpls.js"></script>
   <script src="bower_components/angular-ui-tree/dist/angular-ui-tree.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/services.js"></script>
 
 </head>
 <body ng-app="archtoolApp">
@@ -50,7 +51,6 @@
                 </span></a>
             {{node.name}}
             <a class="pull-right btn btn-danger btn-xs" data-nodrag ng-click="removeItem(this, node)"><span class="glyphicon glyphicon-remove"></span></a>
-            <a class="pull-right btn btn-default btn-xs" data-nodrag ng-click="editItem(node)" style="margin-right: 8px;"><span class="glyphicon glyphicon-pencil"></span></a>
             <a class="pull-right btn btn-primary btn-xs" data-nodrag ng-click="newItem(node)" style="margin-right: 8px;"><span class="glyphicon glyphicon-plus"></span></a>
           </div>
           <ol ui-tree-nodes="" ng-model="node.children" ng-class="{hidden: collapsed}">

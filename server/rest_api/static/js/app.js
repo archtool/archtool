@@ -1,10 +1,37 @@
 'use strict';
 
+
+function determineUpdate(oldvalues, newvalues){
+    var aProps = Object.getOwnPropertyNames(oldvalues);
+    var bProps = Object.getOwnPropertyNames(newvalues);
+    var update = {};
+    var not_equal = false;
+    for (var i=0; i<aProps.length; i++){
+        var propName = aProps[i];
+        if (oldvalues[propName] != newvalues[propName]){
+            update[propName] = newvalues[propName];
+            not_equal = true;
+        }
+    }
+    if (not_equal) {
+        // Ensure the record id is also in the diff: this is required in the update.
+        update.id = newvalues.id;
+        return update;
+    }
+    return false;
+}
+
+
 /* Controllers */
 var archtoolApp = angular.module("archtoolApp", ['ngResource', 'ui.bootstrap', 'ui.tree']);
 archtoolApp.config(function($resourceProvider) {
   $resourceProvider.defaults.stripTrailingSlashes = false;
 });
+
+archtoolApp.factory("ItemDetailsResource", function ($resource) {
+    return $resource("/api/planeableitems/:id/?itemtype=:it", {'id':'@id', 'it':'@it'},
+                                {'update': {'method':'PATCH'}});
+  });
 
 archtoolApp.controller("SvgEditor", function ($scope) {
   $scope.blocks = [
@@ -140,17 +167,28 @@ archtoolApp.controller("ModalEditor", function($scope, $modalInstance, context){
 });
 
 
-archtoolApp.controller("DetailsController", function($scope, $rootScope){
+archtoolApp.controller("DetailsController", function($scope, $rootScope, ItemDetailsResource){
     $scope.templateUrl = null;
+    $scope.item = null;
+    $scope.original_item = null;
 
     $rootScope.$watch("currentSelection", function(newval, oldval){
         $scope.templateUrl = '/api/editors/?itemtype='+newval.itemtype;
+        if ($scope.item && $scope.original_item) {
+          var currentvalue = $scope.item.toJSON();
+          var delta = determineUpdate($scope.original_item, currentvalue);
+          if (delta) {
+            ItemDetailsResource.update(delta);
+          }
+        }
         $scope.item = newval;
+        $scope.original_item = newval.toJSON();
     });
 });
 
 
-archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $modal){
+archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $modal,
+                                             ItemDetailsResource){
     var itemTypes = $resource("/api/planeabletypes/");
     $scope.itemTypes = itemTypes.query();
 
@@ -172,9 +210,6 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
         'system':function(){return $rootScope.currentSystem.id;},
         'itemtype':function(){return $scope.currentItemType;}
     });
-
-    var ItemDetails = $resource("/api/planeableitems/:id/?itemtype=:it", {'id':'@id', 'it':'@it'},
-                                {'update': {'method':'PATCH'}});
 
     $scope.rootItems = [];
 
@@ -226,7 +261,7 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
     };
 
     $scope.removeItem = function(scope, item) {
-      ItemDetails.remove(item);
+      ItemDetailsResource.remove(item);
       scope.remove();
     };
 
@@ -289,7 +324,7 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
     };
 
     $scope.viewItem = function(item) {
-      var details = ItemDetails.get({id:item.id, it:item.itemtype}, function() {
+      var details = ItemDetailsResource.get({id:item.id, it:item.itemtype}, function() {
         $rootScope.currentSelection = details;
       });
     };
@@ -307,12 +342,12 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
             if (child.parent != parent) {
                 /* The parent has changed: update the item */
                 child.parent = parent;
-                ItemDetails.update({'id':child.id, 'parent':parent});
+                ItemDetailsResource.update({'id':child.id, 'parent':parent});
             }
             if (child.order != i) {
                 /* The ordering has changed: update the item */
                 child.order = i;
-                ItemDetails.update({'id':child.id, 'order':child.order});
+                ItemDetailsResource.update({'id':child.id, 'order':child.order});
             }
             /* Make a recursive call to check the children */
             updateOrder(child.children, child.id);
