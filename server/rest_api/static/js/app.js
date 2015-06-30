@@ -6,8 +6,7 @@ function determineUpdate(oldvalues, newvalues){
     var bProps = Object.getOwnPropertyNames(newvalues);
     var update = {};
     var not_equal = false;
-    for (var i=0; i<aProps.length; i++){
-        var propName = aProps[i];
+    for (var propName in aProps){
         if (oldvalues[propName] != newvalues[propName]){
             update[propName] = newvalues[propName];
             not_equal = true;
