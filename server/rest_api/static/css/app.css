@@ -1,4 +1,6 @@
 /* app css stylesheet */
+/* For documentation: http://www.w3schools.com/cssref/css_selectors.asp */
+
 
 svg {
   width:100%;
@@ -6,7 +8,7 @@ svg {
 }
 
 
-
+/* Formatting details for the diagrams */
 .archblock {
   font-size:12.0pt;
   font-family:arial;
@@ -34,6 +36,7 @@ line {
 }
 
 
+/* Hide the OK and CANCEL buttons in the details view */
 .detailsviewer #btn-ok {
     display: none;
 }
@@ -42,6 +45,7 @@ line {
 }
 
 
+/* Formatting of the tree viewer */
 .angular-ui-tree-handle {
     background: #f8faff;
     border: 1px solid #dae2ea;

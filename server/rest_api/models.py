@@ -12,11 +12,11 @@ import sys
 from decimal import Decimal
 
 from django.db import models
-from django.contrib import admin
+from django.conf import settings
 import django.db.models
 
 
-VERSION_NR = 16
+VERSION_NR = 17
 
 
 # Determine which encoding to use when interacting with files
@@ -102,12 +102,6 @@ class CrossrefType(Model):
 class System(Model):
     name = models.CharField(max_length=NAME_LENGTH)
     description = models.TextField()
-
-
-class User(Model):
-    name = models.CharField(max_length=NAME_LENGTH)
-    email = models.EmailField()
-    hourrate = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0.00'))
 
 
 class Style(Model):
@@ -205,7 +199,7 @@ class PlaneableStatus(Model):
     status = models.IntegerField(choices=PlaneableStates.choices())
     timeremaining = models.FloatField()
     timespent = models.FloatField()
-    assignedto = OptionalFK(User)
+    assignedto = OptionalFK(settings.AUTH_USER_MODEL)
 
 
 class Action(PlaneableItem):
@@ -243,7 +237,7 @@ class Bug(PlaneableItem):
     abref = 'bug'
     editor_title = 'Bug'
 
-    reportedby = models.ForeignKey(User)
+    reportedby = OptionalFK(settings.AUTH_USER_MODEL)
 
     @classmethod
     def get_detailfields(cls):
@@ -320,7 +314,7 @@ class Annotation(Anchor):
 ###############################################################################
 # Keeping track of time spent on a project
 class PlannedEffort(Model):
-    worker = RequiredFK(User)
+    worker = RequiredFK(settings.AUTH_USER_MODEL)
     project = RequiredFK(Project)
     week    = models.DateField()
     hours   = models.FloatField()

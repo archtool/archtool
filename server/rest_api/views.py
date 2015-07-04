@@ -12,9 +12,17 @@ from rest_framework import mixins
 from rest_framework import exceptions, serializers, status, VERSION
 from django.http import Http404, HttpResponseBadRequest
 from django.db.models.fields import TextField
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 from os import path
 
 homedir = path.dirname(__file__)
+
+
+@login_required
+def FrontPage(request):
+    print ('User:', request.user.username, request.user.id)
+    return render(request, 'archtool/frontpage.html', {})
 
 class SystemList(generics.ListCreateAPIView):
     queryset = System.objects.all()

@@ -21,6 +21,22 @@ class PlaneableListSerializer(serializers.ModelSerializer):
         model = PlaneableItem
         fields = ('id', 'name', 'parent', 'order', 'itemtype', 'system')
 
+class FieldContext:
+    """ A class that helps provide a default value for a field with a context.
+    """
+    def __init__(self, func):
+        self.serializer = None
+        self.func = func
+    @property
+    def context(self):
+        return self.serializer.context
+    def set_context(self, serializer):
+        self.serializer = serializer
+    def __call__(self, *args, **kwargs):
+        return self.func(self, *args, **kwargs)
+
+
+
 def create_planeableserializer(cls):
     class S(serializers.ModelSerializer):
         parent = serializers.IntegerField(source='parent_id', required=False, allow_null=True,
@@ -29,13 +45,18 @@ def create_planeableserializer(cls):
         system = serializers.IntegerField(source='system_id', validators=[],
                                           style={'base_template': 'hidden.html'})
 
+        if cls == Bug:
+            reportedby = serializers.IntegerField(source='reportedby_id', validators=[],
+                          read_only=True,
+                          default=FieldContext(lambda slf:slf.context['request'].user.id))
+
         class Meta:
             model = cls
             fields = cls.get_detailfields()
             style = {'title':cls.editor_title}
             extra_kwargs = {'itemtype': {'style': {'base_template': 'hidden.html'}},
                             'order':    {'style': {'base_template': 'hidden.html'}}}
-
+            read_only_fields = []
     return S
 
 

@@ -6,7 +6,8 @@ function determineUpdate(oldvalues, newvalues){
     var bProps = Object.getOwnPropertyNames(newvalues);
     var update = {};
     var not_equal = false;
-    for (var propName in aProps){
+    for (var i=0; i<aProps.length; i++){
+        var propName = aProps[i];
         if (oldvalues[propName] != newvalues[propName]){
             update[propName] = newvalues[propName];
             not_equal = true;
@@ -26,6 +27,12 @@ var archtoolApp = angular.module("archtoolApp", ['ngResource', 'ui.bootstrap', '
 archtoolApp.config(function($resourceProvider) {
   $resourceProvider.defaults.stripTrailingSlashes = false;
 });
+
+
+archtoolApp.config(['$httpProvider', function($httpProvider) {
+    $httpProvider.defaults.xsrfCookieName = 'csrftoken';
+    $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
+}]);
 
 archtoolApp.factory("ItemDetailsResource", function ($resource) {
     return $resource("/api/planeableitems/:id/?itemtype=:it", {'id':'@id', 'it':'@it'},

@@ -1,10 +1,12 @@
 __author__ = 'ehwaal'
 
-from django.conf.urls import url
+from django.conf.urls import url, include
 from rest_framework.urlpatterns import format_suffix_patterns
 from rest_api import views
 
 urlpatterns = [
+    url(r'^$', views.FrontPage),
+    url(r'^accounts/', include('django.contrib.auth.urls')),
     url(r'^api/systems/$', views.SystemList.as_view()),
     url(r'^api/priorities/$', views.priorities_list),
     url(r'^api/reqtypes/$', views.reqtypes_list),
