@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Archtool</title>
+  <link rel="stylesheet" href="/static/bower_components/bootstrap/dist/css/bootstrap.css">
+  <link rel="stylesheet" href="/static/bower_components/angular-ui-tree/dist/angular-ui-tree.min.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/bower_components/angular/angular.js"></script>
+  <script src="/static/bower_components/angular-resource/angular-resource.js"></script>
+  <script src="/static/bower_components/angular-ui/ui-bootstrap-tpls.js"></script>
+  <script src="/static/bower_components/angular-ui-tree/dist/angular-ui-tree.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/services.js"></script>
+
+</head>
+<body ng-app="archtoolApp">
+
+
+
+<div class="container">
+        <label for="name">User</label>
+        {{request.user.username}}
+        <a href="/accounts/logout"><button type="submit" class="btn btn-primary btn-xs" >logout</button></a>
+</div>
+
+
+
+{% verbatim %}
+<div class="container">
+    <form role="form" class=".form-inline pull-right">
+        <div ng-controller="SystemCtrl">
+            <label for="name">Model</label>
+            <select ng-model="$root.currentSystem" ng-options="item.name for item in systems">
+                <option value="">Select the model</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-xs" ng-click="newSystem()">Add Model</button>
+        </div>
+    </form>
+</div>
+
+
+
+<div class="container" ng-controller="ItemsList">
+    <div class="row">
+      <div class="col-lg-6">
+        <h4>Tree view for type:
+            <select ng-model="currentItemType" ng-options="item for item in itemTypes">
+            </select>
+            <div class="pull-right">
+              <a class="btn btn-primary btn-xs" data-nodrag ng-click="newItem(null)" style="margin-right: 8px;"><span class="glyphicon glyphicon-plus"></span></a>
+              <a href="" class="btn btn-default" ng-click="collapseAll()">Collapse all</a>
+              <a href="" class="btn btn-default" ng-click="expandAll()">Expand all</a>
+            </div>
+        </h4>
+        <!-- Nested node template -->
+        <script type="text/ng-template" id="nodes_renderer.html">
+          <div ui-tree-handle ng-click="viewItem(node)">
+            <a class="btn btn-success btn-xs" data-nodrag ng-click="toggle(this)">
+                <span class="glyphicon" ng-class="{'glyphicon-chevron-right': collapsed, 'glyphicon-chevron-down': !collapsed}">
+                </span></a>
+            {{node.name}}
+            <a class="pull-right btn btn-danger btn-xs" data-nodrag ng-click="removeItem(this, node)"><span class="glyphicon glyphicon-remove"></span></a>
+            <a class="pull-right btn btn-primary btn-xs" data-nodrag ng-click="newItem(node)" style="margin-right: 8px;"><span class="glyphicon glyphicon-plus"></span></a>
+          </div>
+          <ol ui-tree-nodes="" ng-model="node.children" ng-class="{hidden: collapsed}">
+            <li ng-repeat="node in node.children" ui-tree-node ng-include="'nodes_renderer.html'">
+            </li>
+          </ol>
+        </script>
+        <div ui-tree="treeOptions" id="tree-root" >
+          <ol ui-tree-nodes="" ng-model="rootItems">
+            <li ng-repeat="node in rootItems" ui-tree-node ng-include="'nodes_renderer.html'"></li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+</div>
+
+
+<div class="detailsviewer" class="container-fluid" ng-controller="DetailsController">
+    <ng-include src="templateUrl">
+    </ng-include>
+</div>
+
+
+
+<div class="container-fluid">
+  <div class="row pull-right">
+    <div class="svgeditor" ng-controller="SvgEditor" ng-click="clearSelection()" >
+        <svg>
+            <linearGradient id="archblock" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#ffffff" />
+                <stop offset="100%" stop-color="#00b1eb" />
+            </linearGradient>
+            <g ng-repeat="block in blocks" transform="translate({{block.x}}, {{block.y}})"
+               class="{{block.style}}"
+               ng-mousedown="onMouseDown($event, block)"
+               ng-mousemove="onMouseMove($event, block)"
+               ng-mouseup="onMouseUp($event, block)"
+               ng-click="onClick(block)"
+            >
+                <rect width="{{block.width}}" height="{{block.height}}" />
+                <g transform="translate(1.5, 1.5)">
+                    <rect class="archblock" id="namebg" width="{{block.width-3}}" height="{{block.height-3}}" />
+                    <text class="archblock" y="3" <tspan x="3" dy="12.0pt">{{block.name}}</tspan></text>
+                </g>
+            </g>
+
+            <line ng-repeat="line in lines" x1="{{getX1(line)}}" y1="{{getY1(line)}}"
+                  x2="{{getX2(line)}}" y2="{{getY2(line)}}" />
+
+        </svg>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+{% endverbatim %}
