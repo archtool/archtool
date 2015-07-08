@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from django.db import models
 from django.conf import settings
-import django.db.models
+from django.db.models import Model
 
 
 VERSION_NR = 17
@@ -69,10 +69,6 @@ class ChangeType(Options):
     add = 1
     delete = 2
     change = 3
-
-
-class Model(django.db.models.Model):
-    pass
 
 
 def RequiredFK(*args, **kwds):
@@ -157,6 +153,12 @@ class PlaneableItem(Model):
     aitems = models.ManyToManyField("self", through=PlaneableXRef,
                                     symmetrical=False, related_name="bitems")
     attachments = models.ManyToManyField(Attachment)
+
+    polymorphic_on = 'itemtype'
+
+    @classmethod
+    def polymorphic_identity(cls):
+        return cls.abref
 
     @staticmethod
     def get_types():
@@ -273,12 +275,20 @@ class Project(PlaneableItem):
 ###############################################################################
 # Graphical Representation
 class Anchor(Model):
+    _abref = 'anchor'
     view = RequiredFK(View)
     style_role = models.CharField(max_length=NAME_LENGTH)
     order = models.IntegerField(default=0)
+    anchortype = models.CharField(max_length=6)
 
+    polymorphic_on = 'anchortype'
+
+    @classmethod
+    def polymorphic_identity(cls):
+        return cls._abref
 
 class BlockRepresentation(Anchor):
+    _abref = 'block'
     planeable = RequiredFK(PlaneableItem)
     x = models.FloatField()
     y = models.FloatField()
@@ -289,12 +299,14 @@ class BlockRepresentation(Anchor):
 
 
 class ConnectionRepresentation(Anchor):
+    _abref = 'line'
     connection = RequiredFK(PlaneableItem, related_name='+')
     start = RequiredFK(PlaneableItem, related_name='+')
     end = RequiredFK(PlaneableItem, related_name='+')
 
 
 class ActionRepresentation(Anchor):
+    _abref = 'action'
     action = RequiredFK(PlaneableItem)
     anchorpoint = OptionalFK(Anchor, related_name='+')
     xoffset = models.FloatField()
@@ -302,6 +314,7 @@ class ActionRepresentation(Anchor):
 
 
 class Annotation(Anchor):
+    _abref = 'note'
     anchorpoint = OptionalFK(Anchor, related_name='+')
     x = models.FloatField()
     y = models.FloatField()
