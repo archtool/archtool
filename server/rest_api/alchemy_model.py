@@ -120,7 +120,9 @@ class TableFactory:
             b = table.__bases__[0]
             fk_name = '%s_ptr_id'%b.__name__.lower()
             col = attrs[fk_name]
-            remote_col = list(col.foreign_keys)[0]._colspec
+            remote_details = list(col.foreign_keys)[0]._column_tokens  # (Database, table, column)
+            remote_table = globals()[b.__name__]
+            remote_col = getattr(remote_table, remote_details[2]) # (col.foreign_keys)[0]._colspec
             attrs['__mapper_args__'] = {
                 'polymorphic_identity': table.polymorphic_identity(),
                 'inherit_condition': col == remote_col}
@@ -136,6 +138,7 @@ class TableFactory:
         print ('CREATING CLASS', table.__name__, bases, attrs)
         nt = type(table.__name__, bases, attrs)
         self.tables[table] = nt
+        globals()[table.__name__] = nt
 
     def create_field(self, field, attrs):
         if field.__class__.__name__ == 'AutoField':
@@ -168,12 +171,13 @@ pass
 
 
 if __name__ == '__main__':
-    engine = sa.create_engine('sqlite://///home/ehwaal/arbeid/privee/private/Various/archtool_web/server/archtool.sqlite3')
+    engine = sa.create_engine('sqlite://///home/ehwaal/arbeid/privee/private/Various/archtool_web/server/archtool.sqlite3',
+                              echo="debug")
     Session = sa.orm.sessionmaker(bind=engine)
     session = Session()
 
     # List all the Requirement records
-    reqs = bridge[models.Requirement]
-    for r in session.query(reqs):
+    all = session.query(Requirement).all()
+    for r in all:
         print (r.name, r.description, r.reqtype)
 
