@@ -23,29 +23,48 @@ if __name__ == '__main__':
     django.setup()
 
 
-from enum import IntEnum
-import sys
-from decimal import Decimal
 from inspect import isclass
-
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from contextlib import contextmanager
+import datetime
+import json
+from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy as sa
-# Column, Integer, String, Float, Text, Boolean, DateTime, Enum, LargeBinary
-from sqlalchemy import ForeignKey, create_engine, Table, UniqueConstraint
-from sqlalchemy.orm import relationship, backref, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker
 
-from django.conf import settings
 import django.db.models
 
 import rest_api.models as models
 
-Base = declarative_base()
 
-def toDict(self):
-    return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-Base.toDict = toDict
+
+class MyBase:
+    @classmethod
+    def getColumns(cls):
+        return cls.__table__.columns
+
+    def toDict(self):
+        return {c.name: getattr(self, c.name) for c in self.getColumns()}
+
+    def toJson(self):
+        values = []
+        keys = []
+        for c in self.getColumns():
+            v = getattr(self, c.name)
+            if isinstance(v, datetime.datetime):
+                v = v.isoformat()
+            values.append(v)
+            keys.append(c.name)
+        d = dict(zip(keys, values))
+        return json.dumps(d)
+
+
+
+Base = declarative_base(cls=MyBase)
+
+
 
 bridge = {}
+
 
 def find_tables(m):
     """
@@ -76,19 +95,19 @@ class TableFactory:
     def __init__(self):
         self.tables = {}
 
-        self.type_conversion = {'OneToOneField':sa.Integer,
-                               'CharField':sa.String,
-                               'EmailField':sa.String,
-                               'TextField':sa.Text,
-                               'ForeignKey':sa.Integer,
-                               'BooleanField':sa.Boolean,
-                               'IntegerField':sa.Integer,
-                               'DateTimeField':sa.DateTime,
-                               'DateField':sa.Date,
-                               'FloatField':sa.Float,
-                               'DecimalField':sa.Float,
-                               'BinaryField':sa.LargeBinary,
-                               'ImageField':sa.LargeBinary}
+        self.type_conversion = {'OneToOneField': sa.Integer,
+                                'CharField': sa.String,
+                                'EmailField': sa.String,
+                                'TextField': sa.Text,
+                                'ForeignKey': sa.Integer,
+                                'BooleanField': sa.Boolean,
+                                'IntegerField': sa.Integer,
+                                'DateTimeField': sa.DateTime,
+                                'DateField': sa.Date,
+                                'FloatField': sa.Float,
+                                'DecimalField': sa.Float,
+                                'BinaryField': sa.LargeBinary,
+                                'ImageField': sa.LargeBinary}
 
     @staticmethod
     def convert_model(model):
@@ -97,7 +116,6 @@ class TableFactory:
         for table in tables:
             factory.table_factory(table)
         return factory.tables
-
 
     def table_factory(self, table):
         attrs = {'__tablename__': table._meta.db_table}
@@ -118,7 +136,7 @@ class TableFactory:
         if hasattr(table, 'polymorphic_on') and bases != (Base,):
             # The join should be made on the foreign key <basetable>_ptr_id
             b = table.__bases__[0]
-            fk_name = '%s_ptr_id'%b.__name__.lower()
+            fk_name = '%s_ptr_id' % b.__name__.lower()
             col = attrs[fk_name]
             remote_details = list(col.foreign_keys)[0]._column_tokens  # (Database, table, column)
             remote_table = globals()[b.__name__]
@@ -126,6 +144,11 @@ class TableFactory:
             attrs['__mapper_args__'] = {
                 'polymorphic_identity': table.polymorphic_identity(),
                 'inherit_condition': col == remote_col}
+
+            # Create a new getter for the columns list
+            def getColumns(self):
+                return self.__table__.columns + remote_table.getColumns()
+            attrs['getColumns'] = getColumns
 
 
         # Handle a polymorphic base class
@@ -156,18 +179,38 @@ class TableFactory:
                     args.append(fk)
             col = sa.Column(*args, **kwargs)
             attrs[field.column] = col
-            if False and isinstance(field, django.db.models.fields.related.ForeignKey):
+            if isinstance(field, django.db.models.fields.related.ForeignKey):
                 attrs[field.name] = relationship(field.rel.model.__name__, foreign_keys=[col])
 
-    def handle_autofield(self, field):
+    @staticmethod
+    def handle_autofield(field):
         if field.primary_key:
             return sa.Integer
 
 
-
-#t = table_factory(models.Requirement)
 bridge = TableFactory.convert_model(models)
-pass
+
+
+engine = None
+Session = None
+
+@contextmanager
+def sessionScope(settings):
+    """Provide a transactional scope around a series of operations."""
+    global engine, Session
+    if engine is None:
+        details = settings.DATABASES['default']
+        if 'sqlite3' in details['ENGINE']:
+            url = 'sqlite:///%s'%details['NAME']
+        engine = sa.create_engine(url)
+        Session = sa.orm.sessionmaker(bind=engine)
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
 
 
 if __name__ == '__main__':
@@ -177,7 +220,7 @@ if __name__ == '__main__':
     session = Session()
 
     # List all the Requirement records
-    all = session.query(Requirement).all()
-    for r in all:
-        print (r.name, r.description, r.reqtype)
+    records = session.query(Requirement).all()
+    for r in records:
+        print(r.name, r.description, r.reqtype)
 

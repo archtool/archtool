@@ -169,7 +169,7 @@ class PlaneableItem(Model):
         if PlaneableItem.CLS_DICT is None:
             PlaneableItem.CLS_DICT = {cls.abref : cls
             for cls in PlaneableItem.__subclasses__() + [PlaneableItem]}
-        if abred not in PlaneableItem.CLS_DICT:
+        if abref not in PlaneableItem.CLS_DICT:
             return None
         return PlaneableItem.CLS_DICT[abref]
 
@@ -182,7 +182,8 @@ class PlaneableItem(Model):
         """
         :return: a list of the details that are editable in detail views, and the id.
         """
-        fields = ['id', 'itemtype', 'system', 'parent', 'order', 'name', 'description', 'priority', 'created']
+        fields = ['id', 'itemtype', 'system', 'parent', 'order', 'name', 'description', 'priority',
+                  'created']
 
         return fields
 
