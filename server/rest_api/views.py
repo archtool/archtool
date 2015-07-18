@@ -1,7 +1,6 @@
 from string import Template
-from .models import Priorities, System, PlaneableItem, RequirementType
-from .serializations import (SystemSerializer, PlaneableListSerializer, \
-    PlaneableDetailSerializers)
+from .models import Priorities, System, PlaneableItem, RequirementType, PlaneableStatus
+from .serializations import (PlaneableListSerializer, PlaneableDetailSerializers, FieldContext)
 from rest_api import alchemy_model
 from rest_framework.decorators import api_view
 from rest_framework import generics, permissions
@@ -23,14 +22,30 @@ import json
 homedir = path.dirname(__file__)
 
 
+class MyFormRenderer(HTMLFormRenderer):
+    template_pack = 'archtool'
+    base_template = 'form.html'
+
+    default_style = ClassLookupDict(dict(HTMLFormRenderer.default_style.mapping))
+    default_style[serializers.DateField] = {
+            'base_template': 'input.html',
+            'input_type': 'text'
+        }
+
+
+
 @login_required
 def FrontPage(request):
     print ('User:', request.user.username, request.user.id)
     return render(request, 'archtool/frontpage.html', {})
 
+
 class SystemList(generics.ListCreateAPIView):
     queryset = System.objects.all()
-    serializer_class = SystemSerializer
+    class serializer_class(serializers.ModelSerializer):
+        class Meta:
+            model = System
+            fields = ('id', 'name', 'description')
     # TODO: Add authorization
     permission_classes = (permissions.AllowAny,)
 
@@ -47,7 +62,7 @@ def reqtypes_list(request):
 
 class SystemDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = System.objects.all()
-    serializer_class = SystemSerializer
+    serializer_class = SystemList.serializer_class
 
 
 class PlaneableTypesView(APIView):
@@ -62,8 +77,8 @@ class PlaneableItemsList(generics.ListCreateAPIView):
         :return: The queryset
         """
         queryset = PlaneableItem.objects.all()
-        itemtype = self.request.query_params['itemtype']
-        system = self.request.query_params['system']
+        itemtype = self.kwargs['itemtype']
+        system = self.kwargs['system']
         if not system:
             return []
         system = int(system)
@@ -75,10 +90,31 @@ class PlaneableItemsList(generics.ListCreateAPIView):
 
 
     def get_serializer_class(self):
-        itemtype = self.request.query_params['itemtype']
+        itemtype = self.kwargs['itemtype']
         if self.request.method == 'POST':
             return PlaneableDetailSerializers[itemtype]
         return PlaneableListSerializer
+
+
+class PlaneableStatusList(generics.ListCreateAPIView):
+    def get_queryset(self):
+        queryset = PlaneableStatus.objects.all()
+        planeable = self.kwargs['planeable']
+        return queryset.filter(planeable_id=planeable).order_by('timestamp')
+    class serializer_class(serializers.ModelSerializer):
+        # TODO: Allow setting assigned_to
+        planeable = serializers.HiddenField(source='planeable_id',
+                    default=FieldContext(lambda self: self.context['view'].kwargs['planeable']),
+                                            validators=[])
+        class Meta:
+            model = PlaneableStatus
+            fields = ('planeable', 'description', 'timestamp', 'status', 'timeremaining',
+                      'timespent')
+            extra_kwargs = {'timespent': {'required': False, 'default': None, 'allow_null': True},
+                            'timeremaining': {'required': False, 'default': None, 'allow_null': True},
+                           }
+
+
 
 
 class PlaneableDetailView(View):
@@ -121,17 +157,6 @@ class PlaneableDetailView(View):
             return PlaneableDetailSerializers[itemtype]
         else:
             return PlaneableDetailSerializers['item']
-
-
-class MyFormRenderer(HTMLFormRenderer):
-    template_pack = 'archtool'
-    base_template = 'form.html'
-
-    default_style = ClassLookupDict(dict(HTMLFormRenderer.default_style.mapping))
-    default_style[serializers.DateField] = {
-            'base_template': 'input.html',
-            'input_type': 'text'
-        }
 
 
 class DetailEditorView(generics.RetrieveUpdateDestroyAPIView,

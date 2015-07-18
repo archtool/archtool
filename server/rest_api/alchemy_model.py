@@ -43,9 +43,6 @@ class MyBase:
         return cls.__table__.columns
 
     def toDict(self):
-        return {c.name: getattr(self, c.name) for c in self.getColumns()}
-
-    def toJson(self):
         values = []
         keys = []
         for c in self.getColumns():
@@ -54,8 +51,7 @@ class MyBase:
                 v = v.isoformat()
             values.append(v)
             keys.append(c.name)
-        d = dict(zip(keys, values))
-        return json.dumps(d)
+        return dict(zip(keys, values))
 
 
 

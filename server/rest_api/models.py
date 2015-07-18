@@ -200,8 +200,8 @@ class PlaneableStatus(Model):
     description = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     status = models.IntegerField(choices=PlaneableStates.choices())
-    timeremaining = models.FloatField()
-    timespent = models.FloatField()
+    timeremaining = models.FloatField(null=True, default=None)
+    timespent = models.FloatField(null=True, default=None)
     assignedto = OptionalFK(settings.AUTH_USER_MODEL)
 
 
@@ -280,7 +280,7 @@ class Anchor(Model):
     view = RequiredFK(View)
     style_role = models.CharField(max_length=NAME_LENGTH)
     order = models.IntegerField(default=0)
-    anchortype = models.CharField(max_length=6)
+    anchortype = models.CharField(max_length=6, default='anchor')
 
     polymorphic_on = 'anchortype'
 

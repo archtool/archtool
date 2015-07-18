@@ -6,11 +6,6 @@ from rest_framework import serializers
 from .models import (System, PlaneableItem, PlaneableStatus, Requirement, Action,
                      Connection, Bug, View, Project)
 
-class SystemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = System
-        fields = ('id', 'name', 'description')
-
 
 class PlaneableListSerializer(serializers.ModelSerializer):
     parent = serializers.IntegerField(source='parent_id', required=False, allow_null=True,
@@ -21,8 +16,16 @@ class PlaneableListSerializer(serializers.ModelSerializer):
         model = PlaneableItem
         fields = ('id', 'name', 'parent', 'order', 'itemtype', 'system')
 
+
 class FieldContext:
     """ A class that helps provide a default value for a field with a context.
+        This context is the serializer context.
+        The serializer context is set in the GenericAPIView, by the result of
+        get_serializer_context. Normally this object is a dictionary with three
+        entries:
+            'request': the current request object,
+            'format': the view's format_kwarg object, and
+            'view' the current view object.
     """
     def __init__(self, func):
         self.serializer = None
@@ -64,6 +67,6 @@ PlaneableDetailSerializers = {cls.abref : create_planeableserializer(cls)
                             for cls in PlaneableItem.classes()}
 
 
-class PlaneableDetailSerializer(serializers.ModelSerializer):
+class P0laneableDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlaneableItem

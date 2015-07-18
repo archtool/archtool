@@ -16,6 +16,7 @@ urlpatterns = [
     url(r'^api/planeableitems/(?P<pk>[0-9]+)/$', views.PlaneableDetailView.as_view()),
     url(r'^api/editors/$', views.DetailEditorView.as_view()),
     url(r'^api/editors/(?P<pk>[0-9]+)/$', views.DetailEditorView.as_view()),
+    url(r'^api/planeablestatus/(?P<planeable>[0-9]+)$', views.PlaneableStatusList.as_view())
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)
