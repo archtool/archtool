@@ -67,6 +67,6 @@ PlaneableDetailSerializers = {cls.abref : create_planeableserializer(cls)
                             for cls in PlaneableItem.classes()}
 
 
-class P0laneableDetailSerializer(serializers.ModelSerializer):
+class PlaneableDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlaneableItem

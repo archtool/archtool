@@ -76,21 +76,18 @@ class PlaneableItemsList(generics.ListCreateAPIView):
             request.
         :return: The queryset
         """
-        queryset = PlaneableItem.objects.all()
-        itemtype = self.kwargs['itemtype']
-        system = self.kwargs['system']
-        if not system:
-            return []
+        itemtype = self.request.query_params['itemtype']
+        cls = PlaneableItem.get_cls(itemtype)
+        queryset = cls.objects.all()
+        system = self.request.query_params['system']
         system = int(system)
-        if not itemtype:
-            itemtype = PlaneableItem.get_types()[0]
-        queryset = queryset.filter(itemtype=itemtype).filter(system_id=system)
+        queryset = queryset.filter(system_id=system)
         queryset = queryset.order_by('parent').order_by('order')
         return queryset
 
 
     def get_serializer_class(self):
-        itemtype = self.kwargs['itemtype']
+        itemtype = self.request.query_params['itemtype']
         if self.request.method == 'POST':
             return PlaneableDetailSerializers[itemtype]
         return PlaneableListSerializer
@@ -117,39 +114,18 @@ class PlaneableStatusList(generics.ListCreateAPIView):
 
 
 
-class PlaneableDetailView(View):
+class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):
     # TODO: Add authorization
     permission_classes = (permissions.AllowAny,)
 
-    def get(self, request, pk):
-        itemtype = request.GET.get('itemtype', 'item')
-        id_ = pk
+    def get_queryset(self):
+        """ The queryset is dependent on the argument 'itemtype' and 'model' supplied in the
+            request.
+        :return: The queryset
+        """
+        itemtype = self.request.query_params['itemtype']
         cls = PlaneableItem.get_cls(itemtype)
-        if cls is None:
-            cls = PlaneableItem
-        # Get the equivalent SQLAlchemy model
-        cls = alchemy_model.bridge[cls]
-
-        with alchemy_model.sessionScope(settings) as session:
-            # Join the latest status
-            Status = alchemy_model.PlaneableStatus
-            User = alchemy_model.User
-            stmt = session.query(Status.planeable_id.label('id'),
-                                 Status.status.label('status'),
-                                 Status.assignedto_id,
-                                 User.id,
-                                 User.username.label('username')).\
-                filter(User.id == Status.assignedto_id).\
-                order_by(Status.timestamp.desc()).limit(1).subquery()
-            # Get the planeable item
-            q = session.query(cls, stmt.c.status, stmt.c.username).\
-                outerjoin(stmt, cls.id == stmt.c.id).\
-                order_by(cls.id).filter(cls.id == id_)
-            records = q.all()
-            result = records[0][0].toDict()
-            result['status'] = records[0][1]
-            result['assigned_to'] = records[0][2]
-            return HttpResponse(json.dumps(result))
+        return cls.objects.all()
 
     def get_serializer_class(self):
         itemtype = self.request.query_params['itemtype']
