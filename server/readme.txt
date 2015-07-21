@@ -15,3 +15,18 @@ Some usefull commands:
 
 
 Full documentation can be found at https://docs.djangoproject.com/en/1.8/ref/django-admin/
+
+
+Advantages of Django:
+
+ * Very well integrated database ORM
+ * ORM is more pythonic than SQLAlchemy
+ * ORM able to migrate itself to a new version
+ * Testing suite allows easy testing, including sandbox databases.
+ * Many modules available, e.g. Rest Framework
+ * Ability to generate generic forms for database objects
+ * Built-in powerful template language
+
+Disadvantages:
+ * ORM less capable than SQLAlchemy, but sufficient for most uses
+ * Template language overlaps template syntax for AngularJS

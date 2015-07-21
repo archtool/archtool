@@ -100,18 +100,20 @@ class PlaneableStatusList(generics.ListCreateAPIView):
         return queryset.filter(planeable_id=planeable).order_by('timestamp')
     class serializer_class(serializers.ModelSerializer):
         # TODO: Allow setting assigned_to
-        planeable = serializers.HiddenField(source='planeable_id',
+        planeable = serializers.IntegerField(source='planeable_id',
                     default=FieldContext(lambda self: self.context['view'].kwargs['planeable']),
                                             validators=[])
         class Meta:
             model = PlaneableStatus
-            fields = ('planeable', 'description', 'timestamp', 'status', 'timeremaining',
+            fields = ('id', 'planeable', 'description', 'timestamp', 'status', 'timeremaining',
                       'timespent')
             extra_kwargs = {'timespent': {'required': False, 'default': None, 'allow_null': True},
                             'timeremaining': {'required': False, 'default': None, 'allow_null': True},
                            }
 
-
+class PlaneableStatusDetails(generics.RetrieveUpdateDestroyAPIView):
+    queryset = PlaneableStatus.objects.all()
+    serializer_class = PlaneableStatusList.serializer_class
 
 
 class PlaneableDetailView(generics.RetrieveUpdateDestroyAPIView):

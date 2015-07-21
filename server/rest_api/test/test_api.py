@@ -164,3 +164,67 @@ class ApiTests(APITestCase):
         response = self.client.delete('/api/planeableitems/2/?itemtype=view', '', format='json')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
+    def test_statuschanges(self):
+        """ Test adding status changes to a planeable.
+        """
+        # Create a planeable
+        req1 = dict(name='First Requirement',
+                    description='This is the first requirements of a large set',
+                    system=1,
+                    parent=None,
+                    priority=2,
+                    itemtype='req',
+                    reqtype=3)
+        response = self.client.post('/api/planeableitems/?system=1&itemtype=req', req1,
+                                    format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        req1.update(response.data)
+
+        # Add a statuschange
+        stat1 = dict(planeable=req1['id'],
+                     description='testing',
+                     status=1)
+        response = self.client.post('/api/planeablestatuslist/%s/'%req1['id'], stat1,
+                                    format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        stat1['timestamp'] = response.data['timestamp']
+        stat1['timespent'] = None
+        stat1['timeremaining'] = None
+        stat1['id'] = 1
+        self.assertEqual(response.data, stat1)
+        # Add another statuschange with more details
+        # The planeable field is deduced from the URL.
+        # TODO: Add a user id
+        stat2 = dict(description='made an estimate',
+                     status=2,
+                     timespent=1.3,
+                     timeremaining=3.4)
+        response = self.client.post('/api/planeablestatuslist/%s/'%req1['id'], stat2,
+                                    format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        stat2['timestamp'] = response.data['timestamp']
+        stat2['id'] = 2
+        stat2['planeable'] = 1
+        self.assertEqual(response.data, stat2)
+
+        # List the status changes
+        response = self.client.get('/api/planeablestatuslist/%s/'%req1['id'], '',
+                                    format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [stat1, stat2])
+
+        # Get the details for a status change
+        response = self.client.get('/api/planeablestatusdetails/2/', '',
+                                    format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, stat2)
+
+        # Throw away the planeable
+        response = self.client.delete('/api/planeableitems/1/?itemtype=req', '', format='json')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Check the status changes are gone as well
+        response = self.client.get('/api/planeablestatuslist/%s/'%req1['id'], '',
+                                    format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
