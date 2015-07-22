@@ -99,7 +99,7 @@ class PlaneableStatusList(generics.ListCreateAPIView):
         planeable = self.kwargs['planeable']
         return queryset.filter(planeable_id=planeable).order_by('timestamp')
     class serializer_class(serializers.ModelSerializer):
-        # TODO: Allow setting assigned_to
+        # TODO: support for assigned_to
         planeable = serializers.IntegerField(source='planeable_id',
                     default=FieldContext(lambda self: self.context['view'].kwargs['planeable']),
                                             validators=[])
@@ -165,7 +165,7 @@ class DetailEditorView(generics.RetrieveUpdateDestroyAPIView,
         if itemtype in PlaneableDetailSerializers:
             return PlaneableDetailSerializers[itemtype]
         elif itemtype == 'system':
-            return SystemSerializer
+            return SystemList.serializer_class
         return PlaneableListSerializer
 
 

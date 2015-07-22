@@ -2,6 +2,7 @@ __author__ = 'ehwaal'
 
 from rest_framework.test import APIRequestFactory
 from django.core.urlresolvers import reverse
+from django.test.testcases import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_api import models
@@ -228,3 +229,41 @@ class ApiTests(APITestCase):
                                     format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
+
+    def test_editors(self):
+        """ Test the editor API. These calls either return JSON or a generated HTML
+            form for that data, depending on some switch in the request.
+            Two different cases exist: editing a planeable item and editing a system.
+        """
+        # TODO: Figure out which switch is to be set to generate the HTML form.
+        # Get the editor for a new requirement
+        response = self.client.get('/api/editors/?itemtype=req')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue('reqtype' in response.data)
+
+        # Get the editor for an existing requirement
+        req1 = dict(name='First Requirement',
+                    description='This is the first requirements of a large set',
+                    system=1,
+                    parent=None,
+                    priority=2,
+                    itemtype='req',
+                    reqtype=3)
+        response = self.client.post('/api/planeableitems/?system=1&itemtype=req', req1,
+                                    format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        req1.update(response.data)
+        response = self.client.get('/api/editors/%s/?itemtype=req'%req1['id'])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, req1)
+
+        # Get the editor for a new system
+        response = self.client.get('/api/editors/?itemtype=system', '',
+                                    format='html')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Get the editor for an existing system
+        response = self.client.get('/api/editors/1/?itemtype=system', '',
+                                    format='html')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.base_system_data)
