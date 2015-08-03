@@ -75,6 +75,7 @@ def create_anchorserializer(cls):
         style_role = serializers.CharField(default='')
         order = serializers.IntegerField(default=0)
 
+        the_name = None
         # Anchor type specific fields
         if cls == models.BlockRepresentation:
             planeable = serializers.IntegerField(source='planeable_id')
@@ -88,9 +89,16 @@ def create_anchorserializer(cls):
         if cls == models.Annotation:
             anchorpoint = serializers.IntegerField(source='anchorpoint_id')
 
+        if hasattr(cls, 'get_name'):
+            name = serializers.SerializerMethodField()
+            def get_name(self, obj):
+                return obj.get_name()
+
         class Meta:
             model = cls
             fields = cls.get_detailfields()
+            if hasattr(cls, 'get_name'):
+                fields.append('name')
     return Serializer
 
 
@@ -99,7 +107,3 @@ class PlaneableDetailSerializer(serializers.ModelSerializer):
         model = models.PlaneableItem
 
 
-anchor_serializers = {'line'  : create_anchorserializer(models.ConnectionRepresentation),
-                      'block' : create_anchorserializer(models.BlockRepresentation),
-                      'action': create_anchorserializer(models.ActionRepresentation),
-                      'note'  : create_anchorserializer(models.Annotation)}

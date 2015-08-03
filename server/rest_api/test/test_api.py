@@ -296,6 +296,7 @@ class ApiTests(APITestCase):
                        x=10, y=10, height=100, width=100, ismultiple=False)
             response = self.client.post('/api/viewitemdetails/block/', rep, format='json')
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(response.data['name'], b['name'])
             reprs.append(response.data)
 
         # Create a connection between the blocks and actions
@@ -321,6 +322,7 @@ class ApiTests(APITestCase):
             response = self.client.post(url, details, format='json')
             self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                              'Not created %s %s'%(response.reason_phrase, response.data))
+            # TODO: Test the name
             details.update(response.data)
 
         # TODO: add an annotation

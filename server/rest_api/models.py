@@ -347,6 +347,9 @@ class BlockRepresentation(Anchor):
         return Anchor.get_detailfields() + ['planeable', 'x', 'y', 'height', 'width',
                                             'ismultiple', 'icon']
 
+    def get_name(self):
+        return self.planeable.name
+
 
 class ConnectionRepresentation(Anchor):
     _abref = 'line'
@@ -360,6 +363,9 @@ class ConnectionRepresentation(Anchor):
         :return: a list of the details that are editable in detail views, and the id.
         """
         return Anchor.get_detailfields() + ['connection', 'start', 'end']
+
+    def get_name(self):
+        return self.connection.name
 
 
 class ActionRepresentation(Anchor):
@@ -375,6 +381,9 @@ class ActionRepresentation(Anchor):
         :return: a list of the details that are editable in detail views, and the id.
         """
         return Anchor.get_detailfields() + ['action', 'anchorpoint', 'xoffset', 'yoffset']
+
+    def get_name(self):
+        return self.action.name
 
 
 class Annotation(Anchor):

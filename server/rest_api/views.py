@@ -3,7 +3,7 @@ from .models import (Priorities, System, PlaneableItem, RequirementType, Planeab
                      BlockRepresentation, ConnectionRepresentation, ActionRepresentation,
                      Annotation, Anchor)
 from .serializations import (PlaneableListSerializer, PlaneableDetailSerializers, FieldContext,
-                             anchor_serializers)
+                             create_anchorserializer)
 from . import models
 from rest_api import alchemy_model
 from rest_framework.decorators import api_view
@@ -173,17 +173,28 @@ class DetailEditorView(generics.RetrieveUpdateDestroyAPIView,
         return PlaneableListSerializer
 
 
+# Create base serializers
+view_serializers = {'line'  : create_anchorserializer(models.ConnectionRepresentation),
+                    'block' : create_anchorserializer(models.BlockRepresentation),
+                    'action': create_anchorserializer(models.ActionRepresentation),
+                    'note'  : create_anchorserializer(models.Annotation)}
+
 @api_view(['GET'])
 def view_details(request, view):
     # Get all anchors and lines for the view, and return them in a single object
-    # TODO: serialize the name of the planeable item as well!
     all_items = {}
     for key, cls in [['blocks', BlockRepresentation],
                      ['connections', ConnectionRepresentation],
                      ['actions', ActionRepresentation],
                      ['annotations', Annotation]]:
         queryset = cls.objects.filter(view=view).all()
-        serializer = anchor_serializers[cls._abref](queryset, many=True)
+        if key == 'block':
+            queryset.select_related('planeable')
+        elif key == 'line':
+            queryset.select_related('connection')
+        elif key == 'action':
+            queryset.select_related('action')
+        serializer = view_serializers[cls._abref](queryset, many=True)
         all_items[key] = serializer.data
     return Response(all_items)
 
@@ -215,11 +226,16 @@ class ViewItemDetailsView(generics.RetrieveUpdateDestroyAPIView,
             return Anchor.get_default(anchortype)
         return generics.RetrieveUpdateDestroyAPIView.get_object(self)
 
+    serializers = {'line'  : create_anchorserializer(models.ConnectionRepresentation),
+                   'block' : create_anchorserializer(models.BlockRepresentation),
+                   'action': create_anchorserializer(models.ActionRepresentation),
+                   'note'  : create_anchorserializer(models.Annotation)}
+
     def get_serializer_class(self):
         """
         :return: The proper serializer for the required anchor type.
         """
-        return anchor_serializers[self.request.data['anchortype']]
+        return self.serializers[self.request.data['anchortype']]
 
 
 
