@@ -267,3 +267,70 @@ class ApiTests(APITestCase):
                                     format='html')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, self.base_system_data)
+
+    def test_view(self):
+        # Create a view and other planeables that can serve as blocks, connections and actions.
+        view = dict(name='View1', itemtype='view', system=1)
+        block1 = dict(name='Camelot', itemtype='struct', system=1)
+        block2 = dict(name='Aaargh', itemtype='struct', system=1)
+        # The numbers are hard-coded references to block1 and conn
+        conn   = dict(name='', itemtype='con', system=1, start=2, end=3)
+        act1   = dict(name='search grail', itemtype='action', connection=2, system=1)
+        act2   = dict(name='push pram', itemtype='action', connection=4, system=1)
+
+        for details in [view, block1, block2, conn, act1, act2]:
+            url = '/api/planeableitems/?system=1&itemtype=%s'%details['itemtype']
+            response = self.client.post(url, details,
+                                        format='json')
+            if response.status_code != status.HTTP_201_CREATED:
+                pass
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            details.update(response.data)
+
+        # Create representations for the blocks
+        reprs = []
+        for b in [block1, block2]:
+            rep = dict(anchortype='block',
+                       view=view['id'],
+                       planeable=b['id'],
+                       x=10, y=10, height=100, width=100, ismultiple=False)
+            response = self.client.post('/api/viewitemdetails/block/', rep, format='json')
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            reprs.append(response.data)
+
+        # Create a connection between the blocks and actions
+        con = dict(anchortype='line',
+                   view=view['id'],
+                   start=reprs[0]['id'],
+                   end=reprs[1]['id'],
+                   connection=conn['id'])
+        a1 = dict(anchortype='action',
+                  action=act1['id'],
+                  view=view['id'],
+                  anchorpoint=reprs[0]['id'],
+                  xoffset=0, yoffset=0)
+        a2 = dict(anchortype='action',
+                  action=act2['id'],
+                  view=view['id'],
+                  anchorpoint=reprs[1]['id']+1,
+                  xoffset=0, yoffset=0)
+
+        for details in [con, a1, a2]:
+            url = '/api/viewitemdetails/%s/'%details['anchortype']
+            print ('Trying to create', details)
+            response = self.client.post(url, details, format='json')
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED,
+                             'Not created %s %s'%(response.reason_phrase, response.data))
+            details.update(response.data)
+
+        # TODO: add an annotation
+
+        # And now, check if these details are given in the view list
+        response = self.client.get('/api/viewitems/%s/'%view['id'], '', format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK,
+                         'Error in request: %s %s'%(response.reason_phrase, response.data))
+
+        self.assertEqual(response.data, dict(blocks = reprs,
+                     connections = [con],
+                     actions = [a1, a2],
+                     annotations = []))

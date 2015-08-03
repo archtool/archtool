@@ -1,6 +1,10 @@
 from string import Template
-from .models import Priorities, System, PlaneableItem, RequirementType, PlaneableStatus
-from .serializations import (PlaneableListSerializer, PlaneableDetailSerializers, FieldContext)
+from .models import (Priorities, System, PlaneableItem, RequirementType, PlaneableStatus,
+                     BlockRepresentation, ConnectionRepresentation, ActionRepresentation,
+                     Annotation, Anchor)
+from .serializations import (PlaneableListSerializer, PlaneableDetailSerializers, FieldContext,
+                             anchor_serializers)
+from . import models
 from rest_api import alchemy_model
 from rest_framework.decorators import api_view
 from rest_framework import generics, permissions
@@ -169,8 +173,54 @@ class DetailEditorView(generics.RetrieveUpdateDestroyAPIView,
         return PlaneableListSerializer
 
 
-class ViewItemsView:
-    pass
+@api_view(['GET'])
+def view_details(request, view):
+    # Get all anchors and lines for the view, and return them in a single object
+    # TODO: serialize the name of the planeable item as well!
+    all_items = {}
+    for key, cls in [['blocks', BlockRepresentation],
+                     ['connections', ConnectionRepresentation],
+                     ['actions', ActionRepresentation],
+                     ['annotations', Annotation]]:
+        queryset = cls.objects.filter(view=view).all()
+        serializer = anchor_serializers[cls._abref](queryset, many=True)
+        all_items[key] = serializer.data
+    return Response(all_items)
+
+
+
+class ViewItemDetailsView(generics.RetrieveUpdateDestroyAPIView,
+                          mixins.CreateModelMixin):
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    querysets = {'block':  BlockRepresentation.objects.all(),
+                 'line':   ConnectionRepresentation.objects.all(),
+                 'action': ActionRepresentation.objects.all(),
+                 'note'  : Annotation.objects.all()}
+
+    def get_queryset(self):
+        anchortype = self.request.data['anchortype']
+        return self.querysets[anchortype]
+
+    def get_object(self):
+        """ Overrides the APIView implementation of get_object to supply an empty
+            instance when creating a new object.
+        :return: either an empty object or an object retrieved via the normal
+                 get_object method.
+        """
+        anchortype = self.request.data['anchortype']
+        if 'pk' not in self.kwargs:
+            # Return a default instance
+            return Anchor.get_default(anchortype)
+        return generics.RetrieveUpdateDestroyAPIView.get_object(self)
+
+    def get_serializer_class(self):
+        """
+        :return: The proper serializer for the required anchor type.
+        """
+        return anchor_serializers[self.request.data['anchortype']]
+
 
 
 class WorkItemsView:

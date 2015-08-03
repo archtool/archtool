@@ -18,6 +18,9 @@ urlpatterns = [
     url(r'^api/editors/(?P<pk>[0-9]+)/$', views.DetailEditorView.as_view()),
     url(r'^api/planeablestatuslist/(?P<planeable>[0-9]+)/$', views.PlaneableStatusList.as_view()),
     url(r'^api/planeablestatusdetails/(?P<pk>[0-9]+)/$', views.PlaneableStatusDetails.as_view()),
+    url(r'^api/viewitems/(?P<view>[0-9]+)/$', views.view_details),
+    url(r'^api/viewitemdetails/(?P<type>[a-z]+)/(?P<pk>[0-9]+)/$', views.ViewItemDetailsView.as_view()),
+    url(r'^api/viewitemdetails/(?P<type>[a-z]+)/$', views.ViewItemDetailsView.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

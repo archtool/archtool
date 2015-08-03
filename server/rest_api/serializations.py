@@ -3,8 +3,7 @@ __author__ = 'ehwaal'
 from django.forms import widgets
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
-from .models import (System, PlaneableItem, PlaneableStatus, Requirement, Action,
-                     Connection, Bug, View, Project)
+from . import models
 
 
 class PlaneableListSerializer(serializers.ModelSerializer):
@@ -13,7 +12,7 @@ class PlaneableListSerializer(serializers.ModelSerializer):
     system = serializers.IntegerField(source='system_id', validators=[])
 
     class Meta:
-        model = PlaneableItem
+        model = models.PlaneableItem
         fields = ('id', 'name', 'parent', 'order', 'itemtype', 'system')
 
 
@@ -48,10 +47,13 @@ def create_planeableserializer(cls):
         system = serializers.IntegerField(source='system_id', validators=[],
                                           style={'base_template': 'hidden.html'})
 
-        if cls == Bug:
+        if cls == models.Bug:
             reportedby = serializers.IntegerField(source='reportedby_id', validators=[],
                           read_only=True,
                           default=FieldContext(lambda slf:slf.context['request'].user.id))
+        if cls == models.Connection:
+            start = serializers.IntegerField(source='start_id', required=True, allow_null=False)
+            end = serializers.IntegerField(source='end_id', required=True, allow_null=False)
 
         class Meta:
             model = cls
@@ -62,11 +64,42 @@ def create_planeableserializer(cls):
             read_only_fields = []
     return S
 
-
 PlaneableDetailSerializers = {cls.abref : create_planeableserializer(cls)
-                            for cls in PlaneableItem.classes()}
+                            for cls in models.PlaneableItem.classes()}
+
+
+
+def create_anchorserializer(cls):
+    class Serializer(serializers.ModelSerializer):
+        view = serializers.IntegerField(source='view_id')
+        style_role = serializers.CharField(default='')
+        order = serializers.IntegerField(default=0)
+
+        # Anchor type specific fields
+        if cls == models.BlockRepresentation:
+            planeable = serializers.IntegerField(source='planeable_id')
+        if cls == models.Connection:
+            connection = serializers.IntegerField(source='connection_id')
+            start = serializers.IntegerField(source='start_id')
+            end = serializers.IntegerField(source='end_id')
+        if cls == models.ActionRepresentation:
+            action = serializers.IntegerField(source='action_id')
+            anchorpoint = serializers.IntegerField(source='anchorpoint_id')
+        if cls == models.Annotation:
+            anchorpoint = serializers.IntegerField(source='anchorpoint_id')
+
+        class Meta:
+            model = cls
+            fields = cls.get_detailfields()
+    return Serializer
 
 
 class PlaneableDetailSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PlaneableItem
+        model = models.PlaneableItem
+
+
+anchor_serializers = {'line'  : create_anchorserializer(models.ConnectionRepresentation),
+                      'block' : create_anchorserializer(models.BlockRepresentation),
+                      'action': create_anchorserializer(models.ActionRepresentation),
+                      'note'  : create_anchorserializer(models.Annotation)}

@@ -139,7 +139,7 @@ class PlaneableItem(Model):
     editor_title = 'Planeable Item'
     CLS_DICT = None
 
-    name = models.CharField(max_length=NAME_LENGTH)
+    name = models.CharField(max_length=NAME_LENGTH, blank=True)
     description = models.TextField(default='')
 
     system = RequiredFK(System)
@@ -209,6 +209,8 @@ class Action(PlaneableItem):
     abref = 'action'
     editor_title = 'Interaction'
 
+    # The connection is optional so that actions can be created before they
+    # are placed in a structure.
     connection = OptionalFK(PlaneableItem, related_name='+')
     isresponse = models.BooleanField(default=False)
 
@@ -228,12 +230,21 @@ class Requirement(PlaneableItem):
         return PlaneableItem.get_detailfields() + ['reqtype']
 
 
+class StructuralItem(PlaneableItem):
+    abref = 'struct'
+    editor_title = 'Structural Item'
+
+
 class Connection(PlaneableItem):
     abref = 'con'
     editor_title = 'Connection'
 
     start = RequiredFK(PlaneableItem, related_name='+')
     end   = RequiredFK(PlaneableItem, related_name='+')
+
+    @classmethod
+    def get_detailfields(cls):
+        return PlaneableItem.get_detailfields() + ['start', 'end']
 
 
 class Bug(PlaneableItem):
@@ -288,41 +299,102 @@ class Anchor(Model):
     def polymorphic_identity(cls):
         return cls._abref
 
+    @staticmethod
+    def get_types():
+        return [cls.polymorphic_identity() for cls in Anchor.__subclasses__()]
+
+    @staticmethod
+    def get_cls(abref):
+        if Anchor.CLS_DICT is None:
+            Anchor.CLS_DICT = {cls.polymorphic_identity() : cls
+            for cls in Anchor.__subclasses__()}
+        if abref not in Anchor.CLS_DICT:
+            return None
+        return Anchor.CLS_DICT[abref]
+
+    @staticmethod
+    def classes():
+        return Anchor.__subclasses__()
+
+
+    @staticmethod
+    def get_default(itemtype):
+        return Anchor.classes[itemtype]()
+
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        return ['id', 'view', 'style_role', 'order', 'anchortype']
+
+
 class BlockRepresentation(Anchor):
     _abref = 'block'
-    planeable = RequiredFK(PlaneableItem)
-    x = models.FloatField()
-    y = models.FloatField()
-    height = models.FloatField()
-    width = models.FloatField()
-    ismultiple = models.BooleanField()
+    planeable = OptionalFK(PlaneableItem)
+    x = models.FloatField(default=0)
+    y = models.FloatField(default=0)
+    height = models.FloatField(default=50)
+    width = models.FloatField(default=100)
+    ismultiple = models.BooleanField(default=False)
     icon  = OptionalFK(Icon)
+
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        return Anchor.get_detailfields() + ['planeable', 'x', 'y', 'height', 'width',
+                                            'ismultiple', 'icon']
 
 
 class ConnectionRepresentation(Anchor):
     _abref = 'line'
-    connection = RequiredFK(PlaneableItem, related_name='+')
-    start = RequiredFK(PlaneableItem, related_name='+')
-    end = RequiredFK(PlaneableItem, related_name='+')
+    connection = OptionalFK(PlaneableItem, related_name='+')
+    start = OptionalFK(PlaneableItem, related_name='+')
+    end = OptionalFK(PlaneableItem, related_name='+')
+
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        return Anchor.get_detailfields() + ['connection', 'start', 'end']
 
 
 class ActionRepresentation(Anchor):
     _abref = 'action'
-    action = RequiredFK(PlaneableItem)
+    action = OptionalFK(PlaneableItem)  # Optional to allow empty objects to be created
     anchorpoint = OptionalFK(Anchor, related_name='+')
-    xoffset = models.FloatField()
-    yoffset = models.FloatField()
+    xoffset = models.FloatField(default=0)
+    yoffset = models.FloatField(default=0)
+
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        return Anchor.get_detailfields() + ['action', 'anchorpoint', 'xoffset', 'yoffset']
 
 
 class Annotation(Anchor):
     _abref = 'note'
     anchorpoint = OptionalFK(Anchor, related_name='+')
-    x = models.FloatField()
-    y = models.FloatField()
-    height = models.FloatField()
-    width = models.FloatField()
-    description = models.TextField()
+    x = models.FloatField(default=0)
+    y = models.FloatField(default=0)
+    height = models.FloatField(default=50)
+    width = models.FloatField(default=100)
+    description = models.TextField(default='')
     attachments = models.ManyToManyField(Attachment)
+
+    @classmethod
+    def get_detailfields(cls):
+        """
+        :return: a list of the details that are editable in detail views, and the id.
+        """
+        # TODO: Implement support for attachements
+        return Anchor.get_detailfields() + ['anchorpoint', 'x', 'y', 'height', 'width',
+                                            'description']
 
 
 ###############################################################################
