@@ -8,7 +8,6 @@ from rest_framework.test import APITestCase
 from rest_api import models
 
 
-
 class ApiTests(APITestCase):
     base_system_data = dict(id=1, name='ABC', description='is a great project')
     @classmethod

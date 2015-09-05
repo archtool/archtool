@@ -23,7 +23,8 @@ function determineUpdate(oldvalues, newvalues){
 
 
 /* Controllers */
-var archtoolApp = angular.module("archtoolApp", ['ngResource', 'ui.bootstrap', 'ui.tree']);
+var archtoolApp = angular.module("archtoolApp", ['ngResource', 'ui.bootstrap', 'ui.tree',
+                                 'bgDirectives']);
 archtoolApp.config(function($resourceProvider) {
   $resourceProvider.defaults.stripTrailingSlashes = false;
 });
@@ -40,7 +41,12 @@ archtoolApp.factory("ItemDetailsResource", function ($resource) {
   });
 
 archtoolApp.controller("SvgEditor", function ($scope) {
-  $scope.blocks = [
+  var viewItems = $resource("/api/viewitems/:view_id/", {
+        'view_id':function(){return $rootScope.currentView.id;}
+    });
+
+  $scope.blocks = [];
+  /*
     {'Id':1,
      'x': 20,
      'y': 20,
@@ -65,18 +71,36 @@ archtoolApp.controller("SvgEditor", function ($scope) {
      'height': 50,
      'style': 'archblock'
     }
-  ];
+  ]; */
 
-  $scope.lines = [
+  $scope.lines = [];
+  /*
     {'start':$scope.blocks[0],
      'end':$scope.blocks[1]},
     {'start':$scope.blocks[2],
      'end':$scope.blocks[0]}
-  ];
+  ];*/
 
   $scope.selected = [];
   $scope.last_pos = [0,0];
   $scope.drag = false;
+
+  $rootScope.currentView = null;
+
+  $rootScope.$watch("currentView", function(newval, oldval){
+      if (newval != null && newval != oldval) {
+        var items = viewItems.query();
+        items.$promise.then(function(result){
+          $scope.blocks = result.blocks;
+          $scope.lines  = result.connections;
+          $scope.actions = result.actions;
+          $scope.annotations = result.annotations;
+        });
+      }
+  });
+
+  $scope.onRightClick = function(evt) {
+  };
 
   $scope.onMouseDown = function(evt, obj) {
     $scope.last_pos = [evt.x, evt.y];
@@ -348,16 +372,29 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
             if (child.parent != parent) {
                 /* The parent has changed: update the item */
                 child.parent = parent;
-                ItemDetailsResource.update({'id':child.id, 'parent':parent});
+                ItemDetailsResource.update({'id':child.id, 'it':child.itemtype, 'parent':parent});
             }
             if (child.order != i) {
                 /* The ordering has changed: update the item */
                 child.order = i;
-                ItemDetailsResource.update({'id':child.id, 'order':child.order});
+                ItemDetailsResource.update({'id':child.id, 'it':child.itemtype, 'order':child.order});
             }
             /* Make a recursive call to check the children */
             updateOrder(child.children, child.id);
         }
+    };
+});
+
+
+archtoolApp.directive('ngRightClick', function($parse) {
+    return function(scope, element, attrs) {
+        var fn = $parse(attrs.ngRightClick);
+        element.bind('contextmenu', function(event) {
+            scope.$apply(function() {
+                event.preventDefault();
+                fn(scope, {$event:event});
+            });
+        });
     };
 });
 

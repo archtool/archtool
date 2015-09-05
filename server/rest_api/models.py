@@ -221,6 +221,7 @@ class Requirement(PlaneableItem):
 
     reqtype = models.IntegerField(choices=RequirementType.choices(),
                                   default=int(RequirementType.functional))
+    stakeholder = models.CharField(max_length=NAME_LENGTH, blank=True)
 
     @classmethod
     def get_detailfields(cls):
