@@ -290,7 +290,7 @@ class Project(PlaneableItem):
 class Anchor(Model):
     _abref = 'anchor'
     view = RequiredFK(View)
-    style_role = models.CharField(max_length=NAME_LENGTH)
+    style_role = models.CharField(max_length=NAME_LENGTH, default='archblock')
     order = models.IntegerField(default=0)
     anchortype = models.CharField(max_length=6, default='anchor')
 

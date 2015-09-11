@@ -13,9 +13,13 @@
   position:absolute;
 }
 
-svg {
+.fullsize {
   width:inherit;
   height:100%;
+}
+
+.svgeditor {
+  background:lightblue;
 }
 
 /* Formatting details for the diagrams */
@@ -168,4 +172,12 @@ line {
   top: 50%;
   bottom: 0px;
   border-top: 1px solid #aaa;
+}
+
+.dropdown{
+
+}
+
+.dropdown-item {
+  cursor: pointer;
 }

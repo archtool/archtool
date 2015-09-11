@@ -24,7 +24,7 @@ function determineUpdate(oldvalues, newvalues){
 
 /* Controllers */
 var archtoolApp = angular.module("archtoolApp", ['ngResource', 'ui.bootstrap', 'ui.tree',
-                                 'bgDirectives']);
+                                 'bgDirectives', 'ng-context-menu']);
 archtoolApp.config(function($resourceProvider) {
   $resourceProvider.defaults.stripTrailingSlashes = false;
 });
@@ -40,10 +40,13 @@ archtoolApp.factory("ItemDetailsResource", function ($resource) {
                                 {'update': {'method':'PATCH'}});
   });
 
-archtoolApp.controller("SvgEditor", function ($scope) {
+
+archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
   var viewItems = $resource("/api/viewitems/:view_id/", {
-        'view_id':function(){return $rootScope.currentView.id;}
-    });
+        'view_id':function(){return $rootScope.currentView.id;}},
+        {'query':  {method:'GET', isArray:false},});
+
+  var anchorDetails = $resource("/api/viewitemdetails/:anchortype/", {'anchortype':'@anchortype'});
 
   $scope.blocks = [];
   /*
@@ -84,8 +87,6 @@ archtoolApp.controller("SvgEditor", function ($scope) {
   $scope.selected = [];
   $scope.last_pos = [0,0];
   $scope.drag = false;
-
-  $rootScope.currentView = null;
 
   $rootScope.$watch("currentView", function(newval, oldval){
       if (newval != null && newval != oldval) {
@@ -142,6 +143,22 @@ archtoolApp.controller("SvgEditor", function ($scope) {
   };
   $scope.getY2 = function(line) {
     return line.end.y + line.end.height/2;
+  };
+
+  $rootScope.addBlock = function(planeable) {
+    var item = new anchorDetails({'x': 20,
+     'y': 20,
+     'view': $rootScope.currentView.id,
+     'name': planeable.name,
+     'width': 100,
+     'height': 50,
+     'anchortype': 'block',
+     'planeable': planeable.id,
+     'ismultiple': false});
+
+    item.$save(function(data){
+      $scope.blocks.push(data);
+    });
   };
 
 });
@@ -203,22 +220,43 @@ archtoolApp.controller("DetailsController", function($scope, $rootScope, ItemDet
     $scope.original_item = null;
 
     $rootScope.$watch("currentSelection", function(newval, oldval){
-        $scope.templateUrl = '/api/editors/?itemtype='+newval.itemtype;
-        if ($scope.item && $scope.original_item) {
-          var currentvalue = $scope.item.toJSON();
-          var delta = determineUpdate($scope.original_item, currentvalue);
-          if (delta) {
-            ItemDetailsResource.update(delta);
+        if (newval != null) {
+          $scope.templateUrl = '/api/editors/?itemtype='+newval.itemtype;
+          if ($scope.item && $scope.original_item) {
+            var currentvalue = $scope.item.toJSON();
+            var delta = determineUpdate($scope.original_item, currentvalue);
+            if (delta) {
+              delta.it = newval.itemtype;
+              ItemDetailsResource.update(delta);
+            }
           }
+          $scope.item = newval;
+          $scope.original_item = newval.toJSON();
         }
-        $scope.item = newval;
-        $scope.original_item = newval.toJSON();
+    });
+});
+
+
+archtoolApp.controller("ViewsList", function($scope, $rootScope, $resource){
+    var viewListResource = $resource("/api/planeableitems/?itemtype=view&system=:system", {
+        'system':function(){return $rootScope.currentSystem.id;}});
+    $scope.allViews = [];
+    $rootScope.currentView = null;
+
+    /** Evaluate the query when either the itemtype or the system changes */
+    $rootScope.$watch('currentSystem', function(newvalue, oldvalue){
+        if (newvalue != null) {
+          var items = viewListResource.query();
+          items.$promise.then(function (result) {
+              $scope.allViews = result;
+          });
+        }
     });
 });
 
 
 archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $modal,
-                                             ItemDetailsResource){
+                                             $document, ItemDetailsResource){
     var itemTypes = $resource("/api/planeabletypes/");
     $scope.itemTypes = itemTypes.query();
 
@@ -383,6 +421,33 @@ archtoolApp.controller("ItemsList", function($scope, $rootScope, $resource, $mod
             updateOrder(child.children, child.id);
         }
     };
+
+
+    $scope.contextMenu = function(event, node) {
+        var x = event.clientX;
+        var y = event.clientY;
+
+        var el = document.getElementById("dropdown-menu");
+        el.style.visibility = "visible";
+        el.style.top = y+'px';
+        el.style.left = x+'px';
+
+        $scope.planeable = node;
+
+        function handleClickevent(event) {
+          var t = event.target;
+          while (t) {
+            t = t.parentElement;
+            if (t === el) {
+              return;
+            }
+          }
+          $document.unbind('click', handleClickevent);
+          el.style.visibility = 'hidden';
+        }
+
+        $document.bind('click', handleClickevent);
+    }
 });
 
 

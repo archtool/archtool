@@ -46,6 +46,11 @@
 <bg-splitter style="width:100%;" orientation="horizontal">
     <bg-pane min-size="200">
             <div class="container-fluid" ng-controller="ItemsList">
+                <div id="dropdown-menu" class="dropdown position-fixed" style="visibility:hidden;z-index:1000;">
+                    <ul>
+                        <a class="btn btn-default" href="#" ng-click="addBlock(planeable)">Add to current View</a>
+                    </ul>
+                </div>
                 <div class="row">
                     <h4>Tree view for type:
                         <select ng-model="currentItemType" ng-options="item for item in itemTypes">
@@ -58,7 +63,7 @@
                     </h4>
                     <!-- Nested node template -->
                     <script type="text/ng-template" id="nodes_renderer.html">
-                      <div ui-tree-handle ng-click="viewItem(node)">
+                      <div ui-tree-handle ng-click="viewItem(node)" ng-right-click="contextMenu($event, node)">
                         <a class="btn btn-success btn-xs" data-nodrag ng-click="toggle(this)" ng-if="node.children.length>0">
                             <span class="glyphicon" ng-class="{'glyphicon-chevron-right': collapsed, 'glyphicon-chevron-down': !collapsed}">
                             </span></a>
@@ -76,20 +81,23 @@
                         <li ng-repeat="node in rootItems" ui-tree-node ng-include="'nodes_renderer.html'"></li>
                       </ol>
                     </div>
-
                 </div>
             </div>
     </bg-pane>
     <bg-pane>
         <bg-splitter orientation="vertical">
             <bg-pane>
-                    <svg class="svgeditor" ng-controller="SvgEditor" ng-click="clearSelection()">
+                <div ng-controller="ViewsList">Current View:
+                    <select ng-model="$root.currentView" ng-options="view.name for view in allViews"></select>
+                </div>
+                <div context-menu class="fullsize" data-target="menu-svg">
+                    <svg class="svgeditor fullsize" ng-controller="SvgEditor" ng-click="clearSelection()">
                         <linearGradient id="archblock" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%"   stop-color="#ffffff" />
                             <stop offset="100%" stop-color="#00b1eb" />
                         </linearGradient>
                         <g ng-repeat="block in blocks" transform="translate({{block.x}}, {{block.y}})"
-                           class="{{block.style}}"
+                           class="{{block.style_role}}"
                            ng-mousedown="onMouseDown($event, block)"
                            ng-mousemove="onMouseMove($event, block)"
                            ng-mouseup="onMouseUp($event, block)"
@@ -104,8 +112,13 @@
 
                         <line ng-repeat="line in lines" x1="{{getX1(line)}}" y1="{{getY1(line)}}"
                               x2="{{getX2(line)}}" y2="{{getY2(line)}}" />
-
                     </svg>
+                </div>
+                <div class="dropdown position-fixed" id="menu-svg">
+                  <ul class="dropdown-menu" role="menu">
+                    <li class="dropdown-item" ng-click="addBlock()">Add new Block</li>
+                  </ul>
+                </div>
             </bg-pane>
             <bg-pane>
 
