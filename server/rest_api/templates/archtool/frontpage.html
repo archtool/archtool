@@ -90,34 +90,38 @@
                 <div ng-controller="ViewsList">Current View:
                     <select ng-model="$root.currentView" ng-options="view.name for view in allViews"></select>
                 </div>
-                <div context-menu class="fullsize" data-target="menu-svg">
-                    <svg class="svgeditor fullsize" ng-controller="SvgEditor" ng-click="clearSelection()">
-                        <linearGradient id="archblock" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%"   stop-color="#ffffff" />
-                            <stop offset="100%" stop-color="#00b1eb" />
-                        </linearGradient>
-                        <g ng-repeat="block in blocks" transform="translate({{block.x}}, {{block.y}})"
-                           class="{{block.style_role}}"
-                           ng-mousedown="onMouseDown($event, block)"
-                           ng-mousemove="onMouseMove($event, block)"
-                           ng-mouseup="onMouseUp($event, block)"
-                           ng-click="onClick(block)"
-                        >
-                            <rect width="{{block.width}}" height="{{block.height}}" />
-                            <g transform="translate(1.5, 1.5)">
-                                <rect class="archblock" id="namebg" width="{{block.width-3}}" height="{{block.height-3}}" />
-                                <text class="archblock" y="3" <tspan x="3" dy="12.0pt">{{block.name}}</tspan></text>
+                <div ng-controller="SvgEditor" class="fullsize">
+                    <div context-menu class="fullsize" data-target="menu-svg">
+                        <svg class="svgeditor fullsize" ng-click="clearSelection()">
+                            <linearGradient id="archblock" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%"   stop-color="#ffffff" />
+                                <stop offset="100%" stop-color="#00b1eb" />
+                            </linearGradient>
+                            <g ng-repeat="block in blocks" transform="translate({{block.x}}, {{block.y}})"
+                               class="{{block.style_role}}"
+                               ng-mousedown="onMouseDown($event, block)"
+                               ng-mousemove="onMouseMove($event, block)"
+                               ng-mouseup="onMouseUp($event, block)"
+                               ng-click="onClick(block, $event); $event.stopPropagation();"
+                            >
+                                <rect width="{{block.width}}" height="{{block.height}}" />
+                                <g transform="translate(1.5, 1.5)">
+                                    <rect class="{{block.style_role}}" id="block_{{block.id}}" width="{{block.width-3}}" height="{{block.height-3}}"
+                                            ng-class="{'selected': selected.indexOf(block) >= 0}"/>
+                                    <text class="{{block.style_role}}" y="3" <tspan x="3" dy="12.0pt">{{block.name}}</tspan></text>
+                                </g>
                             </g>
-                        </g>
 
-                        <line ng-repeat="line in lines" x1="{{getX1(line)}}" y1="{{getY1(line)}}"
-                              x2="{{getX2(line)}}" y2="{{getY2(line)}}" />
-                    </svg>
-                </div>
-                <div class="dropdown position-fixed" id="menu-svg">
-                  <ul class="dropdown-menu" role="menu">
-                    <li class="dropdown-item" ng-click="addBlock()">Add new Block</li>
-                  </ul>
+                            <line ng-repeat="line in lines" x1="{{getX1(line)}}" y1="{{getY1(line)}}"
+                                  x2="{{getX2(line)}}" y2="{{getY2(line)}}" />
+                        </svg>
+                    </div>
+                    <div class="dropdown position-fixed" id="menu-svg">
+                      <ul class="dropdown-menu" role="menu">
+                        <li class="dropdown-item" ng-click="addBlock()">Add new Block</li>
+                        <li class="dropdown-item" ng-click="connectBlocks()" ng-if="selected.length==2">Connect Blocks</li>
+                      </ul>
+                    </div>
                 </div>
             </bg-pane>
             <bg-pane>

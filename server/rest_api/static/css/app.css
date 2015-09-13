@@ -27,8 +27,12 @@
   font-size:12.0pt;
   font-family:arial;
   stroke:#005eb8;
-  stroke-width:1;
   fill:url(#archblock);
+  stroke-width:1;
+}
+
+.selected {
+  stroke-width:5;
 }
 
 text.archblock {

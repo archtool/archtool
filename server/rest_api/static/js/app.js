@@ -105,7 +105,6 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
 
   $scope.onMouseDown = function(evt, obj) {
     $scope.last_pos = [evt.x, evt.y];
-    $scope.selected = [obj];
     $scope.drag = true;
     console.log("Mouse down " + $scope.selected.length);
   };
@@ -129,7 +128,18 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
     $scope.drag = false;
   };
 
-  $scope.onClick = function(obj) {
+  $scope.onClick = function(obj, event) {
+    if (event.shiftKey) {
+      $scope.selected.push(obj);
+    } else {
+      $scope.selected = [obj];
+    }
+    event.handled = true;
+  };
+
+  $scope.clearSelection = function(event) {
+
+    $scope.selected = [];
   };
 
   $scope.getX1 = function(line) {
@@ -160,6 +170,20 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
       $scope.blocks.push(data);
     });
   };
+
+  $scope.connectBlocks = function() {
+    var start = $scope.selected[0];
+    var end = $scope.selected[1];
+    var item = new anchorDetails({
+     'view': $rootScope.currentView.id,
+     'anchortype': 'line',
+     'start': start.id,
+     'end': end.id
+     });
+
+    item.$save(function(data){
+      $scope.lines.push(data);
+    });
 
 });
 
