@@ -77,6 +77,7 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
   ]; */
 
   $scope.lines = [];
+  var line_2_blocks = {};
   /*
     {'start':$scope.blocks[0],
      'end':$scope.blocks[1]},
@@ -92,13 +93,33 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
       if (newval != null && newval != oldval) {
         var items = viewItems.query();
         items.$promise.then(function(result){
+          line_2_blocks = {};
           $scope.blocks = result.blocks;
+          update_line_2_blocks(result.connections);
           $scope.lines  = result.connections;
           $scope.actions = result.actions;
           $scope.annotations = result.annotations;
         });
       }
   });
+
+  function update_line_2_blocks(lines) {
+    for (var i=0; i<lines.length; i++) {
+      var line = lines[i];
+      var start = null;
+      var end = null;
+      for (var j=0; j<$scope.blocks.length; j++) {
+        var block = $scope.blocks[j];
+        if (line.start == block.id) {
+          start = block;
+        }
+        if (line.end == block.id) {
+          end = block;
+        }
+      }
+      line_2_blocks[line] = [start, end];
+    }
+  }
 
   $scope.onRightClick = function(evt) {
   };
@@ -143,16 +164,20 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
   };
 
   $scope.getX1 = function(line) {
-    return line.start.x + line.start.width/2;
+    var start = line_2_blocks[line][0];
+    return start.x + start.width/2;
   };
   $scope.getY1 = function(line) {
-    return line.start.y + line.start.height/2;
+    var start = line_2_blocks[line][0];
+    return start.y + start.height/2;
   };
   $scope.getX2 = function(line) {
-    return line.end.x + line.end.width/2;
+    var end = line_2_blocks[line][1];
+    return end.x + end.width/2;
   };
   $scope.getY2 = function(line) {
-    return line.end.y + line.end.height/2;
+    var end = line_2_blocks[line][1];
+    return end.y + end.height/2;
   };
 
   $rootScope.addBlock = function(planeable) {
@@ -182,8 +207,10 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
      });
 
     item.$save(function(data){
+      update_line_2_blocks([data]);
       $scope.lines.push(data);
     });
+  }
 
 });
 

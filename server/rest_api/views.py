@@ -203,22 +203,22 @@ def view_details(request, view):
 class ViewItemDetailsView(generics.RetrieveUpdateDestroyAPIView,
                           mixins.CreateModelMixin):
     def post(self, request, *args, **kwargs):
-        # Allow lines to be created with a connection object.
+        # Allow lines to be created without a connection object specified.
         # If so, find or create the appropriate connection.
-        if request.data['anchortype'] == 'line' and
+        if request.data['anchortype'] == 'line' and \
            request.data.get('connection', None) is None:
            # Check if there is a connection
-           start = models.BlockRepresentation.objects.filter(id=request.data['start'])
-           end = models.BlockRepresentation.objects.filter(id=request.data['end'])
+           start = models.BlockRepresentation.objects.get(id=request.data['start'])
+           end = models.BlockRepresentation.objects.get(id=request.data['end'])
            con = models.Connection.objects.filter(start_id=start.planeable, end_id=end.planeable)
            results = list(con)
            if len(results) > 0:
                 request.data['connection'] = results[0].id
            else:
                 # Create a new connection and use it.
-                con = models.Connection(start_id=start.planeable,
-                                        end_id = end.planeable,
-                                        system_id=start.planeable.system,
+                con = models.Connection(start=start.planeable,
+                                        end = end.planeable,
+                                        system=start.planeable.system,
                                         name = '')
                 con.save()
                 request.data['connection'] = con.id

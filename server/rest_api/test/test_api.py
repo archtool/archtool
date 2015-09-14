@@ -335,3 +335,14 @@ class ApiTests(APITestCase):
                      connections = [con],
                      actions = [a1, a2],
                      annotations = []))
+
+        # Check if we can create a second line and reuse the connection.
+        con2 = dict(anchortype='line',
+                    view=view['id'],
+                    start=reprs[0]['id'],
+                    end=reprs[1]['id'],
+                    connection=None)
+        response = self.client.post('/api/viewitemdetails/line/', con2, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED,
+                         'Error in request: %s %s'%(response.reason_phrase, response.data))
+        self.assertEqual(response.data['connection'], conn.id)

@@ -355,8 +355,8 @@ class BlockRepresentation(Anchor):
 class ConnectionRepresentation(Anchor):
     _abref = 'line'
     connection = OptionalFK(PlaneableItem, related_name='+')
-    start = OptionalFK(PlaneableItem, related_name='+')
-    end = OptionalFK(PlaneableItem, related_name='+')
+    start = OptionalFK(BlockRepresentation, related_name='+')
+    end = OptionalFK(BlockRepresentation, related_name='+')
 
     @classmethod
     def get_detailfields(cls):
