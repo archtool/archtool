@@ -104,8 +104,12 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
   });
 
   function update_line_2_blocks(lines) {
-    for (var i=0; i<lines.length; i++) {
-      var line = lines[i];
+    /* Update the internal book-keeping so that the start and end
+       blocks can be found for a specific line. */
+    angular.forEach($scope.blocks, function(block) {
+      block.lines = [];
+    });
+    angular.forEach(lines, function(line) {
       var start = null;
       var end = null;
       for (var j=0; j<$scope.blocks.length; j++) {
@@ -118,7 +122,10 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
         }
       }
       line_2_blocks[line] = [start, end];
-    }
+      start.lines.push(line);
+      end.lines.push(line);
+      intersect(start, end, line);
+    });
   }
 
   $scope.onRightClick = function(evt) {
@@ -139,6 +146,12 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
       angular.forEach($scope.selected, function(obj) {
         obj.x += delta_x;
         obj.y += delta_y;
+      });
+      angular.forEach($scope.selected, function(block) {
+        angular.forEach(block.lines, function(line) {
+          var startend = line_2_blocks[line];
+          intersect(startend[0], startend[1], line);
+        });
       });
     };
     $scope.last_pos = [evt.x, evt.y];
@@ -161,23 +174,6 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
   $scope.clearSelection = function(event) {
 
     $scope.selected = [];
-  };
-
-  $scope.getX1 = function(line) {
-    var start = line_2_blocks[line][0];
-    return start.x + start.width/2;
-  };
-  $scope.getY1 = function(line) {
-    var start = line_2_blocks[line][0];
-    return start.y + start.height/2;
-  };
-  $scope.getX2 = function(line) {
-    var end = line_2_blocks[line][1];
-    return end.x + end.width/2;
-  };
-  $scope.getY2 = function(line) {
-    var end = line_2_blocks[line][1];
-    return end.y + end.height/2;
   };
 
   $rootScope.addBlock = function(planeable) {
@@ -212,6 +208,46 @@ archtoolApp.controller("SvgEditor", function ($scope, $rootScope, $resource) {
     });
   }
 
+
+  function intersect(block1, block2, line) {
+    /* Determine start and end coordinates for a line between two blocks. */
+    var x1 = block1.x + block1.width/2;
+    var y1 = block1.y + block1.height/2;
+    var x2 = block2.x + block2.width/2;
+    var y2 = block2.y + block2.height/2;
+
+    var dx = x2 - x1;
+    var dy = y2 - y1;
+
+    // Determine the start point.
+    function determineDist(block) {
+      // Determine if it meets the horizontal or vertical bounds first
+      var lhor, lvert;  // Normally a value between 0.0 and 1.0
+      if (dx==0){
+        lhor=10;
+      } else {
+        lhor = block.width / Math.abs(dx) / 2;
+      }
+      if (dy == 0) {
+        lvert = 10;
+      } else {
+        lvert = block.height / Math.abs(dy) / 2;
+      }
+      return Math.min(lvert, lhor);
+    }
+
+    var start = determineDist(block1);
+    var end = determineDist(block2);
+
+    if (start + end >= 1) {
+      line.x1 = line.x2 = line.y1 = line.y2 = 0;
+    } else {
+      line.x1 = x1 + start*dx;
+      line.y1 = y1 + start*dy;
+      line.x2 = x2-end*dx;
+      line.y2 = y2-end*dy;
+    }
+  }
 });
 
 
