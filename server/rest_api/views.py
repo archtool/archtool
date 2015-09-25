@@ -1,7 +1,7 @@
 from string import Template
 from .models import (Priorities, System, PlaneableItem, RequirementType, PlaneableStatus,
                      BlockRepresentation, ConnectionRepresentation, ActionRepresentation,
-                     Annotation, Anchor)
+                     Annotation, Anchor, PlaneableXRef)
 from .serializations import (PlaneableListSerializer, PlaneableDetailSerializers, FieldContext,
                              create_anchorserializer)
 from . import models
@@ -53,6 +53,14 @@ class SystemList(generics.ListCreateAPIView):
     # TODO: Add authorization
     permission_classes = (permissions.AllowAny,)
 
+class XRefList(generics.ListCreateAPIView):
+    queryset = PlaneableXRef.objects.all()
+    class serializer_class(serializers.ModelSerializer):
+        class Meta:
+            model = PlaneableXRef
+            fields = ('id', 'aitem', 'bitem', )
+    # TODO: Add authorization
+    permission_classes = (permissions.AllowAny,)
 
 @api_view(['GET'])
 def priorities_list(request):
@@ -210,16 +218,14 @@ class ViewItemDetailsView(generics.RetrieveUpdateDestroyAPIView,
            # Check if there is a connection
            start = models.BlockRepresentation.objects.get(id=request.data['start'])
            end = models.BlockRepresentation.objects.get(id=request.data['end'])
-           con = models.Connection.objects.filter(start_id=start.planeable, end_id=end.planeable)
+           con = models.PlaneableXRef.objects.filter(aitem=start.planeable, bitem=end.planeable)
            results = list(con)
            if len(results) > 0:
                 request.data['connection'] = results[0].id
            else:
                 # Create a new connection and use it.
-                con = models.Connection(start=start.planeable,
-                                        end = end.planeable,
-                                        system=start.planeable.system,
-                                        name = '')
+                con = models.PlaneableXRef(aitem=start.planeable,
+                                           bitem = end.planeable)
                 con.save()
                 request.data['connection'] = con.id
         return self.create(request, *args, **kwargs)

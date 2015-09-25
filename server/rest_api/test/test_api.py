@@ -273,12 +273,14 @@ class ApiTests(APITestCase):
         block1 = dict(name='Camelot', itemtype='struct', system=1)
         block2 = dict(name='Aaargh', itemtype='struct', system=1)
         # The numbers are hard-coded references to block1 and conn
-        conn   = dict(name='', itemtype='con', system=1, start=2, end=3)
+        conn   = dict(itemtype='xref', aitem=2, bitem=3)
         act1   = dict(name='search grail', itemtype='action', connection=2, system=1)
         act2   = dict(name='push pram', itemtype='action', connection=4, system=1)
 
         for details in [view, block1, block2, conn, act1, act2]:
             url = '/api/planeableitems/?system=1&itemtype=%s'%details['itemtype']
+            if details == conn:
+                url = '/api/planeablexrefs/?system=1'
             response = self.client.post(url, details,
                                         format='json')
             if response.status_code != status.HTTP_201_CREATED:
@@ -345,4 +347,4 @@ class ApiTests(APITestCase):
         response = self.client.post('/api/viewitemdetails/line/', con2, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                          'Error in request: %s %s'%(response.reason_phrase, response.data))
-        self.assertEqual(response.data['connection'], conn.id)
+        self.assertEqual(response.data['connection'], conn['id'])

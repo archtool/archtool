@@ -13,6 +13,7 @@ urlpatterns = [
     url(r'^api/reqtypes/$', views.reqtypes_list),
     url(r'^api/planeabletypes/$', views.PlaneableTypesView.as_view()),
     url(r'^api/planeableitems/$', views.PlaneableItemsList.as_view()),
+    url(r'^api/planeablexrefs/$', views.XRefList.as_view()),
     url(r'^api/planeableitems/(?P<pk>[0-9]+)/$', views.PlaneableDetailView.as_view()),
     url(r'^api/editors/$', views.DetailEditorView.as_view()),
     url(r'^api/editors/(?P<pk>[0-9]+)/$', views.DetailEditorView.as_view()),

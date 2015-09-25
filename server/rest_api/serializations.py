@@ -51,10 +51,6 @@ def create_planeableserializer(cls):
             reportedby = serializers.IntegerField(source='reportedby_id', validators=[],
                           read_only=True,
                           default=FieldContext(lambda slf:slf.context['request'].user.id))
-        if cls == models.Connection:
-            start = serializers.IntegerField(source='start_id', required=True, allow_null=False)
-            end = serializers.IntegerField(source='end_id', required=True, allow_null=False)
-
         class Meta:
             model = cls
             fields = cls.get_detailfields()
@@ -79,7 +75,7 @@ def create_anchorserializer(cls):
         # Anchor type specific fields
         if cls == models.BlockRepresentation:
             planeable = serializers.IntegerField(source='planeable_id')
-        if cls == models.Connection:
+        if cls == models.ConnectionRepresentation:
             connection = serializers.IntegerField(source='connection_id')
             start = serializers.IntegerField(source='start_id')
             end = serializers.IntegerField(source='end_id')

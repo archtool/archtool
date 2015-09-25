@@ -211,7 +211,7 @@ class Action(PlaneableItem):
 
     # The connection is optional so that actions can be created before they
     # are placed in a structure.
-    connection = OptionalFK(PlaneableItem, related_name='+')
+    connection = OptionalFK(PlaneableXRef)
     isresponse = models.BooleanField(default=False)
 
 
@@ -234,18 +234,6 @@ class Requirement(PlaneableItem):
 class StructuralItem(PlaneableItem):
     abref = 'struct'
     editor_title = 'Structural Item'
-
-
-class Connection(PlaneableItem):
-    abref = 'con'
-    editor_title = 'Connection'
-
-    start = RequiredFK(PlaneableItem, related_name='+')
-    end   = RequiredFK(PlaneableItem, related_name='+')
-
-    @classmethod
-    def get_detailfields(cls):
-        return PlaneableItem.get_detailfields() + ['start', 'end']
 
 
 class Bug(PlaneableItem):
@@ -354,7 +342,7 @@ class BlockRepresentation(Anchor):
 
 class ConnectionRepresentation(Anchor):
     _abref = 'line'
-    connection = OptionalFK(PlaneableItem, related_name='+')
+    connection = OptionalFK(PlaneableXRef, related_name='+')
     start = OptionalFK(BlockRepresentation, related_name='+')
     end = OptionalFK(BlockRepresentation, related_name='+')
 
@@ -366,7 +354,10 @@ class ConnectionRepresentation(Anchor):
         return Anchor.get_detailfields() + ['connection', 'start', 'end']
 
     def get_name(self):
-        return self.connection.name
+        if self.connection.reftype:
+            return self.connection.reftype.forwardname
+        else:
+            return ''
 
 
 class ActionRepresentation(Anchor):

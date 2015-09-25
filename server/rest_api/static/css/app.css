@@ -32,7 +32,7 @@
 }
 
 .selected {
-  stroke-width:5;
+  stroke-width:3;
 }
 
 text.archblock {
@@ -46,7 +46,7 @@ text.archblock {
 
 line {
   stroke:#000000;
-  stroke-width:3;
+  stroke-width:2;
 }
 
 .btn {
