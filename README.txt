@@ -1,13 +1,14 @@
 
-Required python version:    2.7
+Required python version:    3.4
 Required python extensions:
-	* PYQT4
+	* Django 1.8.2
 	* Sqlalchemy
-	* matplotlib (for creating charts & plots)
-	* docutils   (for generating documents)
-	* psycopg2   (for using PostgreSQL databases)
+	* djangorestframework 3.1.2
 
-Start the tool by running the file 'src/run.py'.
+To start the server, run:
+
+cd server
+python manage.py runserver
 
 
 Author: Evert van de Waal

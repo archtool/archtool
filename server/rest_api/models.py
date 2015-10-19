@@ -354,10 +354,12 @@ class ConnectionRepresentation(Anchor):
         return Anchor.get_detailfields() + ['connection', 'start', 'end']
 
     def get_name(self):
-        if self.connection.reftype:
-            return self.connection.reftype.forwardname
-        else:
-            return ''
+        try:
+            if self.connection.reftype:
+                return self.connection.reftype.forwardname
+        except PlaneableXRef.DoesNotExist:
+            pass
+        return ''
 
 
 class ActionRepresentation(Anchor):
