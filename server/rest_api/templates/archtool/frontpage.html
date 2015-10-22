@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Archtool</title>
+  <link rel="stylesheet" href="/static/css/app.css">
   <link rel="stylesheet" href="/static/bower_components/bootstrap/dist/css/bootstrap.css">
   <link rel="stylesheet" href="/static/bower_components/angular-ui-tree/dist/angular-ui-tree.min.css">
-  <link rel="stylesheet" href="/static/css/app.css">
   <script src="/static/bower_components/angular/angular.js"></script>
   <script src="/static/bower_components/angular-resource/angular-resource.js"></script>
   <script src="/static/bower_components/angular-ui/ui-bootstrap-tpls.js"></script>
@@ -19,34 +19,34 @@
 <body ng-app="archtoolApp">
 
 
+<header>
+    <div class="container-fluid pull-left" class="login-frame">
+            <label for="name">User</label>
+            {{request.user.username}}
+            <a href="/accounts/logout"><button type="submit" class="btn btn-primary btn-xs" >logout</button></a>
+    </div>
 
-<div class="container-fluid" class="login-frame">
-        <label for="name">User</label>
-        {{request.user.username}}
-        <a href="/accounts/logout"><button type="submit" class="btn btn-primary btn-xs" >logout</button></a>
-</div>
 
 
-
-{% verbatim %}
-<div class="container-fluid" class="model-frame">
-    <form role="form" class=".form-inline pull-right">
-        <div ng-controller="SystemCtrl">
-            <label for="name">Model</label>
-            <select ng-model="$root.currentSystem" ng-options="item.name for item in systems">
-                <option value="">Select the model</option>
-            </select>
-            <button type="button" class="btn btn-primary btn-xs" ng-click="newSystem()">Add Model</button>
-        </div>
-    </form>
-</div>
-
+    {% verbatim %}
+    <div class="container-fluid pull-right" class="model-frame">
+        <form role="form" class=".form-inline pull-right">
+            <div ng-controller="SystemCtrl">
+                <label for="name">Model</label>
+                <select ng-model="$root.currentSystem" ng-options="item.name for item in systems">
+                    <option value="">Select the model</option>
+                </select>
+                <button type="button" class="btn btn-primary btn-xs" ng-click="newSystem()">Add Model</button>
+            </div>
+        </form>
+    </div>
+</header>
 
 
 <bg-splitter style="width:100%;" orientation="horizontal">
     <bg-pane min-size="200">
-            <div class="container-fluid" ng-controller="ItemsList">
-                <div id="dropdown-menu" class="dropdown position-fixed" style="visibility:hidden;z-index:1000;">
+            <div class="container-fluid pull-left parent" ng-controller="ItemsList">
+                <div id="dropdown-menu" class="dropdown position-fixed" style="display:none;z-index:1000;">
                     <ul>
                         <a class="btn btn-default" href="#" ng-click="addBlock(planeable)">Add to current View</a>
                     </ul>
@@ -76,7 +76,7 @@
                         </li>
                       </ol>
                     </script>
-                    <div ui-tree="treeOptions" id="tree-root" style="overflow:auto;">
+                    <div ui-tree="treeOptions" id="tree-root">
                       <ol ui-tree-nodes="" ng-model="rootItems">
                         <li ng-repeat="node in rootItems" ui-tree-node ng-include="'nodes_renderer.html'"></li>
                       </ol>
@@ -85,12 +85,14 @@
             </div>
     </bg-pane>
     <bg-pane>
-        <bg-splitter orientation="vertical">
+        <bg-splitter orientation="vertical" class="pull-left parent">
             <bg-pane>
-                <div ng-controller="ViewsList">Current View:
-                    <select ng-model="$root.currentView" ng-options="view.name for view in allViews"></select>
-                </div>
-                <div ng-controller="SvgEditor" class="fullsize">
+                <h4>
+                    <div ng-controller="ViewsList">Current View:
+                        <select ng-model="$root.currentView" ng-options="view.name for view in allViews"></select>
+                    </div>
+                </h4>
+                <div id="rightCtrl" ng-controller="SvgEditor" class="fullsize">
                     <div context-menu class="fullsize" data-target="menu-svg">
                         <svg class="svgeditor fullsize" ng-click="clearSelection()">
                             <linearGradient id="archblock" x1="0%" y1="0%" x2="100%" y2="100%">
